@@ -1,2 +1,16 @@
+
+Simulator
+=========
 https://github.com/ethz-asl/rotors_simulator
+
+
+SLAM
+====
+https://github.com/uzh-rpg/rpg_svo_example
+
+
+Quadrotor control
+=================
+https://github.com/uzh-rpg/rpg_quadrotor_control
+
 
