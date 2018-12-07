@@ -28,14 +28,14 @@ def backward():
 
 @app.route('/left')
 def left():
-    left_motor.throttle = -0.7
-    right_motor.throttle = 0.7
+    left_motor.throttle = 0.5
+    right_motor.throttle = -0.5
     return 'left'
 
 @app.route('/right')
 def right():
-    left_motor.throttle = 0.7
-    right_motor.throttle = -0.7
+    left_motor.throttle = -0.5
+    right_motor.throttle = 0.5
     return 'right'
 
 @app.route('/stop')
