@@ -7,8 +7,8 @@ app = Flask(__name__)
 from adafruit_motorkit import MotorKit
 kit = MotorKit()
 
-left_motor = kit.motor1
-right_motor = kit.motor3
+right_motor = kit.motor1
+left_motor = kit.motor3
 
 @app.route('/')
 def hello_world():
@@ -16,26 +16,26 @@ def hello_world():
 
 @app.route('/forward')
 def forward():
-    left_motor.throttle = 0.7
+    left_motor.throttle = 0.75
     right_motor.throttle = 0.7
     return 'forward'
 
 @app.route('/backward')
 def backward():
-    left_motor.throttle = -0.7
+    left_motor.throttle = -0.75
     right_motor.throttle = -0.7
     return 'backward'
 
 @app.route('/left')
 def left():
-    left_motor.throttle = 0.5
-    right_motor.throttle = -0.5
+    left_motor.throttle = -0.55
+    right_motor.throttle = 0.5
     return 'left'
 
 @app.route('/right')
 def right():
-    left_motor.throttle = -0.5
-    right_motor.throttle = 0.5
+    left_motor.throttle = 0.55
+    right_motor.throttle = -0.5
     return 'right'
 
 @app.route('/stop')
