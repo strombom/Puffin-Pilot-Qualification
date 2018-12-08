@@ -23,6 +23,8 @@
       });
 
       function steer() {
+        console.log("left:" + key_left + " right:" + key_right + " up:" + key_up + " down:" + key_down);
+        
         if (key_up && key_left) {
           $.get("/drive/forward_left");
         } else if (key_up && key_right) {
