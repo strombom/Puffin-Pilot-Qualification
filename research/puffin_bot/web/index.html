@@ -7,41 +7,53 @@
     <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script>
-      var keyPressed = false;
+      var key_up = false;
+      var key_down = false;
+      var key_left = false;
+      var key_right = false;
+
+      var key_up_code = 38;
+      var key_down_code = 40;
+      var key_left_code = 37;
+      var key_right_code = 39;
 
       $(document).blur(function() {
         $.get( "/drive/stop");
         keyPressed = false;
       });
 
-      $(document).on('keydown', function(e) {
-        var key;
-        if (keyPressed === false) {
-          keyPressed = true;
-          if (e.keyCode === 37) { // Left key
-            $.get("/drive/left");
-          }
-          if (e.keyCode === 38) { // Up key
-            $.get("/drive/forward");
-          }
-          if (e.keyCode === 39) { // Right key
-            $.get("/drive/right");
-          }
-          if (e.keyCode === 40) { // Down key
-            $.get("/drive/backward");
-          }
+      function steer() {
+        if (key_up && key_left) {
+          $.get("/drive/forward_left");
+        } else if (key_up && key_right) {
+          $.get("/drive/forward_right");
+        } else if (key_up) {
+          $.get("/drive/forward");
+        } else if (key_left) {
+          $.get("/drive/left");
+        } else if (key_right) {
+          $.get("/drive/right");
+        } else if (key_backward) {
+          $.get("/drive/backward");
+        } else {
+          $.get("/drive/stop");
         }
-        $(this).on('keyup', function(e) {
-          if (keyPressed === true) {
-            if (e.keyCode === 37 ||
-                e.keyCode === 38 ||
-                e.keyCode === 39 ||
-                e.keyCode === 40) {
-              keyPressed = false;
-              $.get("/drive/stop");
-            }
-          }
-        });
+      }
+
+      $(document).on('keydown', function(e) {
+        if (e.keyCode == key_left_code) key_left = true;
+        if (e.keyCode == key_down_code) key_left = true;
+        if (e.keyCode == key_left_code) key_left = true;
+        if (e.keyCode == key_right_code) key_left = true;
+        steer();
+      });
+
+      $(document).on('keyup', function(e) {
+          if (e.keyCode == key_up_code) key_up = false;
+          if (e.keyCode == key_left_code) key_left = false;
+          if (e.keyCode == key_right_code) key_right = false;
+          if (e.keyCode == key_down_code) key_down = false;
+        steer();
       });
 
       $(document).ready(function() {

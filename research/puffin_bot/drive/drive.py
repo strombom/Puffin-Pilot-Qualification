@@ -45,6 +45,18 @@ def forward():
     right_motor.throttle = throttle_right
     return 'forward'
 
+@app.route('/forward_left')
+def forward_left():
+    left_motor.throttle = throttle_left * 0.75
+    right_motor.throttle = throttle_right
+    return 'forward_left'
+
+@app.route('/forward_right')
+def forward_right():
+    left_motor.throttle = throttle_left
+    right_motor.throttle = throttle_right * 0.75
+    return 'forward_right'
+
 @app.route('/backward')
 def backward():
     left_motor.throttle = -throttle_left
@@ -73,7 +85,7 @@ def stop():
 def config():
     global throttle_left
     global throttle_right
-    
+
     if request.method == 'GET':
         config = load_config()
         response = app.response_class(
