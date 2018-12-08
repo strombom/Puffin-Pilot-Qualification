@@ -38,6 +38,24 @@
           }
         });
       });
+
+      $( document ).ready(function() {
+        $.get( "/drive/throttle", function(data) {
+          $('#throttle-left').val(data['throttle_left'])
+          $('#throttle-right').val(data['throttle_right'])
+        });
+      });
+
+      $('#throttle-left').on('input',function(e){
+        var throttle_left = $('#throttle-left').val();
+        $.post("/drive/throttle?left=" + throttle_left);
+      });
+
+      $('#throttle-right').on('input',function(e){
+        var throttle_right = $('#throttle-right').val();
+        $.post("/drive/throttle?right=" + throttle_right);
+      });
+
     </script>
   </head>
   <body>
@@ -49,6 +67,7 @@
           <p><iframe src="../camera/embedded.php" frameborder="0" scrolling="no" width="640" height="360"></iframe></p>
         </div>
         <div class="col-sm-3" align="center">
+          <!--
           <h3>Control</h3>
           <p>
             <button type="button" class="btn btn-primary">Forward</button>            
@@ -60,6 +79,24 @@
           <p>
             <button type="button" class="btn btn-primary">Backward</button>            
           </p>
+          -->
+
+          <h3>Throttle</h3>
+          <form>
+            <div class="form-group row">
+              <label for="throttle-left" class="col-sm-4 col-form-label">Left</label>
+              <div class="col-sm-8">
+                <input type="text" class="form-control" id="throttle-left" value="0.2">
+              </div>
+            </div>
+            <div class="form-group row">
+              <label for="throttle-right" class="col-sm-4 col-form-label">Right</label>
+              <div class="col-sm-8">
+                <input type="text" class="form-control" id="throttle-right" value="0.2">
+              </div>
+            </div>
+          </form>
+
         </div>
         <div class="col-sm-2">
           <h3>Status</h3>
