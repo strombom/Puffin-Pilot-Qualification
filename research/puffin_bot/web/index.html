@@ -41,10 +41,10 @@
       }
 
       $(document).on('keydown', function(e) {
+        if (e.keyCode == key_up_code) key_up = true;
         if (e.keyCode == key_left_code) key_left = true;
-        if (e.keyCode == key_down_code) key_left = true;
-        if (e.keyCode == key_left_code) key_left = true;
-        if (e.keyCode == key_right_code) key_left = true;
+        if (e.keyCode == key_right_code) key_right = true;
+        if (e.keyCode == key_down_code) key_down = true;
         steer();
       });
 
