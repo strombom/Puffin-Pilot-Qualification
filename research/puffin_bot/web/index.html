@@ -19,41 +19,48 @@
         if (keyPressed === false) {
           keyPressed = true;
           if (e.keyCode === 37) { // Left key
-            $.get( "/drive/left");
+            $.get("/drive/left");
           }
           if (e.keyCode === 38) { // Up key
-            $.get( "/drive/forward");
+            $.get("/drive/forward");
           }
           if (e.keyCode === 39) { // Right key
-            $.get( "/drive/right");
+            $.get("/drive/right");
           }
           if (e.keyCode === 40) { // Down key
-            $.get( "/drive/backward");
+            $.get("/drive/backward");
           }
         }
-        $(this).on('keyup', function() {
+        $(this).on('keyup', function(e) {
           if (keyPressed === true) {
-            keyPressed = false;
-            $.get( "/drive/stop");
+            if (e.keyCode === 37 ||
+                e.keyCode === 38 ||
+                e.keyCode === 39 ||
+                e.keyCode === 40) {
+              keyPressed = false;
+              $.get("/drive/stop");
+            }
           }
         });
       });
 
-      $( document ).ready(function() {
-        $.get( "/drive/throttle", function(data) {
-          $('#throttle-left').val(data['throttle_left'])
-          $('#throttle-right').val(data['throttle_right'])
+      $(document).ready(function() {
+        $.get("/drive/config", 
+              dataType = 'json',
+              function(config) {
+          $('#throttle-left').val(config['throttle_left'])
+          $('#throttle-right').val(config['throttle_right'])
         });
-      });
 
-      $('#throttle-left').on('input',function(e){
-        var throttle_left = $('#throttle-left').val();
-        $.post("/drive/throttle?left=" + throttle_left);
-      });
+        $('#throttle-left').on('input', function() {
+          var throttle_left = $('#throttle-left').val();
+          $.post("/drive/config?throttle_left=" + throttle_left);
+        });
 
-      $('#throttle-right').on('input',function(e){
-        var throttle_right = $('#throttle-right').val();
-        $.post("/drive/throttle?right=" + throttle_right);
+        $('#throttle-right').on('input', function() {
+          var throttle_right = $('#throttle-right').val();
+          $.post("/drive/config?throttle_right=" + throttle_right);
+        });
       });
 
     </script>

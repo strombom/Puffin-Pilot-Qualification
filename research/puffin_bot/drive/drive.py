@@ -14,13 +14,25 @@ kit = MotorKit()
 right_motor = kit.motor1
 left_motor = kit.motor3
 
-try:
-    data = pickle.load(open('drive.dat', 'rb'))
-    throttle_left = data['throttle_left']
-    throttle_right = data['throttle_right']
-except:
-    throttle_left = 0.6
-    throttle_right = 0.6
+
+def save_config():
+    config= {'throttle_left': throttle_left,
+             'throttle_right': throttle_right}
+    pickle.dump(config, open('/var/www/tmp/config.dat', 'wb'))
+
+def load_config():
+    try:
+        data = pickle.load(open('/var/www/tmp/config.dat', 'rb'))
+        config= {'throttle_left': data['throttle_left'],
+                 'throttle_right': data['throttle_right']}
+    except:
+        config= {'throttle_left': 0.6,
+                 'throttle_right': 0.6}
+    return config
+
+config = load_config()
+throttle_left = config['throttle_left']
+throttle_right = config['throttle_right']
 
 
 @app.route('/')
@@ -57,30 +69,32 @@ def stop():
     right_motor.throttle = None
     return 'stop'
 
-@app.route('/stop')
-def stop():
-    left_motor.throttle = None
-    right_motor.throttle = None
-    return 'stop'
-
-def save_config():
-    config= {'throttle_left': throttle_left,
-             'throttle_right': throttle_right}
-    pickle.dump(config, open('drive.dat', 'wb'))
-
-@app.route('/throttle', methods = ['GET', 'POST'])
-def throttle():
+@app.route('/config', methods = ['GET', 'POST'])
+def config():
+    global throttle_left
+    global throttle_right
+    
     if request.method == 'GET':
-        return json.dumps({'left': throttle_left,
-                           'right': throttle_right})
+        config = load_config()
+        response = app.response_class(
+            response = json.dumps(config),
+            mimetype = 'application/json'
+        )
+        return response
 
     elif request.method == 'POST':
-        left = request.args.get('left')
-        right = request.args.get('right')
+        left = request.args.get('throttle_left')
+        right = request.args.get('throttle_right')
         if left is not None:
-            throttle_left = int(left)
+            try:
+                throttle_left = float(left)
+            except:
+                pass
         if right is not None:
-            throttle_left = int(right)
+            try:
+                throttle_right = float(right)
+            except:
+                pass
 
         save_config()
         return "OK"
