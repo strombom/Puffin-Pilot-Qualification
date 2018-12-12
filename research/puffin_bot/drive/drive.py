@@ -42,37 +42,37 @@ def hello_world():
 @app.route('/forward')
 def forward():
     left_motor.throttle = throttle_left
-    right_motor.throttle = throttle_right
+    right_motor.throttle = -throttle_right
     return 'forward'
 
 @app.route('/forward_left')
 def forward_left():
     left_motor.throttle = throttle_left * 0.75
-    right_motor.throttle = throttle_right
+    right_motor.throttle = -throttle_right
     return 'forward_left'
 
 @app.route('/forward_right')
 def forward_right():
     left_motor.throttle = throttle_left
-    right_motor.throttle = throttle_right * 0.75
+    right_motor.throttle = -throttle_right * 0.75
     return 'forward_right'
 
 @app.route('/backward')
 def backward():
     left_motor.throttle = -throttle_left
-    right_motor.throttle = -throttle_right
+    right_motor.throttle = throttle_right
     return 'backward'
 
 @app.route('/left')
 def left():
     left_motor.throttle = -throttle_left
-    right_motor.throttle = throttle_right
+    right_motor.throttle = -throttle_right
     return 'left'
 
 @app.route('/right')
 def right():
     left_motor.throttle = throttle_left
-    right_motor.throttle = -throttle_right
+    right_motor.throttle = throttle_right
     return 'right'
 
 @app.route('/stop')
@@ -104,7 +104,7 @@ def config():
                 pass
         if right is not None:
             try:
-                throttle_right = -float(right)
+                throttle_right = float(right)
             except:
                 pass
 
