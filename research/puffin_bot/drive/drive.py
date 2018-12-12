@@ -11,8 +11,8 @@ import pickle
 from adafruit_motorkit import MotorKit
 kit = MotorKit()
 
-right_motor = kit.motor1
-left_motor = kit.motor3
+right_motor = kit.motor3
+left_motor = kit.motor1
 
 
 def save_config():
@@ -99,12 +99,12 @@ def config():
         right = request.args.get('throttle_right')
         if left is not None:
             try:
-                throttle_left = float(left)
+                throttle_left = -float(left)
             except:
                 pass
         if right is not None:
             try:
-                throttle_right = -float(right)
+                throttle_right = float(right)
             except:
                 pass
 
