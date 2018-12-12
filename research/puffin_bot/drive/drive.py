@@ -99,12 +99,12 @@ def config():
         right = request.args.get('throttle_right')
         if left is not None:
             try:
-                throttle_left = -float(left)
+                throttle_left = float(left)
             except:
                 pass
         if right is not None:
             try:
-                throttle_right = float(right)
+                throttle_right = -float(right)
             except:
                 pass
 
