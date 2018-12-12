@@ -104,7 +104,7 @@ def config():
                 pass
         if right is not None:
             try:
-                throttle_right = float(right)
+                throttle_right = -float(right)
             except:
                 pass
 
