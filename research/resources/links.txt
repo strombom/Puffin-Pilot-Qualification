@@ -12,5 +12,17 @@ https://github.com/uzh-rpg/rpg_svo_example
 Quadrotor control
 =================
 https://github.com/uzh-rpg/rpg_quadrotor_control
+https://github.com/uzh-rpg/rpg_quadrotor_control/blob/master/documents/theory_and_math/theory_and_math.pdf
+
+
+Image orientation
+=================
+https://d4nst.github.io/2017/01/12/image-orientation/
+https://github.com/d4nst/RotNet
+
+
+Kalman filter
+=============
+http://bilgin.esme.org/BitsAndBytes/KalmanFilterforDummies
 
 
