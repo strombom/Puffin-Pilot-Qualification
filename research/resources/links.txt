@@ -20,9 +20,27 @@ Image orientation
 https://d4nst.github.io/2017/01/12/image-orientation/
 https://github.com/d4nst/RotNet
 
+Image instance segmentation
+===========================
+https://github.com/matterport/Mask_RCNN
+https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46
+https://github.com/GustavZ/Mobile_Mask_RCNN/
+https://github.com/amir-abdi/keras_to_tensorflow/blob/master/keras_to_tensorflow.py
 
 Kalman filter
 =============
 http://bilgin.esme.org/BitsAndBytes/KalmanFilterforDummies
+https://medium.com/self-driving-cars/all-about-kalman-filters-8924abe3aa88
 
+Screenshot fast
+===============
+https://python-mss.readthedocs.io/examples.html
+https://pymotw.com/2/socket/udp.html
 
+Drone flying
+============
+https://uavcoach.com/how-to-fly-a-quadcopter-guide/
+
+Video
+=====
+https://www.everdrone.com
