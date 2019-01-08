@@ -42,6 +42,25 @@ def load_data(data_path):
 def save_image(filename, image):
     cv2.imwrite(filename, image * 255)
 
+def save_images(filename, images):
+    y_count = len(images)
+    x_count = len(images[0])
+
+    height = images[0][0].shape[0]
+    width = images[0][0].shape[1]
+
+    image = np.zeros((height * y_count, width * x_count, 1))
+
+    for row in range(y_count):
+        for col in range(x_count):
+            x, y = col * width, row * height
+            image[y:y+height, x:x+width] = images[row][col]
+
+    cv2.imwrite(filename, image * 255)
+
+
+
+
 
 if __name__ == '__main__':
 

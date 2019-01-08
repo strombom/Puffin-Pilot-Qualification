@@ -45,11 +45,11 @@ for data_path in ['val', 'train']:
                 p1 = (line[0][0], line[0][1])
                 p2 = (line[1][0], line[1][1])
                 #print( (line[0][0], line[0][1]), (line[1][0], line[1][1]), (255, 0, 0))
-                cv2.line(outline, p1, p2, (255, 255, 255), thickness=5)
+                cv2.line(outline, p1, p2, (255, 255, 255), thickness=6)
 
         #outline = cv2.GaussianBlur(outline,(5,5),0)
         outline = cv2.GaussianBlur(outline,(3,3),0)
-        
+
         outline = cv2.resize(outline, (360, 360), interpolation = cv2.INTER_AREA)
         outline = outline[36:360-36,:]
 
