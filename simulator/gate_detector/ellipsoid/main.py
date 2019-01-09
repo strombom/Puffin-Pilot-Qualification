@@ -25,23 +25,26 @@ image[rr, cc] = 0
 #skimage.io.imsave("img_skel.png", image*255)
 #quit()
 
-#@jit(nopython=True)
+@jit(nopython=True)
 def extract_strip(image, ox, oy, strip):
+    tmp_strip = np.empty_like(strip)
+
     idx = 0
-    first_direction = True
-    first_point = True
-    restart = False
+    is_first_direction = True
+    is_first_point = True
+    is_restarting = False
+    first_direction_length = 0
     x, y = ox, oy
 
     while True:
         if idx == strip.shape[0]:
             return idx
 
-        if restart:
+        if is_restarting:
             x, y = ox, oy
-            restart = False
+            is_restarting = False
         else:
-            strip[idx] = (x, y)
+            tmp_strip[idx] = (x, y)
             idx += 1
             image[y][x] = 0
         
@@ -55,9 +58,10 @@ def extract_strip(image, ox, oy, strip):
                     return dx - 1, dy - 1
 
         if neighbour_count == 0:
-            if first_direction:
-                first_direction = False
-                restart = True
+            if is_first_direction:
+                is_first_direction = False
+                is_restarting = True
+                first_direction_length = idx
                 continue
             else:
                 # End of strip
@@ -69,21 +73,28 @@ def extract_strip(image, ox, oy, strip):
             continue
         
         else:
-            if first_point:
-                first_point = False
+            if is_first_point:
+                is_first_point = False
                 dx, dy = get_neighbour()
                 x, y = x + dx, y + dy
                 continue
             else:
-                if first_direction:
-                    first_direction = False
-                    restart = True
+                if is_first_direction:
+                    is_first_direction = False
+                    is_restarting = True
+                    first_direction_length = idx
                     continue
                 else:
                     # End of strip
                     break
 
+    # Copy strip in order 
+    second_direction_length = idx - first_direction_length
+    strip[0:second_direction_length] = tmp_strip[first_direction_length:idx][::-1]
+    strip[second_direction_length:idx] = tmp_strip[0:first_direction_length]
+
     return idx
+
 
 @jit(nopython=True)
 def find_next_strip(image, start_x, start_y):
@@ -132,70 +143,86 @@ def extract_strips(image):
     return strips
 
 
-def split_strips(strips):
-    line_segments = []
+def split_strips(strips, line_segments):
+    segment_count = 0
+    minimum_segment_length = 6
+    maximum_point_to_line_distance = 2.0
 
     for strip in strips:
-        
+        # Get strip length
         strip_length = strip.shape[0]
         for idx in range(strip.shape[0]):
             if strip[idx][0] == 0:
                 strip_length = idx
                 break
 
-        start_idx = 0
+        # Initialize line segment
+        line_start_idx = 0
+        l_dir = np.zeros(2)
 
-        counter = 0
-        counter_stop = 4
+        for idx in range(1, strip_length):
+            if segment_count == line_segments.shape[0]:
+                return segment_count
 
-        while True:
-            line = strip[start_idx:]
+            segment_length = idx - line_start_idx
 
-            if line.shape[0] < 3:
+            # Last point
+            if idx == strip_length - 1:
+                if segment_length > minimum_segment_length:
+                    print("lastpoint")
+                    line_segments[segment_count] = strip[line_start_idx], strip[idx]
+                    segment_count += 1
                 break
 
-            if counter == counter_stop:
-                print("start", line[0])
+            # Calculate line direction
+            p_dir = strip[idx] - strip[line_start_idx]
+            p_dir = p_dir / np.linalg.norm(p_dir)
+            l_dir = (l_dir * segment_length + p_dir) / (segment_length + 1)
+            l_dir = l_dir / np.linalg.norm(l_dir)
 
-            vx, vy = 0, 0
+            # Check if current point is outside of the lien
+            distance = np.linalg.norm(p_dir - l_dir) * segment_length
+            if distance > maximum_point_to_line_distance:
+                # Store line segment
+                line_segments[segment_count] = strip[line_start_idx], strip[idx]
+                segment_count += 1
 
-            d = np.zeros(2)
-            v = np.zeros(2)
+                # Initialize next line segment
+                line_start_idx = idx
+                l_dir[:] = (0, 0)
 
-            for idx in range(1, line.shape[0]):
-                d[0] = line[idx][0] - line[0][0]
-                d[1] = line[idx][1] - line[0][1]
-                d = d / np.linalg.norm(d)
+    return segment_count
 
-                v = (v * idx + d) / (idx + 1)
-                v = v / np.linalg.norm(v)
 
-                ang = (np.dot(d, v)) * 100
-
-                if counter == counter_stop:
-                    print(idx, line[idx], d, v, ang)
-
-                if ang < 98:
-                    line = line[0:idx]
-                    line_segments.append(line)
-                    print("done", start_idx, start_idx + idx - 1)
-                    start_idx += idx
-                    if counter == counter_stop:
-                        print("hm")
-                        quit()
-                    counter += 1
-                    break
-
-        print("===")
-        #print(line, strip_length)
-
-        quit()
 
 
 
 
 strips = extract_strips(image)
-line_segments = split_strips(strips)
+
+line_segments = np.zeros((1000,2,2), dtype=np.int)
+line_segment_count = split_strips(strips, line_segments)
+
+
+
+import random
+import seaborn as sns
+palette = sns.color_palette("hls", line_segment_count)
+
+im2 = np.ones((image.shape[0], image.shape[1], 3))
+for idx in range(line_segment_count):
+    p0, p1 = line_segments[idx]
+
+    #print(p0, p1)
+
+    rr, cc = skimage.draw.line(p0[1], p0[0], p1[1], p1[0])
+    im2[rr, cc] = palette[random.randrange(line_segment_count)]
+
+skimage.io.imsave("img_line_segments.png", im2)
+quit()
+
+
+
 
 print(strips)
 quit()
