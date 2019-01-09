@@ -143,9 +143,10 @@ def extract_strips(image):
     return strips
 
 
+@jit(nopython=True)
 def split_strips(strips, line_segments):
     segment_count = 0
-    minimum_segment_length = 6
+    minimum_segment_length = 10
     maximum_point_to_line_distance = 2.0
 
     for strip in strips:
@@ -158,7 +159,8 @@ def split_strips(strips, line_segments):
 
         # Initialize line segment
         line_start_idx = 0
-        l_dir = np.zeros(2)
+        l_dir = np.zeros(2, dtype=np.float32)
+        p_dir = np.zeros(2, dtype=np.float32)
 
         for idx in range(1, strip_length):
             if segment_count == line_segments.shape[0]:
@@ -169,22 +171,26 @@ def split_strips(strips, line_segments):
             # Last point
             if idx == strip_length - 1:
                 if segment_length > minimum_segment_length:
-                    print("lastpoint")
-                    line_segments[segment_count] = strip[line_start_idx], strip[idx]
+                    line_segments[segment_count][0] = strip[line_start_idx]
+                    line_segments[segment_count][1] = strip[idx]
                     segment_count += 1
                 break
 
+            def magn(v):
+                return (v[0] * v[0] + v[1] * v[1]) ** 0.5
+
             # Calculate line direction
-            p_dir = strip[idx] - strip[line_start_idx]
-            p_dir = p_dir / np.linalg.norm(p_dir)
-            l_dir = (l_dir * segment_length + p_dir) / (segment_length + 1)
-            l_dir = l_dir / np.linalg.norm(l_dir)
+            p_dir[:] = strip[idx] - strip[line_start_idx]
+            p_dir /= magn(p_dir)
+            l_dir[:] = (l_dir * segment_length + p_dir) / (segment_length + 1)
+            l_dir /= magn(l_dir)
 
             # Check if current point is outside of the lien
-            distance = np.linalg.norm(p_dir - l_dir) * segment_length
+            distance = magn(p_dir - l_dir) * segment_length
             if distance > maximum_point_to_line_distance:
                 # Store line segment
-                line_segments[segment_count] = strip[line_start_idx], strip[idx]
+                line_segments[segment_count][0] = strip[line_start_idx]
+                line_segments[segment_count][1] = strip[idx]
                 segment_count += 1
 
                 # Initialize next line segment
@@ -192,9 +198,6 @@ def split_strips(strips, line_segments):
                 l_dir[:] = (0, 0)
 
     return segment_count
-
-
-
 
 
 
