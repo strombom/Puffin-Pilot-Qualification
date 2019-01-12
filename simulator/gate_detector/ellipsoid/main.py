@@ -161,7 +161,7 @@ def split_strips(strips):
 
     segment_count = 0
     minimum_segment_length = 10
-    maximum_point_to_line_distance = 2.0
+    maximum_point_to_line_distance = 1.3
 
     for strip in strips:
         # Get strip length
@@ -213,6 +213,26 @@ def split_strips(strips):
 
 @jit(nopython=True)
 def min_distance(l1, l2):
+    # Find the two closest points in the line pair
+    dmin = 99999
+    for i in range(2):
+        for j in range(2):
+            d = np.sum((l1[i] - l2[j]) ** 2) ** 0.5
+            if d < dmin:
+                dmin = d
+                min_1 = i
+                min_2 = j
+
+    # Make sure the closest points are the first points in each line segment
+    if min_1 == 1:
+        l1[:] = l1[::-1]
+    if min_2 == 1:
+        l2[:] = l2[::-1]
+
+    return dmin
+"""
+@jit(nopython=True)
+def order_line_pair(l1, l2):
     # Find the two closest points in the line segments
     dmin = 99999
     min_1, min_2 = 0, 0
@@ -229,9 +249,7 @@ def min_distance(l1, l2):
         l1[:] = l1[::-1]
     if min_2 == 1:
         l2[:] = l2[::-1]
-
-    return dmin
-
+"""
 @jit(nopython=True)
 def intersection_angle(l1, l2):
     v1 = l1[1] - l1[0]
@@ -261,29 +279,54 @@ def make_line_pair_clockwise(line_pair):
         # Swap line positions
         line_pair[:] = line_pair[::-1]
     # Change i direction
+    #print("whot")
+    #print(line_pair)
     line_pair[0][:] = line_pair[0][::-1]
+    #print(line_pair)
+    #quit()
 
 @jit(nopython=True)
 def form_line_pairs(line_segments):
     d_max = 5.0
     theta_min = 145.0 / 180 * math.pi
-    theta_max = 189.9 / 180 * math.pi
+    theta_max = 179.9 / 180 * math.pi
     line_pairs = np.zeros((1000, 2, 2, 2))
     merging_degrees = np.zeros((1000,))
     pair_count = 0
 
     for i in range(line_segments.shape[0]):
         for j in range(i + 1, line_segments.shape[0]):
-            d = min_distance(line_segments[i], line_segments[j])
-            theta = intersection_angle(line_segments[i], line_segments[j])
-            if d < d_max and theta > theta_min and theta < theta_max:
-                line_pairs[pair_count][0] = line_segments[i]
-                line_pairs[pair_count][1] = line_segments[j]
+            line_pairs[pair_count][0] = line_segments[i]
+            line_pairs[pair_count][1] = line_segments[j]
+            d = min_distance(line_pairs[pair_count][0], line_pairs[pair_count][1])
+            theta = intersection_angle(line_pairs[pair_count][0], line_pairs[pair_count][1])
+            #if d < d_max and theta >= 179.9 / 180 * math.pi:
+            #    print("hm", i, j, d, theta, line_pairs[pair_count][0], line_pairs[pair_count][1])
+            if d < d_max and theta > theta_min: # and theta < theta_max:
+                #order_line_pair(line_pairs[pair_count][0], line_pairs[pair_count][1])
                 make_line_pair_clockwise(line_pairs[pair_count])
-                li, lj = line_length(line_segments[i]), line_length(line_segments[j])
+                li, lj = line_length(line_pairs[pair_count][0]), line_length(line_pairs[pair_count][1])
                 merging_degrees[pair_count] = merging_degree(d, theta, li, lj)
                 pair_count += 1
+                if pair_count == merging_degrees.shape[0]:
+                    return line_pairs, merging_degrees
 
+                if theta > 176 / 180 * math.pi:
+                    # Nearly 180 degrees, save rotated copy also
+                    line_pairs[pair_count][0][0] = line_pairs[pair_count-1][1][1]
+                    line_pairs[pair_count][0][1] = line_pairs[pair_count-1][0][1]
+                    line_pairs[pair_count][1][0] = line_pairs[pair_count-1][1][0]
+                    line_pairs[pair_count][1][1] = line_pairs[pair_count-1][0][0]
+                    merging_degrees[pair_count] = merging_degrees[pair_count-1]
+                    pair_count += 1
+                    if pair_count == merging_degrees.shape[0]:
+                        return line_pairs, merging_degrees
+
+                    #print("180", line_pairs[pair_count-1][0], line_pairs[pair_count-1][1])
+                #continue
+
+    #print("how many", pair_count)
+    #quit()
     return line_pairs[0:pair_count], merging_degrees[0:pair_count]
 
 
@@ -348,10 +391,10 @@ def ellipse_fitting_score(e_center, e_axis, e_angle, points):
     score = 0
     for idx in range(points.shape[0]):
         d = ellipse_point_distance(e_center, e_axis, e_angle, points[idx])
-        if d <  1.5:
+        if d <  3.0:
             score += 1
-        else:
-            print(d)
+        #else:
+        #    print("ellipse_fitting_score", d)
     return score / points.shape[0]
 
 
@@ -396,9 +439,9 @@ def test_fitting_condition(arcs, lines):
     global plotcon
     plotcon += 1
     if plotcon == 3000 or score_arc < threshold_fit or score_line < threshold_fit:
-        print("test_fitting_condition false", score_arc, score_line)
-        print(arc_points)
-        print(line_points)
+        #print("test_fitting_condition false", score_arc, score_line)
+        #print(arc_points)
+        #print(line_points)
         """
         import seaborn as sns
         image = skimage.io.imread("img_line_segments.png")
@@ -416,32 +459,8 @@ def test_fitting_condition(arcs, lines):
 
     return True
 
-    """
-    import seaborn as sns
-    #palette = sns.color_palette("hls", 2)
-    image = skimage.io.imread("img_line_segments.png")
-    im2 = np.zeros((image.shape[0], image.shape[1], 3))
-    #def ln(lln, col):
-    #    rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-    #    im2[rr, cc] = col
-    #ln(arc[-2], (0, 0, 0.3))
-    #ln(line_j, (0, 0.3, 0))
-    im2 = im2 * 255
-    im2 = im2.astype(np.int32)
-    cv2.ellipse(im2, ellipse, (0,255,0),1)
-    def pp(pnt, col = (1, 0, 0)):
-        im2[int(pnt[1]), int(pnt[0])] = col
-    for point in points:
-        pp(point, (255,0,0))
-    #center = (int(ellipse[0][0]), int(ellipse[0][1]))
-    #axes = (int(ellipse[1][0]), int(ellipse[1][1]))
-    #angle = int(ellipse[2])
-    skimage.io.imsave("img_line_pairs.png", (im2).astype(np.uint8))
-    quit()
-    """
+def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
 
-def merge_line_pairs(arcs, line_pairs, merging_degrees):
-    first = True
     for line_pair, merging_degree in zip(line_pairs, merging_degrees):
         line_i, line_j = line_pair
 
@@ -453,36 +472,45 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees):
             if np.array_equal(arc[-1], line_i):
                 arc_idx_line_i = arc_idx
 
+        mi, mj = [], []
+        for arc_idx, arc in enumerate(arcs):
+            if np.array_equal(arc[0], line_j):
+                mj.append(arc_idx)
+            if np.array_equal(arc[-1], line_i):
+                mi.append(arc_idx)
+
+        if len(mi) > 1 or len(mj) > 1:
+            print(mi, mj)
+            quit()
+
         if arc_idx_line_i >= 0 and arc_idx_line_j >= 0:
             arc_i = arcs[arc_idx_line_i]
             arc_j = arcs[arc_idx_line_j]
-            #line_i, line_j = arc_i[-2], arc_j[0]
+
             if test_line_merging_condition(line_i, line_j):
                 if test_fitting_condition([arc_i, arc_j], []):
                     arcs[arc_idx_line_i] = arc_i + arc_j
                     del arcs[arc_idx_line_j]
+                    merging_lines = True
 
         elif arc_idx_line_i >= 0:
             # Join line j into arc
-            #print("join j arc")
-            arc = arcs[arc_idx_line_i]
-            #line_i, line_j = arc_i[-2], arc_j[0]
+            arc_i = arcs[arc_idx_line_i]
 
-            if test_line_merging_condition(arc[-2], line_j):
-                if test_fitting_condition([arc], [line_j]):
-                    arc.append(line_j)
+            if test_line_merging_condition(arc_i[-2], line_j):
+                if test_fitting_condition([arc_i], [line_j]):
+                    arc_i.append(line_j)
             else:
                 print("Angle and length condition failed")
                 quit()
 
         elif arc_idx_line_j >= 0:
             # Join line i into arc
-            #print("join i arc")
-            arc = arcs[arc_idx_line_j]
+            arc_j = arcs[arc_idx_line_j]
 
-            if test_line_merging_condition(arc[0], line_i):
-                if test_fitting_condition([arc], [line_j]):
-                    arc.insert(0, line_i)
+            if test_line_merging_condition(arc_j[0], line_i):
+                if test_fitting_condition([arc_j], [line_j]):
+                    arc_j.insert(0, line_i)
             else:
                 print("Angle and length condition failed")
                 quit()
@@ -493,10 +521,6 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees):
             arcs.append(arc)
 
 
-    # Join arcs
-
-    print("end")
-    print(len(arcs))
     import random
     import seaborn as sns
     palette = sns.color_palette("hls", 20)
@@ -504,102 +528,30 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees):
     im2 = np.zeros((image.shape[0], image.shape[1], 3))
     #im2 = (im2).astype(np.int32)
     for arc in arcs:
-
+        if len(arc) < 3:
+            continue
         cl = palette[random.randrange(20)]
-        print(" ", len(arc))
-        #cv2.ellipse(im2, ellipse, (0,255,0),1)
+        #print(" ", len(arc))
+
 
 
         def ln(lln, col):
             rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-            im2[rr, cc] = col #(1, 0.5, 0) #col
-            #print(col)
+            im2[rr, cc] = col
 
         for line in arc:
+            #print(line[0], line[1])
             ln(line, cl)
 
-        #def pp(pnt, col = (1, 0, 0)):
-        #    im2[int(pnt[1]), int(pnt[0])] = col
-        #for point in points:
-        #    pp(point, (255,0,0))
+        skimage.io.imsave("img_line_pairs.png", (im2 * 255).astype(np.uint8))
+        import time
+        time.sleep(0.4)
+    #quit()
 
-    im2 *= 255
-    skimage.io.imsave("img_line_pairs.png", (im2).astype(np.uint8))
-    quit()
-
-
-
-
-"""
-if length_condition > 0.8:
-    # Length condition not met
-    print("arc\n", arc)
-    print("aj", aj)
-    print("bj", bj)
-    print("ak", ak)
-    print("bk", bk)
-    print("m", m)
-    print("length_condition", length_condition)
-
-    import seaborn as sns
-    #palette = sns.color_palette("hls", 2)
-
-    image = skimage.io.imread("img_line_segments.png")
-    im2 = np.zeros((image.shape[0], image.shape[1], 3))
-
-    def ln(lln, col):
-        rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-        im2[rr, cc] = col
-
-    ln(arc[-2], (0, 0, 0.3))
-    ln(line_j, (0, 0.3, 0))
-
-    def pp(pnt, col = (1, 0, 0)):
-        im2[int(pnt[1]), int(pnt[0])] = col
-
-    pp(m, (1,0,0))
-    pp(aj, (0,1,0))
-    pp(bj, (0,1,0))
-    pp(ak, (0,0,1))
-    pp(bk, (0,0, 1))
-
-    skimage.io.imsave("img_line_pairs.png", (im2 * 255).astype(np.uint8))
-    quit()
-
-"""
-
-"""
-    import seaborn as sns
-    #palette = sns.color_palette("hls", 2)
-
-    image = skimage.io.imread("img_line_segments.png")
-    im2 = np.zeros((image.shape[0], image.shape[1], 3))
-    for idx in range(len(line_pairs)):
-        if idx % 3 == 1:
-            p0, p1 = line_pairs[idx][0]
-
-            rr, cc = skimage.draw.line(int(p0[1]), int(p0[0]), int(p1[1]), int(p1[0]))
-            im2[rr, cc, 0] = 1
-            #im2[rr, cc, 1] = 0
-            #im2[rr, cc, 2] = 0
-
-            p0, p1 = line_pairs[idx][1]
-            rr, cc = skimage.draw.line(int(p0[1]), int(p0[0]), int(p1[1]), int(p1[0]))
-            #im2[rr, cc, 0] = 0
-            im2[rr, cc, 1] = 1
-            #im2[rr, cc, 2] = 0
-            #break
-
-    skimage.io.imsave("img_line_pairs.png", (im2 * 255).astype(np.uint8))
-    quit()
-
-    print(line_pairs)
-    quit()
-"""
+    return
 
 
 def merge_line_segments(line_segments):
-
     # Form the set LPij and sort them according to merging degree
     line_pairs, merging_degrees = form_line_pairs(line_segments)
     sorted_pairs = sorted(zip(line_pairs, merging_degrees), key=lambda i: i[1], reverse=True)
@@ -618,14 +570,47 @@ def merge_line_segments(line_segments):
 
     arcs = []
     merge_line_pairs(arcs, line_pairs_good, merging_degrees_good)
-    merge_line_pairs(arcs, line_pairs_bad, merging_degrees_bad)
+    merge_line_pairs(arcs, line_pairs_bad, merging_degrees_bad, first = False)
+    
+
+    print("eol")
+    quit()
+    good_arcs = []
+
+    for arc in arcs:
+        if len(arc) > 3:
+            good_arcs.append(arc)
+
+    print("end")
+    print(len(good_arcs))
+    import random
+    import seaborn as sns
+    palette = sns.color_palette("hls", 20)
+    image = skimage.io.imread("img_line_segments.png")
+    im2 = np.zeros((image.shape[0], image.shape[1], 3))
+    #im2 = (im2).astype(np.int32)
+    for arc in good_arcs:
+        cl = palette[random.randrange(20)]
+        print(" ", len(arc))
+
+        def ln(lln, col):
+            rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+            im2[rr, cc] = col
+
+        for line in arc:
+            ln(line, cl)
+
+    im2 *= 255
+    skimage.io.imsave("img_line_pairs.png", (im2).astype(np.uint8))
+    quit()
+
 
 
     return
 
 import pickle
 
-if False:
+if True:
     image = read_image("img_in.png")
     strips = extract_strips(image)
     line_segments = split_strips(strips)
