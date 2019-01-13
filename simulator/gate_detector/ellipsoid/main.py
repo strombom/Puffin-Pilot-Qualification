@@ -367,7 +367,7 @@ def test_fitting_condition(arcs, lines = None):
         points = arc_points
 
     if len(points) < 6:
-        return True, 1.0, 1.0, None
+        return True, None
 
     points = np.array(points).astype(dtype=np.int32)
     ellipse = cv2.fitEllipseDirect(points)
@@ -418,7 +418,7 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             arc_j = arcs[arc_idx_line_j]
 
             if test_line_merging_condition(line_i, line_j):
-                if test_fitting_condition([arc_i, arc_j], [])(0):
+                if test_fitting_condition([arc_i, arc_j], [])[0]:
                     arcs[arc_idx_line_i] = arc_i + arc_j
                     del arcs[arc_idx_line_j]
                     merging_lines = True
@@ -428,7 +428,7 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             arc_i = arcs[arc_idx_line_i]
 
             if test_line_merging_condition(arc_i[-2], line_j):
-                if test_fitting_condition([arc_i], [line_j])(0):
+                if test_fitting_condition([arc_i], [line_j])[0]:
                     arc_i.append(line_j)
             #else:
             #    print("Angle and length condition failed")
@@ -439,7 +439,7 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             arc_j = arcs[arc_idx_line_j]
 
             if test_line_merging_condition(arc_j[0], line_i):
-                if test_fitting_condition([arc_j], [line_j])(0):
+                if test_fitting_condition([arc_j], [line_j])[0]:
                     arc_j.insert(0, line_i)
             #else:
             #    print("Angle and length condition failed")
@@ -588,41 +588,8 @@ def merge_arcs(arcs):
     for arc_pair_idx, (arc_pair, ellipse) in enumerate(arc_pairs):
         arc_i, degree_i, range_a = arcs[arc_pair[0]]
         arc_j, degree_j, range_b = arcs[arc_pair[1]]
-
         merging_degree = arc_merging_degree(arc_i, arc_j, degree_i, degree_j, ellipse)
-
         arc_pairs[arc_pair_idx] = (arc_pair, ellipse, merging_degree)
-
-
-        def plotit():
-            import random
-            from seaborn import color_palette
-            palette = color_palette("husl", 3)
-            image = skimage.io.imread("img_line_segments.png")
-            #im2 = (im2).astype(np.int32)
-            im2 = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.int32)
-            
-            color = (palette[2][0] * 255, palette[2][1] * 255, palette[2][2] * 255)
-            cv2.ellipse(im2, ellipse, color, 1)
-
-            for idx, arc in enumerate((arc_i, arc_j)):
-                cl = palette[idx]
-                cl = (cl[0] * 255, cl[1] * 255, cl[2] * 255)
-                #print(" ", len(arc))
-
-                def ln(lln, col):
-                    rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-                    im2[rr, cc] = col
-
-                for line in arc:
-                    ln(line, cl)
-
-            skimage.io.imsave("img_line_pairs.png", (im2).astype(np.uint8))
-        
-
-        #plotit()
-        #input("Press Enter to continue...")
-        #quit()
 
     candidate_ellipse_sets = []
     for arc_idx in range(len(arcs)):
@@ -632,71 +599,130 @@ def merge_arcs(arcs):
     arc_pairs.sort(key = lambda x: x[2], reverse = True)
 
     for arc_pair_idx, (arc_pair, ellipse, merging_degree) in enumerate(arc_pairs):
-        #if merging_degree < 0.1:
-        #    continue
+        if merging_degree < 0.1:
+            continue
 
         arc_i_idx, arc_j_idx = arc_pair
 
         # Find corresponding candidate ellipse sets
         ce_i_idx, ce_j_idx = -1, -1
         for ce_idx, ce_set in enumerate(candidate_ellipse_sets):
-            #print("ce", ce_idx, ce_set)
             if arc_i_idx in ce_set:
-                if ce_i_idx >= 0:
-                    print("wot i")
-                    quit()
                 ce_i_idx = ce_idx
             if arc_j_idx in ce_set:
-                if ce_j_idx >= 0:
-                    print("wot j")
-                    quit()
                 ce_j_idx = ce_idx
+        ces_i = candidate_ellipse_sets[ce_i_idx]
+        ces_j = candidate_ellipse_sets[ce_j_idx]
 
-        print("arc idx i,j", arc_i_idx, arc_j_idx)
-        print("ce idx i,j", ce_i_idx, ce_j_idx)
+        # Check for conflicting pairs
+        has_conflict = False
+        for ai in ces_i:
+            for aj in ces_j:
+                has_pair = False
+                for arc_pair in arc_pairs:
+                    if ai in arc_pair[0] and aj in arc_pair[0]:
+                        has_pair = True
+                        break
+                if not has_pair:
+                    has_conflict = True
+                    break
+
+        if has_conflict:
+            continue
 
         candidate_ellipse_sets[ce_i_idx] += candidate_ellipse_sets[ce_j_idx]
         del candidate_ellipse_sets[ce_j_idx]
 
-        print("ce i", candidate_ellipse_sets[ce_i_idx])
+    ellipses = []
+    for candidate_ellipse_set in candidate_ellipse_sets:
+        arcs_in_set = []
+        for arc_idx in candidate_ellipse_set:
+            arcs_in_set.append(arcs[arc_idx][0])
+        fitting_contition, ellipse = test_fitting_condition(arcs_in_set, None)
+        if fitting_contition and ellipse is not None:
+            ellipses.append(ellipse)
 
-        print(candidate_ellipse_sets)
-        print("====")
-
-    quit()
-    """
-
-
-        # Merge candidate ellipse sets
-
-        ce_i, ce_j = candidate_ellipse_sets[ce_i_idx], candidate_ellipse_sets[ce_j_idx]
-
-        print("ce i,j", ce_i, ce_j)
-        print("arc_idx", arc_i_idx, arc_j_idx)
-        quit()
+    return ellipses
 
 
-        has_arc_i, has_arc_j = False, False
+def merge_ellipses(ellipses):
 
-        for arc_idx in ce_i + ce_j:
-            #if arc_i_idx == 
-            print("-->", arc_idx)
+    # Sort by area
+    for idx, ellipse in enumerate(ellipses):
+        area = math.pi * ellipse[1][0] / 2 * ellipse[1][1] / 2
+        ellipses[idx] = (ellipse, area)
+    ellipses.sort(key = lambda x: x[1], reverse = True)
+
+    ellipse_pairs = []
+    for idx_i in range(len(ellipses)):
+        for idx_j in range(idx_i + 1, len(ellipses)):
+            area_i, area_j = ellipses[idx_i][1], ellipses[idx_j][1]
+            area_ratio = area_j / area_i
+            center_i = np.array(ellipses[idx_i][0][0])
+            center_j = np.array(ellipses[idx_j][0][0])
+            distance = magn(center_j - center_i)
+            axis = min(ellipses[idx_i][0][1])
+            max_distance = axis * 0.25
+
+            if area_ratio < 1.0 and area_ratio > 0.5 and distance < max_distance:
+                print("===")
+                print(area_i, area_j)
+                print(center_i, center_j)
+                print("d", distance)
+                print("a", axis)
+                ellipse_pairs.append((idx_i, idx_j))
+                break
 
 
 
-        print("ce i,j", ce_i, ce_j)
-        print("arc_idx", arc_i_idx, arc_j_idx)
+    import random
+    from seaborn import color_palette
+    palette = color_palette("husl", len(ellipse_pairs))
+    image = skimage.io.imread("img_line_segments.png")
+    im2 = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.int32)
 
-        quit()
 
-    """
-    print("end")
+    for ep_idx, (e_idx_i, e_idx_j) in enumerate(ellipse_pairs):
+
+        color = (palette[ep_idx][0] * 255, palette[ep_idx][1] * 255, palette[ep_idx][2] * 255)
+
+        cv2.ellipse(im2, box = ellipses[e_idx_i][0], color = color)
+        cv2.ellipse(im2, box = ellipses[e_idx_j][0], color = color)
+
+        """
+        center = np.array(ellipse[0])
+        axis = np.array((0, -ellipse[1][1])) / 2
+        axis = rotate_vector_2d(axis, np.radians(ellipse[2]))
+        endpoint = center + axis
+
+
+        def ln(lln, col):
+            rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+            im2[rr, cc] = col
+
+        try:
+            ln(np.array((center, endpoint)), color)
+        except:
+            pass
+        
+        print(center, endpoint)
+        """
+
+        #print(center)
+        #quit()
+        
+        skimage.io.imsave("img_line_pairs.png", (im2).astype(np.uint8))
+        input("Press Enter to continue...")
+
+
+
+
+
     quit()
 
 
 import pickle
 
-"""
 if True:
     image = read_image("img_in.png")
     strips = extract_strips(image)
@@ -710,15 +736,17 @@ else:
 
 arcs = merge_line_segments(line_segments)
 
-with open('arcs.dat', 'wb') as f:
-    pickle.dump(arcs, f, pickle.HIGHEST_PROTOCOL)
-quit()
-"""
+#with open('arcs.dat', 'wb') as f:
+#    pickle.dump(arcs, f, pickle.HIGHEST_PROTOCOL)
+#quit()
 
 with open('arcs.dat', 'rb') as f:
     arcs = pickle.load(f)
 
-arcs = merge_arcs(arcs)
+ellipses = merge_arcs(arcs)
+
+goals = merge_ellipses(ellipses)
+
 
 
 import random
