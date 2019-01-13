@@ -223,7 +223,7 @@ def intersection_angle(l1, l2):
     return math.atan2(det, dot)
 
 @jit(nopython=True)
-def merging_degree(d, theta, l1, l2):
+def line_merging_degree(d, theta, l1, l2):
     return 1 / (d*2 + 1) * math.cos(math.pi - theta) * min(l1, l2) / max(l1, l2)
 
 @jit(nopython=True)
@@ -263,7 +263,7 @@ def form_line_pairs(line_segments):
             if d < d_max and theta > theta_min: # and theta < theta_max:
                 make_line_pair_clockwise(line_pairs[pair_count])
                 li, lj = line_length(line_pairs[pair_count][0]), line_length(line_pairs[pair_count][1])
-                merging_degrees[pair_count] = merging_degree(d, theta, li, lj)
+                merging_degrees[pair_count] = line_merging_degree(d, theta, li, lj)
                 pair_count += 1
                 if pair_count == merging_degrees.shape[0]:
                     return line_pairs, merging_degrees
@@ -346,7 +346,7 @@ def ellipse_fitting_score(e_center, e_axis, e_angle, points):
             score += 1
     return score / points.shape[0]
 
-def test_fitting_condition(arcs, lines):
+def test_fitting_condition(arcs, lines = None):
     arc_points = []
     for arc in arcs:
         for line in arc:
@@ -355,9 +355,10 @@ def test_fitting_condition(arcs, lines):
     arc_points = np.unique(arc_points, axis=0)
 
     line_points = []
-    for line in lines:
-        line_points.append(line[0])
-        line_points.append(line[1])
+    if lines is not None:
+        for line in lines:
+            line_points.append(line[0])
+            line_points.append(line[1])
     if len(line_points) > 0:
         line_points = np.unique(line_points, axis=0)
         points = np.vstack((arc_points, line_points))
@@ -366,7 +367,7 @@ def test_fitting_condition(arcs, lines):
         points = arc_points
 
     if len(points) < 6:
-        return True
+        return True, 1.0, 1.0, None
 
     points = np.array(points).astype(dtype=np.int32)
     ellipse = cv2.fitEllipseDirect(points)
@@ -384,9 +385,9 @@ def test_fitting_condition(arcs, lines):
     threshold_fit = 0.8
 
     if score_arc < threshold_fit or score_line < threshold_fit:
-        return False
+        return False, ellipse
 
-    return True
+    return True, ellipse
 
 def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
 
@@ -417,7 +418,7 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             arc_j = arcs[arc_idx_line_j]
 
             if test_line_merging_condition(line_i, line_j):
-                if test_fitting_condition([arc_i, arc_j], []):
+                if test_fitting_condition([arc_i, arc_j], [])(0):
                     arcs[arc_idx_line_i] = arc_i + arc_j
                     del arcs[arc_idx_line_j]
                     merging_lines = True
@@ -427,7 +428,7 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             arc_i = arcs[arc_idx_line_i]
 
             if test_line_merging_condition(arc_i[-2], line_j):
-                if test_fitting_condition([arc_i], [line_j]):
+                if test_fitting_condition([arc_i], [line_j])(0):
                     arc_i.append(line_j)
             #else:
             #    print("Angle and length condition failed")
@@ -438,7 +439,7 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             arc_j = arcs[arc_idx_line_j]
 
             if test_line_merging_condition(arc_j[0], line_i):
-                if test_fitting_condition([arc_j], [line_j]):
+                if test_fitting_condition([arc_j], [line_j])(0):
                     arc_j.insert(0, line_i)
             #else:
             #    print("Angle and length condition failed")
@@ -483,45 +484,21 @@ def form_arc_pairs(arcs):
     arc_pairs = []
 
     # Calculate rotating ranges
-    rotating_degrees = np.zeros(len(arcs))
-    rotating_ranges = np.zeros((len(arcs), 2))
     for arc_idx, arc in enumerate(arcs):
         v0 = arc[0][1] - arc[0][0]
         v1 = arc[-1][1] - arc[-1][0]
-        rotating_degrees[arc_idx] = np.math.atan2(np.linalg.det([v0,v1]),np.dot(v0,v1))
-        rotating_ranges[arc_idx][0] = np.math.atan2(-v0[1], v0[0]) + math.pi
-        rotating_ranges[arc_idx][1] = np.math.atan2(-v1[1], v1[0]) + math.pi
+        rotating_degree = np.math.atan2(np.linalg.det([v0,v1]),np.dot(v0,v1))
+        rotating_range = np.array((np.math.atan2(-v0[1], v0[0]) + math.pi,
+                                   np.math.atan2(-v1[1], v1[0]) + math.pi))
+        arcs[arc_idx] = (arc, rotating_degree, rotating_range)
 
     # Evaluate arc pairs
     for arc_idx_i in range(len(arcs)):
         for arc_idx_j in range(arc_idx_i + 1, len(arcs)):
-            arc_i, arc_j = arcs[arc_idx_i], arcs[arc_idx_j]
-
-            def plotit():
-                import random
-                import seaborn as sns
-                palette = sns.color_palette("hls", 20)
-                image = skimage.io.imread("img_line_segments.png")
-                #im2 = (im2).astype(np.int32)
-                im2 = np.zeros((image.shape[0], image.shape[1], 3))
-
-                for arc in (arc_i, arc_j):
-                    cl = palette[random.randrange(20)]
-                    print(" ", len(arc))
-
-                    def ln(lln, col):
-                        rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-                        im2[rr, cc] = col
-
-                    for line in arc:
-                        ln(line, cl)
-
-                skimage.io.imsave("img_line_pairs.png", (im2 * 255).astype(np.uint8))
-
+            arc_i, degree_i, range_a = arcs[arc_idx_i]
+            arc_j, degree_j, range_b = arcs[arc_idx_j]
 
             # Check that the arcs' angles do not overlap
-            range_a = rotating_ranges[arc_idx_i]
-            range_b = rotating_ranges[arc_idx_j]
             start_angle = min(range_a[1], range_b[1])            
             range_a, range_b = range_a - start_angle, range_b - start_angle
 
@@ -529,7 +506,7 @@ def form_arc_pairs(arcs):
                 range_a, range_b = range_b, range_a
 
             # A small overlap is permitted
-            max_coinciding_degree = min(rotating_degrees[arc_idx_i], rotating_degrees[arc_idx_j]) / 10
+            max_coinciding_degree = min(degree_i, degree_j) / 10
             limit_0 = math.pi * 2 + max_coinciding_degree
             limit_1 = range_a[0] - max_coinciding_degree
 
@@ -540,36 +517,181 @@ def form_arc_pairs(arcs):
             # Check rotating direction
             line_1 = np.array((arc_i[-1][1], arc_j[0][0]))
             line_2 = np.array((arc_j[-1][1], arc_i[0][0]))
-
             a = intersection_angle(arc_i[-1], line_1)
             b = intersection_angle(line_1, arc_j[0])
             c = intersection_angle(arc_j[-1], line_2)
             d = intersection_angle(line_2, arc_i[0])
-
-            print(a, b, c, d)
-
             if a < 0 or b < 0 or c < 0 or d < 0:
                 # At least one intersection has the wrong direction
                 continue
-
-        
-            print("no overlap")
-            plotit()
-            input("Press Enter to continue...")
-
-
-
-
-    quit()
-
+            
+            # Check fitting condition
+            fitting_contition, ellipse = test_fitting_condition([arc_i, arc_j], None)
+            if fitting_contition:
+                arc_pairs.append(((arc_idx_i, arc_idx_j), ellipse))
 
     return arc_pairs
+
+"""
+            def plotit():
+                import random
+                from seaborn import color_palette
+                palette = color_palette("husl", 2)
+                image = skimage.io.imread("img_line_segments.png")
+                #im2 = (im2).astype(np.int32)
+                im2 = np.zeros((image.shape[0], image.shape[1], 3))
+
+                for idx, arc in enumerate((arc_i, arc_j)):
+                    cl = palette[idx]
+                    print(" ", len(arc))
+
+                    def ln(lln, col):
+                        rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+                        im2[rr, cc] = col
+
+                    for line in arc:
+                        ln(line, cl)
+
+                skimage.io.imsave("img_line_pairs.png", (im2 * 255).astype(np.uint8))
+            
+
+            #plotit()
+            #input("Press Enter to continue...")
+"""
+
+
+@jit(nopython=True)
+def ellipse_perimeter(ellipse):
+    a, b = ellipse[1][0], ellipse[1][1]
+    return math.pi * (3 * (a + b) - math.sqrt((3 * a + b) * (a + 3 * b)))
+
+@jit(nopython=True)
+def arc_length(arc):
+    length = 0
+    for line in arc:
+        length += magn(line[1] - line[0])
+    return length
+
+@jit(nopython=True)
+def arc_merging_degree(arc_i, arc_j, degree_i, degree_j, ellipse):
+    arc_score_i, arc_score_j = 1, 1
+    merging_degree = min(arc_score_i, arc_score_j)
+    arc_length_i, arc_length_i = arc_length(arc_i), arc_length(arc_j)
+    merging_degree *= min(arc_length_i, arc_length_i) / ellipse_perimeter(ellipse)
+    merging_degree *= degree_i + degree_j
+    return merging_degree
+
 
 def merge_arcs(arcs):
     arc_pairs = form_arc_pairs(arcs)
 
+    for arc_pair_idx, (arc_pair, ellipse) in enumerate(arc_pairs):
+        arc_i, degree_i, range_a = arcs[arc_pair[0]]
+        arc_j, degree_j, range_b = arcs[arc_pair[1]]
+
+        merging_degree = arc_merging_degree(arc_i, arc_j, degree_i, degree_j, ellipse)
+
+        arc_pairs[arc_pair_idx] = (arc_pair, ellipse, merging_degree)
 
 
+        def plotit():
+            import random
+            from seaborn import color_palette
+            palette = color_palette("husl", 3)
+            image = skimage.io.imread("img_line_segments.png")
+            #im2 = (im2).astype(np.int32)
+            im2 = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.int32)
+            
+            color = (palette[2][0] * 255, palette[2][1] * 255, palette[2][2] * 255)
+            cv2.ellipse(im2, ellipse, color, 1)
+
+            for idx, arc in enumerate((arc_i, arc_j)):
+                cl = palette[idx]
+                cl = (cl[0] * 255, cl[1] * 255, cl[2] * 255)
+                #print(" ", len(arc))
+
+                def ln(lln, col):
+                    rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+                    im2[rr, cc] = col
+
+                for line in arc:
+                    ln(line, cl)
+
+            skimage.io.imsave("img_line_pairs.png", (im2).astype(np.uint8))
+        
+
+        #plotit()
+        #input("Press Enter to continue...")
+        #quit()
+
+    candidate_ellipse_sets = []
+    for arc_idx in range(len(arcs)):
+        candidate_ellipse_sets.append([arc_idx])
+
+    # Sort by merging degree
+    arc_pairs.sort(key = lambda x: x[2], reverse = True)
+
+    for arc_pair_idx, (arc_pair, ellipse, merging_degree) in enumerate(arc_pairs):
+        #if merging_degree < 0.1:
+        #    continue
+
+        arc_i_idx, arc_j_idx = arc_pair
+
+        # Find corresponding candidate ellipse sets
+        ce_i_idx, ce_j_idx = -1, -1
+        for ce_idx, ce_set in enumerate(candidate_ellipse_sets):
+            #print("ce", ce_idx, ce_set)
+            if arc_i_idx in ce_set:
+                if ce_i_idx >= 0:
+                    print("wot i")
+                    quit()
+                ce_i_idx = ce_idx
+            if arc_j_idx in ce_set:
+                if ce_j_idx >= 0:
+                    print("wot j")
+                    quit()
+                ce_j_idx = ce_idx
+
+        print("arc idx i,j", arc_i_idx, arc_j_idx)
+        print("ce idx i,j", ce_i_idx, ce_j_idx)
+
+        candidate_ellipse_sets[ce_i_idx] += candidate_ellipse_sets[ce_j_idx]
+        del candidate_ellipse_sets[ce_j_idx]
+
+        print("ce i", candidate_ellipse_sets[ce_i_idx])
+
+        print(candidate_ellipse_sets)
+        print("====")
+
+    quit()
+    """
+
+
+        # Merge candidate ellipse sets
+
+        ce_i, ce_j = candidate_ellipse_sets[ce_i_idx], candidate_ellipse_sets[ce_j_idx]
+
+        print("ce i,j", ce_i, ce_j)
+        print("arc_idx", arc_i_idx, arc_j_idx)
+        quit()
+
+
+        has_arc_i, has_arc_j = False, False
+
+        for arc_idx in ce_i + ce_j:
+            #if arc_i_idx == 
+            print("-->", arc_idx)
+
+
+
+        print("ce i,j", ce_i, ce_j)
+        print("arc_idx", arc_i_idx, arc_j_idx)
+
+        quit()
+
+    """
+    print("end")
+    quit()
 
 
 import pickle
