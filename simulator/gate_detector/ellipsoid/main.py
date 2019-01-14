@@ -253,6 +253,7 @@ def form_line_pairs(line_segments):
     line_pairs = np.zeros((1000, 2, 2, 2))
     merging_degrees = np.zeros((1000,))
     pair_count = 0
+    unused_count = 0
 
     for i in range(line_segments.shape[0]):
         for j in range(i + 1, line_segments.shape[0]):
@@ -472,13 +473,24 @@ def merge_line_segments(line_segments):
     merge_line_pairs(arcs, line_pairs_good, merging_degrees_good)
     merge_line_pairs(arcs, line_pairs_bad, merging_degrees_bad, first = False)
     
-    good_arcs = []
-    for arc in arcs:
-        if len(arc) > 3:
-            good_arcs.append(arc)
-    arcs = good_arcs
+    arcs_to_remove = [i for i, val in enumerate(arcs) if len(val) <= 3]
+    for idx in reversed(arcs_to_remove):
+        del arcs[idx]
 
-    return arcs
+    unused_line_segments = []
+    for line_segment in line_segments:
+        found = False
+        for arc in arcs:
+            for line in arc:
+                if np.array_equal(line_segment, line) or np.array_equal(line_segment, line[::-1]):
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            unused_line_segments.append(line_segment)
+
+    return arcs, unused_line_segments
 
 def form_arc_pairs(arcs):
     arc_pairs = []
@@ -532,34 +544,6 @@ def form_arc_pairs(arcs):
 
     return arc_pairs
 
-"""
-            def plotit():
-                import random
-                from seaborn import color_palette
-                palette = color_palette("husl", 2)
-                image = skimage.io.imread("img_line_segments.png")
-                #im2 = (im2).astype(np.int32)
-                im2 = np.zeros((image.shape[0], image.shape[1], 3))
-
-                for idx, arc in enumerate((arc_i, arc_j)):
-                    cl = palette[idx]
-                    print(" ", len(arc))
-
-                    def ln(lln, col):
-                        rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-                        im2[rr, cc] = col
-
-                    for line in arc:
-                        ln(line, cl)
-
-                skimage.io.imsave("img_line_pairs.png", (im2 * 255).astype(np.uint8))
-            
-
-            #plotit()
-            #input("Press Enter to continue...")
-"""
-
-
 @jit(nopython=True)
 def ellipse_perimeter(ellipse):
     a, b = ellipse[1][0], ellipse[1][1]
@@ -582,7 +566,7 @@ def arc_merging_degree(arc_i, arc_j, degree_i, degree_j, ellipse):
     return merging_degree
 
 
-def merge_arcs(arcs):
+def merge_arcs(arcs, unused_line_segments):
     arc_pairs = form_arc_pairs(arcs)
 
     for arc_pair_idx, (arc_pair, ellipse) in enumerate(arc_pairs):
@@ -633,7 +617,9 @@ def merge_arcs(arcs):
         candidate_ellipse_sets[ce_i_idx] += candidate_ellipse_sets[ce_j_idx]
         del candidate_ellipse_sets[ce_j_idx]
 
+    # Fit ellipses
     ellipses = []
+    used_lines = []
     for candidate_ellipse_set in candidate_ellipse_sets:
         arcs_in_set = []
         for arc_idx in candidate_ellipse_set:
@@ -641,9 +627,22 @@ def merge_arcs(arcs):
         fitting_contition, ellipse = test_fitting_condition(arcs_in_set, None)
         if fitting_contition and ellipse is not None:
             ellipses.append(ellipse)
+            for arc in arcs_in_set:
+                for line in arc:
+                    used_lines.append(line)
+
+    # Unused line segments (for finding the bottom parts of the goals later)
+    for arc in arcs:
+        for line in arc[0]:
+            found = False
+            for used_line in used_lines:
+                if np.array_equal(used_line, line) or np.array_equal(used_line, line[::-1]):
+                    found = True
+                    break
+            if not found:
+                unused_line_segments.append(line)
 
     return ellipses
-
 
 def merge_ellipses(ellipses):
 
@@ -722,8 +721,8 @@ def merge_ellipses(ellipses):
 
 
 import pickle
-
-if True:
+"""
+if False:
     image = read_image("img_in.png")
     strips = extract_strips(image)
     line_segments = split_strips(strips)
@@ -734,45 +733,39 @@ else:
     with open('line_segments.dat', 'rb') as f:
         line_segments = pickle.load(f)
 
-arcs = merge_line_segments(line_segments)
+arcs, unused_line_segments, merge_line_segments(line_segments)
 
-#with open('arcs.dat', 'wb') as f:
-#    pickle.dump(arcs, f, pickle.HIGHEST_PROTOCOL)
-#quit()
-
+with open('arcs.dat', 'wb') as f:
+    pickle.dump((arcs, unused_line_segments), f, pickle.HIGHEST_PROTOCOL)
+quit()
+"""
 with open('arcs.dat', 'rb') as f:
-    arcs = pickle.load(f)
+    arcs, unused_line_segments = pickle.load(f)
 
-ellipses = merge_arcs(arcs)
+ellipses = merge_arcs(arcs, unused_line_segments)
 
-goals = merge_ellipses(ellipses)
-
-
-
-import random
-import seaborn as sns
-palette = sns.color_palette("hls", line_segments.shape[0])
-
-im2 = np.ones((image.shape[0], image.shape[1], 3))
-for idx in range(line_segments.shape[0]):
-    p0, p1 = line_segments[idx]
-
-    #print(p0, p1)
-
-    rr, cc = skimage.draw.line(p0[1], p0[0], p1[1], p1[0])
-    im2[rr, cc] = palette[random.randrange(line_segments.shape[0])]
+goals = merge_ellipses(ellipses, unused_line_segments)
 
 
-skimage.io.imsave("img_line_segments.png", (im2 * 255).astype(np.uint8))
-quit()
+"""
+    import random
+    from seaborn import color_palette
+    palette = color_palette("husl", len(unused_line_segments))
+    image = skimage.io.imread("img_line_segments.png")
+    im2 = np.zeros((image.shape[0], image.shape[1], 3))
+
+    for idx, line in enumerate(unused_line_segments):
+        cl = palette[idx]
+
+        def ln(lln, col):
+            rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+            im2[rr, cc] = col
+
+        ln(line, cl)
+
+    skimage.io.imsave("img_unused_1.png", (im2 * 255).astype(np.uint8))
 
 
-
-
-print(strips)
-quit()
-
-skimage.io.imshow(image)
-skimage.io.show()
-
+    unused_line_segments.clear()
+"""
 
