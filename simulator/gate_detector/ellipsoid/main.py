@@ -5,7 +5,7 @@ import skimage
 import skimage.morphology
 import numpy as np
 import cv2
-from numba import jit, njit
+from numba import jit, njit, jitclass, int32, float32
 
 
 ellipse_fitting_threshold = 3.0
@@ -644,7 +644,39 @@ def merge_arcs(arcs, unused_line_segments):
 
     return ellipses
 
-def merge_ellipses(ellipses):
+ellipse_spec = [
+    ('center', float32[:]),
+    ('axes', float32[:]),
+    ('angle', float32)
+]
+
+#@jitclass(ellipse_spec)
+class Ellipse(object):
+    def __init__(self, ellipse):
+        self.center = np.array((ellipse[0][0], ellipse[0][1]), dtype=np.float32)
+        self.axes = np.array((ellipse[1][0], ellipse[1][1]), dtype=np.float32) / 2
+        self.angle = np.radians(ellipse[2])
+
+    def is_inside(self, point, scale = 1.0):
+        p = rotate_vector_2d((point - self.center) / scale, -self.angle)
+        if p[0]**2 / self.axes[0]**2 + p[1]**2 / self.axes[1]**2 <= 1:
+            return True
+        else:
+            return False
+
+#@njit()
+#def ellipse_factory(ellipse):
+#    return Ellipse(ellipse)
+
+def point_inside_ellipse(ellipse, point, scale):
+    print(ellipse)
+    print(point)
+
+    #p = point - 
+
+    quit()
+
+def merge_ellipses(ellipses, line_segments):
 
     # Sort by area
     for idx, ellipse in enumerate(ellipses):
@@ -663,55 +695,85 @@ def merge_ellipses(ellipses):
             axis = min(ellipses[idx_i][0][1])
             max_distance = axis * 0.25
 
+            # Improvement: Prevent conflicting pairs
+
             if area_ratio < 1.0 and area_ratio > 0.5 and distance < max_distance:
-                print("===")
-                print(area_i, area_j)
-                print(center_i, center_j)
-                print("d", distance)
-                print("a", axis)
+                #print("===")
+                #print(area_i, area_j)
+                #print(center_i, center_j)
+                #print("d", distance)
+                #print("a", axis)
                 ellipse_pairs.append((idx_i, idx_j))
                 break
 
+    for ellipse_pair in ellipse_pairs:
+        ellipse_i = Ellipse(ellipses[ellipse_pair[0]][0])
+        ellipse_j = Ellipse(ellipses[ellipse_pair[1]][0])
 
+        lines = []
+
+        for line in line_segments:
+            if ellipse_i.is_inside(line[0], scale = 1.03) and \
+               ellipse_i.is_inside(line[1], scale = 1.03) and \
+               not ellipse_j.is_inside(line[0], scale = 0.97) and \
+               not ellipse_j.is_inside(line[1], scale = 0.97):
+                lines.append(line)
+
+
+        
+        break
+
+    line_segments = lines
 
     import random
     from seaborn import color_palette
-    palette = color_palette("husl", len(ellipse_pairs))
+    palette = color_palette("husl", len(ellipse_pairs) + len(line_segments))
     image = skimage.io.imread("img_line_segments.png")
     im2 = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.int32)
 
+    for idx, line in enumerate(line_segments):
 
-    for ep_idx, (e_idx_i, e_idx_j) in enumerate(ellipse_pairs):
+        color = (palette[idx][0] * 255, palette[idx][1] * 255, palette[idx][2] * 255)
+
+        def ln(lln, col):
+            rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+            im2[rr, cc] = col
+
+        ln(line, color)
+
+
+    for ep_idx, (e_idx_i, e_idx_j) in enumerate(ellipse_pairs[0:1]):
 
         color = (palette[ep_idx][0] * 255, palette[ep_idx][1] * 255, palette[ep_idx][2] * 255)
 
         cv2.ellipse(im2, box = ellipses[e_idx_i][0], color = color)
         cv2.ellipse(im2, box = ellipses[e_idx_j][0], color = color)
 
-        """
-        center = np.array(ellipse[0])
-        axis = np.array((0, -ellipse[1][1])) / 2
-        axis = rotate_vector_2d(axis, np.radians(ellipse[2]))
-        endpoint = center + axis
-
-
         def ln(lln, col):
             rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
             im2[rr, cc] = col
 
-        try:
-            ln(np.array((center, endpoint)), color)
-        except:
-            pass
-        
-        print(center, endpoint)
         """
+        for ellipse, area in [ellipses[e_idx_i], ellipses[e_idx_j]]:
+            center = np.array(ellipse[0])
+            axis = np.array((0, -ellipse[1][1])) / 2
+            axis = rotate_vector_2d(axis, np.radians(ellipse[2]))
+            endpoint = center + axis
+            try:
+                ln(np.array((center, endpoint)), color)
+            except:
+                pass
+        """
+
+
+        #print(center, endpoint)
+        
 
         #print(center)
         #quit()
         
-        skimage.io.imsave("img_line_pairs.png", (im2).astype(np.uint8))
-        input("Press Enter to continue...")
+    skimage.io.imsave("img_ellipses.png", (im2).astype(np.uint8))
+    #input("Press Enter to continue...")
 
 
 
