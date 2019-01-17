@@ -5,7 +5,8 @@ import skimage
 import skimage.morphology
 import numpy as np
 import cv2
-from numba import jit, njit, jitclass, int32, float32
+from scipy import stats
+from numba import jit, njit, jitclass, int32, float32, float64
 
 
 ellipse_fitting_threshold = 3.0
@@ -215,9 +216,15 @@ def min_distance(l1, l2):
     return dmin
 
 @jit(nopython=True)
-def intersection_angle(l1, l2):
+def line_intersection_angle(l1, l2):
     v1 = l1[1] - l1[0]
     v2 = l2[1] - l2[0]
+    dot = v1[0] * v2[0] + v1[1] * v2[1]
+    det = v1[0] * v2[1] - v1[1] * v2[0]
+    return math.atan2(det, dot)
+
+@jit(nopython=True)
+def vector_intersection_angle(v1, v2):
     dot = v1[0] * v2[0] + v1[1] * v2[1]
     det = v1[0] * v2[1] - v1[1] * v2[0]
     return math.atan2(det, dot)
@@ -260,7 +267,7 @@ def form_line_pairs(line_segments):
             line_pairs[pair_count][0] = line_segments[i]
             line_pairs[pair_count][1] = line_segments[j]
             d = min_distance(line_pairs[pair_count][0], line_pairs[pair_count][1])
-            theta = abs(intersection_angle(line_pairs[pair_count][0], line_pairs[pair_count][1]))
+            theta = abs(line_intersection_angle(line_pairs[pair_count][0], line_pairs[pair_count][1]))
             if d < d_max and theta > theta_min: # and theta < theta_max:
                 make_line_pair_clockwise(line_pairs[pair_count])
                 li, lj = line_length(line_pairs[pair_count][0]), line_length(line_pairs[pair_count][1])
@@ -301,7 +308,7 @@ def line_intersection(line1, line2):
 @jit(nopython=True)
 def test_line_merging_condition(arc_line, line):
     aj, bj, ak, bk = line[0], line[1], arc_line[1], arc_line[0]
-    theta = abs(intersection_angle((aj, bj), (ak, bk)))
+    theta = abs(line_intersection_angle((aj, bj), (ak, bk)))
     if theta < math.pi / 2:
         # Angle condition failed, check length condition
         m = line_intersection((aj, bj), (ak, bk))
@@ -318,34 +325,76 @@ def rotate_vector_2d(v, theta):
     r = np.array(((c, -s), (s, c)))
     return np.dot(r, v)
 
-@jit(nopython=True)
-def ellipse_point_distance(e_center, e_axes, e_angle, p):
-    # https://github.com/0xfaded/ellipse_demo/issues/1
-    p = np.abs(rotate_vector_2d(p - e_center, -e_angle))
-    tx, ty = 0.707106, 0.707106
-    a, b = e_axes / 2
-    for itn in range(0, 2): # Originally 3, but 2 might be enough
-        x, y = a * tx, b * ty
-        ex = (a * a - b * b) * tx ** 3 / a
-        ey = (b * b - a * a) * ty ** 3 / b
-        rx, ry = x - ex, y - ey
-        qx, qy = p[0] - ex, p[1] - ey
-        r, q = np.hypot(ry, rx), np.hypot(qy, qx)
-        tx = min(1, max(0, (qx * r / q + ex) / a))
-        ty = min(1, max(0, (qy * r / q + ey) / b))
-        t = np.hypot(tx, ty)
-        tx, ty = tx / t, ty / t
-    p2 = np.array(((a * tx), (b * ty)))
-    return magn(p - p2)
+ellipse_spec = [
+    ('center', float64[:]),
+    ('axes', float64[:]),
+    ('angle', float64),
+    ('area', float64),
+    ('perimeter', float64)
+]
 
-@jit(nopython=True)
-def ellipse_fitting_score(e_center, e_axis, e_angle, points):
-    score = 0
-    for idx in range(points.shape[0]):
-        d = ellipse_point_distance(e_center, e_axis, e_angle, points[idx])
-        if d <  ellipse_fitting_threshold:
-            score += 1
-    return score / points.shape[0]
+@jitclass(ellipse_spec)
+class Ellipse(object):
+    def __init__(self, ellipse):
+        self.center = np.array((ellipse[0][0], ellipse[0][1]), dtype=np.float64)
+        self.axes = np.array((ellipse[1][0], ellipse[1][1]), dtype=np.float64) / 2
+        self.angle = np.radians(ellipse[2])
+        self.area = self._area()
+        self.perimeter = self._perimeter()
+
+    def is_inside(self, point, scale):
+        p1 = (point - self.center) / scale
+        p2 = rotate_vector_2d(p1, -self.angle)
+        if p2[0]**2 / self.axes[0]**2 + p2[1]**2 / self.axes[1]**2 <= 1:
+            return True
+        else:
+            return False
+
+    def _area(self):
+        return math.pi * self.axes[0] * self.axes[1]
+
+    def _perimeter(self):
+        a, b = self.axes
+        return math.pi * (3 * (a + b) - math.sqrt((3 * a + b) * (a + 3 * b)))
+
+    def point_distance(self, p):
+        # https://github.com/0xfaded/ellipse_demo/issues/1
+        p = np.abs(rotate_vector_2d(p - self.center, -self.angle))
+        tx, ty = 0.707106, 0.707106
+        a, b = self.axes
+        for itn in range(0, 2): # Originally 3, but 2 might be enough
+            x, y = a * tx, b * ty
+            ex = (a * a - b * b) * tx ** 3 / a
+            ey = (b * b - a * a) * ty ** 3 / b
+            rx, ry = x - ex, y - ey
+            qx, qy = p[0] - ex, p[1] - ey
+            r, q = np.hypot(ry, rx), np.hypot(qy, qx)
+            tx = min(1, max(0, (qx * r / q + ex) / a))
+            ty = min(1, max(0, (qy * r / q + ey) / b))
+            t = np.hypot(tx, ty)
+            tx, ty = tx / t, ty / t
+        p2 = np.array(((a * tx), (b * ty)))
+        return magn(p - p2)
+
+    def fitting_score(self, points):
+        score = 0
+        for idx in range(points.shape[0]):
+            d = self.point_distance(points[idx])
+            if d <  ellipse_fitting_threshold:
+                score += 1
+        return score / points.shape[0]
+
+    def to_tuple(self):
+        return ((self.center[0], self.center[1]), (self.axes[0]*2, self.axes[1]*2), np.degrees(self.angle))
+
+    def line_intersection(slope, inception):
+        print("line_intersection")
+        print("slope, inception", slope, inception)
+
+        quit()
+
+        #p0, p1 = ellipse.line_intersection(goal_end)
+
 
 def test_fitting_condition(arcs, lines = None):
     arc_points = []
@@ -353,7 +402,7 @@ def test_fitting_condition(arcs, lines = None):
         for line in arc:
             arc_points.append(line[0])
             arc_points.append(line[1])
-    arc_points = np.unique(arc_points, axis=0)
+    arc_points = np.unique(arc_points, axis=0).astype(np.float64)
 
     line_points = []
     if lines is not None:
@@ -371,15 +420,11 @@ def test_fitting_condition(arcs, lines = None):
         return True, None
 
     points = np.array(points).astype(dtype=np.int32)
-    ellipse = cv2.fitEllipseDirect(points)
+    ellipse = Ellipse(cv2.fitEllipseDirect(points))
 
-    e_center = np.array(ellipse[0])
-    e_axes = np.array(ellipse[1])
-    e_angle = np.radians(ellipse[2])
-
-    score_arc = ellipse_fitting_score(e_center, e_axes, e_angle, arc_points)
+    score_arc = ellipse.fitting_score(arc_points)
     if len(line_points) > 0:
-        score_line = ellipse_fitting_score(e_center, e_axes, e_angle, line_points)
+        score_line = ellipse.fitting_score(line_points)
     else:
         score_line = 1.0
 
@@ -390,7 +435,7 @@ def test_fitting_condition(arcs, lines = None):
 
     return True, ellipse
 
-def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
+def merge_line_pairs(arcs, line_pairs, merging_degrees):
 
     for line_pair, merging_degree in zip(line_pairs, merging_degrees):
         line_i, line_j = line_pair
@@ -403,17 +448,6 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             if np.array_equal(arc[-1], line_i):
                 arc_idx_line_i = arc_idx
 
-        mi, mj = [], []
-        for arc_idx, arc in enumerate(arcs):
-            if np.array_equal(arc[0], line_j):
-                mj.append(arc_idx)
-            if np.array_equal(arc[-1], line_i):
-                mi.append(arc_idx)
-
-        if len(mi) > 1 or len(mj) > 1:
-            print(mi, mj)
-            quit()
-
         if arc_idx_line_i >= 0 and arc_idx_line_j >= 0:
             arc_i = arcs[arc_idx_line_i]
             arc_j = arcs[arc_idx_line_j]
@@ -422,7 +456,6 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
                 if test_fitting_condition([arc_i, arc_j], [])[0]:
                     arcs[arc_idx_line_i] = arc_i + arc_j
                     del arcs[arc_idx_line_j]
-                    merging_lines = True
 
         elif arc_idx_line_i >= 0:
             # Join line j into arc
@@ -431,9 +464,6 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             if test_line_merging_condition(arc_i[-2], line_j):
                 if test_fitting_condition([arc_i], [line_j])[0]:
                     arc_i.append(line_j)
-            #else:
-            #    print("Angle and length condition failed")
-            #    quit()
 
         elif arc_idx_line_j >= 0:
             # Join line i into arc
@@ -442,9 +472,6 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees, first = True):
             if test_line_merging_condition(arc_j[0], line_i):
                 if test_fitting_condition([arc_j], [line_j])[0]:
                     arc_j.insert(0, line_i)
-            #else:
-            #    print("Angle and length condition failed")
-            #    quit()
 
         else:
             # Create new arc
@@ -471,7 +498,7 @@ def merge_line_segments(line_segments):
 
     arcs = []
     merge_line_pairs(arcs, line_pairs_good, merging_degrees_good)
-    merge_line_pairs(arcs, line_pairs_bad, merging_degrees_bad, first = False)
+    merge_line_pairs(arcs, line_pairs_bad, merging_degrees_bad)
     
     arcs_to_remove = [i for i, val in enumerate(arcs) if len(val) <= 3]
     for idx in reversed(arcs_to_remove):
@@ -529,10 +556,10 @@ def form_arc_pairs(arcs):
             # Check rotating direction
             line_1 = np.array((arc_i[-1][1], arc_j[0][0]))
             line_2 = np.array((arc_j[-1][1], arc_i[0][0]))
-            a = intersection_angle(arc_i[-1], line_1)
-            b = intersection_angle(line_1, arc_j[0])
-            c = intersection_angle(arc_j[-1], line_2)
-            d = intersection_angle(line_2, arc_i[0])
+            a = line_intersection_angle(arc_i[-1], line_1)
+            b = line_intersection_angle(line_1, arc_j[0])
+            c = line_intersection_angle(arc_j[-1], line_2)
+            d = line_intersection_angle(line_2, arc_i[0])
             if a < 0 or b < 0 or c < 0 or d < 0:
                 # At least one intersection has the wrong direction
                 continue
@@ -543,11 +570,6 @@ def form_arc_pairs(arcs):
                 arc_pairs.append(((arc_idx_i, arc_idx_j), ellipse))
 
     return arc_pairs
-
-@jit(nopython=True)
-def ellipse_perimeter(ellipse):
-    a, b = ellipse[1][0], ellipse[1][1]
-    return math.pi * (3 * (a + b) - math.sqrt((3 * a + b) * (a + 3 * b)))
 
 @jit(nopython=True)
 def arc_length(arc):
@@ -561,7 +583,7 @@ def arc_merging_degree(arc_i, arc_j, degree_i, degree_j, ellipse):
     arc_score_i, arc_score_j = 1, 1
     merging_degree = min(arc_score_i, arc_score_j)
     arc_length_i, arc_length_i = arc_length(arc_i), arc_length(arc_j)
-    merging_degree *= min(arc_length_i, arc_length_i) / ellipse_perimeter(ellipse)
+    merging_degree *= min(arc_length_i, arc_length_i) / ellipse.perimeter
     merging_degree *= degree_i + degree_j
     return merging_degree
 
@@ -644,55 +666,158 @@ def merge_arcs(arcs, unused_line_segments):
 
     return ellipses
 
-ellipse_spec = [
-    ('center', float32[:]),
-    ('axes', float32[:]),
-    ('angle', float32)
-]
+#@jit(nopython=True)
+def form_goal_line_pairs(line_segments):
+    d_max = 5.0
+    line_pairs = np.zeros((100, 2, 2, 2))
+    merging_degrees = np.zeros((100,))
+    pair_count = 0
 
-#@jitclass(ellipse_spec)
-class Ellipse(object):
-    def __init__(self, ellipse):
-        self.center = np.array((ellipse[0][0], ellipse[0][1]), dtype=np.float32)
-        self.axes = np.array((ellipse[1][0], ellipse[1][1]), dtype=np.float32) / 2
-        self.angle = np.radians(ellipse[2])
+    for i in range(line_segments.shape[0]):
+        for j in range(i + 1, line_segments.shape[0]):
+            line_pairs[pair_count][0] = line_segments[i]
+            line_pairs[pair_count][1] = line_segments[j]
+            d = min_distance(line_pairs[pair_count][0], line_pairs[pair_count][1])
+            if d < d_max:
+                line_pairs[pair_count][0][:] = line_pairs[pair_count][0][::-1]
+                merging_degrees[pair_count] = 1 / (d + 1)
+                pair_count += 1
+                if pair_count == merging_degrees.shape[0]:
+                    return line_pairs, merging_degrees
 
-    def is_inside(self, point, scale = 1.0):
-        p = rotate_vector_2d((point - self.center) / scale, -self.angle)
-        if p[0]**2 / self.axes[0]**2 + p[1]**2 / self.axes[1]**2 <= 1:
-            return True
+    return line_pairs[0:pair_count], merging_degrees[0:pair_count]
+
+def merge_goal_line_pairs(polytrains, line_pairs, merging_degrees):
+    for line_pair, merging_degree in zip(line_pairs, merging_degrees):
+        line_i, line_j = line_pair
+
+        # Check if lines are in any polytrain
+        pt_idx_line_i, pt_idx_line_j = -1, -1
+        for pt_idx, pt in enumerate(polytrains):
+            if np.array_equal(pt[0], line_j):
+                pt_idx_line_j = pt_idx
+            if np.array_equal(pt[-1], line_i):
+                pt_idx_line_i = pt_idx
+
+        if pt_idx_line_i >= 0 and pt_idx_line_j >= 0:
+            pt_i = polytrains[pt_idx_line_i]
+            pt_j = polytrains[pt_idx_line_j]
+
+            polytrains[pt_idx_line_i] = pt_i + pt_j
+            del polytrains[pt_idx_line_j]
+
+        elif pt_idx_line_i >= 0:
+            pt_i = polytrains[pt_idx_line_i]
+            pt_i.append(line_j)
+
+        elif pt_idx_line_j >= 0:
+            pt_j = polytrains[pt_idx_line_j]
+            pt_j.insert(0, line_i)
+
         else:
-            return False
+            polytrain = [line_i, line_j]
+            polytrains.append(polytrain)
 
-#@njit()
-#def ellipse_factory(ellipse):
-#    return Ellipse(ellipse)
+    # Flatten polytrain
+    for idx, pt in enumerate(polytrains):
+        pt_flat = [pt[0][0]]
+        for line in pt:
+            if not np.array_equal(pt_flat[-1], line[0]):
+                print("not equal", pt_flat[-1], line[0])
+                pt_flat.append(line[0])
+            pt_flat.append(line[1])
+        polytrains[idx] = np.array(pt_flat)
 
-def point_inside_ellipse(ellipse, point, scale):
-    print(ellipse)
-    print(point)
 
-    #p = point - 
+def reverse_polytrain(polytrain):
 
+
+
+    print("reverse", polytrain)
     quit()
+
+def merge_goal_line_segments(ellipse_outer, ellipse_inner, line_segments):
+    # Form the set LPij and sort them according to merging degree
+    line_pairs, merging_degrees = form_goal_line_pairs(line_segments)
+    sorted_pairs = sorted(zip(line_pairs, merging_degrees), key=lambda i: i[1], reverse=True)
+    line_pairs, merging_degrees = zip(*sorted_pairs)
+    line_pairs, merging_degrees = list(line_pairs), list(merging_degrees)
+
+    polytrains = []
+    merge_goal_line_pairs(polytrains, line_pairs, merging_degrees)
+
+    # Add unused line_segments to polytrains
+    for line_segment in line_segments:
+        used = False
+        for polytrain in polytrains:
+            for idx in range(1, len(polytrain)):
+                if np.array_equal(line_segment, polytrain[idx-1:idx+1]) or \
+                   np.array_equal(line_segment, polytrain[idx-1:idx+1][::-1]):
+                    used = True
+                    break
+            if used:
+                break
+        if not used:
+            polytrains.append(line_segment)
+
+    # Compute fitness
+    fitnesses = [] 
+    for idx, pt in enumerate(polytrains):
+        end_a, end_b = pt[0], pt[-1]
+        distances = (ellipse_outer.point_distance(end_a),
+                     ellipse_inner.point_distance(end_b),
+                     ellipse_outer.point_distance(end_b),
+                     ellipse_inner.point_distance(end_a))
+        fitness_a = 10 / (distances[0]**2 + distances[1]**2)
+        fitness_b = 10 / (distances[2]**2 + distances[3]**2)
+        if fitness_b > fitness_a:
+            # Polytrain should go from outer to inner ellipse
+            polytrains[idx] = pt[::-1]
+        fitnesses.append(max(fitness_a, fitness_b))
+
+    # Remove bad polytrains
+    fitnesses, polytrains = zip(*sorted(zip(fitnesses, polytrains), reverse=True))
+    fitness_threshold = 0.01
+    cutoff_idx = len(polytrains)
+    for idx in range(len(polytrains)):
+        if fitnesses[idx] < fitness_threshold:
+            cutoff_idx = idx
+            break
+    fitnesses, polytrains = fitnesses[0:cutoff_idx], polytrains[0:cutoff_idx]
+
+    # Find most suited pair
+    best_idx_i, best_idx_j, best_fitness = -1, -1, -1
+    for idx_i in range(len(polytrains)):
+        for idx_j in range(idx_i + 1, len(polytrains)):
+            p_i, p_j = polytrains[idx_i][0], polytrains[idx_j][0]
+            v_i = p_i - ellipse_outer.center
+            v_j = p_j - ellipse_outer.center
+            angle = vector_intersection_angle(v_i, v_j)
+            fitness = fitnesses[idx_i] * fitnesses[idx_j] / (abs(angle - 2.7) + 1)
+            if fitness > best_fitness:
+                best_fitness = fitness
+                best_idx_i, best_idx_j = idx_i, idx_j
+
+    if best_fitness < 0:
+        # Failed to find goal ends
+        return None
+
+    goal_end_points = np.concatenate((polytrains[best_idx_i], polytrains[best_idx_j]))
+    return goal_end_points
+
 
 def merge_ellipses(ellipses, line_segments):
 
     # Sort by area
-    for idx, ellipse in enumerate(ellipses):
-        area = math.pi * ellipse[1][0] / 2 * ellipse[1][1] / 2
-        ellipses[idx] = (ellipse, area)
-    ellipses.sort(key = lambda x: x[1], reverse = True)
+    ellipses.sort(key = lambda x: x.area, reverse = True)
 
     ellipse_pairs = []
     for idx_i in range(len(ellipses)):
         for idx_j in range(idx_i + 1, len(ellipses)):
-            area_i, area_j = ellipses[idx_i][1], ellipses[idx_j][1]
-            area_ratio = area_j / area_i
-            center_i = np.array(ellipses[idx_i][0][0])
-            center_j = np.array(ellipses[idx_j][0][0])
-            distance = magn(center_j - center_i)
-            axis = min(ellipses[idx_i][0][1])
+            ellipse_i, ellipse_j = ellipses[idx_i], ellipses[idx_j]
+            area_ratio = ellipse_j.area / ellipse_i.area
+            distance = magn(ellipse_j.center - ellipse_i.center)
+            axis = min(ellipse_i.axes)
             max_distance = axis * 0.25
 
             # Improvement: Prevent conflicting pairs
@@ -706,77 +831,113 @@ def merge_ellipses(ellipses, line_segments):
                 ellipse_pairs.append((idx_i, idx_j))
                 break
 
-    for ellipse_pair in ellipse_pairs:
-        ellipse_i = Ellipse(ellipses[ellipse_pair[0]][0])
-        ellipse_j = Ellipse(ellipses[ellipse_pair[1]][0])
+    line_segments = np.array(line_segments, dtype=np.float64)
+    goals = []
 
+    for ellipse_pair in ellipse_pairs:
+        ellipse_i = ellipses[ellipse_pair[0]]
+        ellipse_j = ellipses[ellipse_pair[1]]
         lines = []
 
         for line in line_segments:
-            if ellipse_i.is_inside(line[0], scale = 1.03) and \
-               ellipse_i.is_inside(line[1], scale = 1.03) and \
-               not ellipse_j.is_inside(line[0], scale = 0.97) and \
-               not ellipse_j.is_inside(line[1], scale = 0.97):
+            if ellipse_i.is_inside(line[0], 1.03) and \
+               ellipse_i.is_inside(line[1], 1.03) and \
+               not ellipse_j.is_inside(line[0], 0.97) and \
+               not ellipse_j.is_inside(line[1], 0.97):
                 lines.append(line)
 
+        lines = np.array(lines, dtype=np.float64)
 
-        
-        break
+        goal_end_points = merge_goal_line_segments(ellipse_i, ellipse_j, lines)
+        if goal_end_points is not None:
+            goals.append((ellipse_i, ellipse_j, goal_end_points))
 
-    line_segments = lines
 
     import random
     from seaborn import color_palette
-    palette = color_palette("husl", len(ellipse_pairs) + len(line_segments))
-    image = skimage.io.imread("img_line_segments.png")
+    palette = color_palette("husl", len(goals))
+    image = skimage.io.imread("img_in.png")
     im2 = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.int32)
+    #im2 = image
 
-    for idx, line in enumerate(line_segments):
-
+    for idx, (ellipse_outer, ellipse_inner, goal_end_points) in enumerate(goals):
         color = (palette[idx][0] * 255, palette[idx][1] * 255, palette[idx][2] * 255)
 
+        for ellipse in (ellipse_inner, ellipse_outer):
+            cv2.ellipse(im2, box = ellipse.to_tuple(), color = color)
+
+
+        def ellipse_line_intersection(points):
+
+            ellipse = ellipse_outer
+
+            ps = np.empty_like(points)
+            for idx, point in enumerate(points):
+                ps[idx] = rotate_vector_2d(point - ellipse.center, -ellipse.angle)
+
+            slope, intercept, r_value, p_value, std_err = stats.linregress(ps)
+            print(slope, intercept, r_value, p_value, std_err)
+
+
+            a = ellipse.axes[1]**2 + ellipse.axes[0]**2 * slope**2
+            b = 2 * slope * ellipse.axes[0]**2 * intercept
+            c = ellipse.axes[0]**2 * intercept**2 - ellipse.axes[0]**2 * ellipse.axes[1]**2
+
+            print("a, b, c", a, b, c)
+
+            s = b**2 - 4 * a * c
+            if s < 0:
+                print("no hit!")
+                quit()
+
+            s0 = 1 / (2 * a) * (-b + math.sqrt(s))
+            s1 = 1 / (2 * a) * (-b - math.sqrt(s))
+
+            p = np.array(((s0, slope * s0 + intercept),
+                          (s1, slope * s1 + intercept)))
+
+            p[0] = rotate_vector_2d(p[0], ellipse.angle) + ellipse.center
+            p[1] = rotate_vector_2d(p[1], ellipse.angle) + ellipse.center
+
+            print("s0, s1", s0, s1)
+            print("p", p)
+
+
+            print("line_intersection")
+            print("slope, intercept", slope, intercept)
+
+            return p
+
+        #p0, p1 = ellipse.line_intersection(goal_end)
+
+
+        p0 = ellipse_line_intersection(goal_end_points)
+
         def ln(lln, col):
             rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
             im2[rr, cc] = col
 
-        ln(line, color)
+        try:
+            ln(p0, color)
+        except:
+            pass
+
+        #for idx in range(1, len(goal_end_points)):
+        #    ln(goal_end_points[idx-1:idx+1], color)
 
 
-    for ep_idx, (e_idx_i, e_idx_j) in enumerate(ellipse_pairs[0:1]):
+        #def ln(lln, col):
+        #    rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+        #    im2[rr, cc] = col
 
-        color = (palette[ep_idx][0] * 255, palette[ep_idx][1] * 255, palette[ep_idx][2] * 255)
+        #ln(line, color)
 
-        cv2.ellipse(im2, box = ellipses[e_idx_i][0], color = color)
-        cv2.ellipse(im2, box = ellipses[e_idx_j][0], color = color)
-
-        def ln(lln, col):
-            rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-            im2[rr, cc] = col
-
-        """
-        for ellipse, area in [ellipses[e_idx_i], ellipses[e_idx_j]]:
-            center = np.array(ellipse[0])
-            axis = np.array((0, -ellipse[1][1])) / 2
-            axis = rotate_vector_2d(axis, np.radians(ellipse[2]))
-            endpoint = center + axis
-            try:
-                ln(np.array((center, endpoint)), color)
-            except:
-                pass
-        """
-
-
-        #print(center, endpoint)
-        
-
-        #print(center)
-        #quit()
         
     skimage.io.imsave("img_ellipses.png", (im2).astype(np.uint8))
     #input("Press Enter to continue...")
 
 
-
+    print("end")
 
 
     quit()
