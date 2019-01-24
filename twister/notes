@@ -1,0 +1,142 @@
+rosrun camera_calibration_fisheye cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image camera:=/raspicam_node
+
+rosrun camera_calibration cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image camera:=/raspicam_node
+
+rosrun image_view image_view image:=/raspicam_node/image _image_transport:=compressed
+
+rosrun image_view image_view image:=/out
+
+rosrun camera_calibration_fisheye cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image/raw camera:=/raspicam_node
+
+
+
+== Calibration normal ==
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/raspicam_node/image/raw
+rosrun camera_calibration cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image/raw camera:=/raspicam_node
+
+== Calibration check normal ==
+# image raw -> /mycam/image_rect
+# calibration info -> /mycam/camera_info
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/mycam/image_rect
+rosrun topic_tools relay /raspicam_node/camera_info /mycam/camera_info
+# rosrun image_view image_view image:=/mycam/image_rect _image_transport:=raw
+rosrun camera_calibration cameracheck.py --size 7x7 monocular:=/mycam
+
+== Undistort ==
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/mycam/image_raw
+rosrun topic_tools relay /raspicam_node/camera_info /mycam/camera_info
+ROS_NAMESPACE=mycam rosrun image_proc 
+rosrun image_view image_view image:=/mycam/image_rect _image_transport:=raw
+
+
+
+== Calibration fisheye ==
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/raspicam_node/image/raw
+rosrun camera_calibration_fisheye cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image/raw camera:=/raspicam_node
+
+
+== Calibration check fisheye ==
+# image raw -> /mycam/image_rect
+# calibration info -> /mycam/camera_info
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/mycam/image_rect
+rosrun topic_tools relay /raspicam_node/camera_info /mycam/camera_info
+# rosrun image_view image_view image:=/mycam/image_rect _image_transport:=raw
+rosrun camera_calibration_fisheye  cameracheck.py --size 7x7 monocular:=/mycam
+
+
+== Undistort fisheye ==
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/mycam/image_raw
+rosrun topic_tools relay /raspicam_node/camera_info /mycam/camera_info
+ROS_NAMESPACE=mycam rosrun image_proc_fisheye image_proc_fisheye
+rosrun image_view image_view image:=/mycam/image_rect _image_transport:=raw
+
+
+
+== Puffin twister ==
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/mycam/image_raw
+rosrun topic_tools relay /raspicam_node/camera_info /mycam/camera_info
+ROS_NAMESPACE=mycam rosrun image_proc_fisheye image_proc_fisheye
+# rosrun image_view image_view image:=/mycam/image_rect _image_transport:=raw
+rosrun image_view video_recorder image:=/raspicam_node/image _image_transport:=compressed
+
+
+
+
+
+
+roslaunch puffin_bringup puffin.launch
+
+sudo journalctl -u puffin
+
+
+rosrun robot_upstart install --interface wlan0 --user ubuntu --master 192.168.0.90 --logdir /home/ubuntu/pufflog puffin_bringup/launch/puffin.launch
+
+
+rosrun image_view video_recorder image:=/raspicam_node/image _image_transport:=compressed
+
+
+ROS_NAMESPACE=mycam rosrun image_proc_fisheye image_proc_fisheye_exe
+
+rosrun image_proc_fisheye image_proc_fisheye_exe _camera_info:=/raspicam_node/camera_info _image_raw:=/raspicam_node/
+
+rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/raspicam_node/image/raw
+# rosrun image_view image_view image:=/raspicam_node/image/raw _image_transport:=raw
+image/raw _image_rect:=/raspicam_node/image/rectified
+
+
+
+('D = ', [-0.05699912483375371, -0.17044778978186845, 0.16552872729854373, -0.07157405134495864])
+('K = ', [307.3208390015511, 0.0, 311.3873781252157, 0.0, 316.1137728728384, 309.347978132532, 0.0, 0.0, 1.0])
+('R = ', [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+('P = ', [307.3208390015511, 0.0, 311.3873781252157, 0.0, 0.0, 316.1137728728384, 309.347978132532, 0.0, 0.0, 0.0, 1.0, 0.0])
+None
+# oST version 5.0 parameters
+
+
+[image]
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+307.320839, 0.000000, 311.387378, 0.000000, 316.113773, 309.347978, 0.000000, 0.000000, 1.000000
+
+distortion
+-0.056999 -0.170448 0.165529 -0.071574
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+307.320839 0.000000 311.387378 0.000000
+0.000000 316.113773 309.347978 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+
+
+
+ubuntu@ubiquityrobot:/opt/ros/kinetic/share/raspicam_node$ cd camera_info/
+
+/opt/ros/kinetic/share/raspicam_node/camera_info/camerav2_640x480.yaml
+
+ubuntu@ubiquityrobot:/opt/ros/kinetic/share/raspicam_node/camera_info$ 
+
+
+
+[ INFO] [1548293145.425990652]: camera calibration URL: /opt/ros/kinetic/share/raspicam_node/camera_info/camerav2_640x480.yaml
+[ERROR] [1548293145.426424139]: Invalid camera calibration URL: /opt/ros/kinetic/share/raspicam_node/camera_info/camerav2_640x480.yaml
+[ INFO] [1548293145.426725595]: Calibration file missing. Camera not calibrated
+[ INFO] [1548293145.426996635]: using default calibration URL
+[ INFO] [1548293145.427323352]: camera calibration URL: file:///home/ubuntu/.ros/camera_info/camera.yaml
+[ INFO] [1548293145.435836889]: Camera successfully calibrated from device specifc file
+[ INFO] [1548293145.799803806]: Starting video capture (640, 480, 80, 30)
+
+file:///opt/ros/kinetic/share/raspicam_node/camera_info/camerav2_640x480.yaml
+
