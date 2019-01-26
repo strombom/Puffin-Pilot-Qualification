@@ -1,0 +1,24 @@
+<package>
+  <name>pt_gazebo</name>
+  <version>0.0.0</version>
+  <description>The pt_gazebo package</description>
+
+  <maintainer email="pt@e.mail">Puffin</maintainer>
+
+  <license>BSD</license>
+
+  <author email="pt@e.mail">Puffin</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>gazebo_plugins</run_depend>
+  <run_depend>gazebo_ros</run_depend>
+  <run_depend>gazebo_ros_control</run_depend>
+  <run_depend>pt_control</run_depend>
+  <run_depend>pt_description</run_depend>
+  <run_depend>xacro</run_depend>
+
+  <export>
+  </export>
+
+</package>

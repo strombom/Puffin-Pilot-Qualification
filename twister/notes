@@ -57,9 +57,8 @@ rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/m
 rosrun topic_tools relay /raspicam_node/camera_info /mycam/camera_info
 ROS_NAMESPACE=mycam rosrun image_proc_fisheye image_proc_fisheye
 # rosrun image_view image_view image:=/mycam/image_rect _image_transport:=raw
-rosrun image_view video_recorder image:=/raspicam_node/image _image_transport:=compressed
-
-
+rosrun image_view video_recorder image:=/mycam/image_rect _image_transport:=raw
+rosrun image_view extract_images image:=/mycam/image_rect raw
 
 
 

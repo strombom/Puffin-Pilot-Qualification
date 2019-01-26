@@ -1,0 +1,21 @@
+<package>
+  <name>pt_description</name>
+  <version>0.0.0</version>
+  <description>The pt_description package</description>
+
+  <maintainer email="pt@e.mail">Puffin</maintainer>
+
+  <license>BSD</license>
+
+  <author email="pt@e.mail">Puffin</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>joint_state_publisher</run_depend>
+  <run_depend>robot_state_publisher</run_depend>
+  <run_depend>rviz</run_depend>
+
+  <export>
+  </export>
+
+</package>

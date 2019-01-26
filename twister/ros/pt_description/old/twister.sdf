@@ -1,0 +1,394 @@
+<?xml version='1.0'?>
+<sdf version='1.4'>
+  <model name="twister">
+    <static>false</static>
+    <pose>0 0 0.001 0 0 0</pose>
+    
+    <link name='chassis'>
+
+      <inertial>
+        <pose>0 -0.014693 0.06776 0 0 0</pose>
+        <mass>0.626</mass>
+        <inertia>
+          <ixx>6.154e-4</ixx>
+          <ixy>-2.583e-7</ixy>
+          <ixz>-8.965e-7</ixz>
+          <iyy>4.298e-4</iyy>
+          <izx>-8.965e-7</izx>
+          <izz>7.278e-4</izz>
+        </inertia>
+      </inertial>
+
+      <visual name="twister_base">
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_base.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+
+      <visual name="twister_camera_holder">
+        <pose>0 0.0448 0.0488 0 0 0</pose>
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_camera_holder.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+
+      <visual name="twister_battery_holder_front">
+        <pose>0 0.0213 0.0488 0 0 3.14159</pose>
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_battery_holder.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+
+      <visual name="twister_battery_holder_back">
+        <pose>0 -0.0517 0.0488 0 0 0</pose>
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_battery_holder.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+
+      <visual name="twister_motor_right">
+        <pose>0.0497 0 0.03255 0 0 0</pose>
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_motor.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+
+      <visual name="twister_motor_left">
+        <pose>-0.0497 0 0.03255 0 3.14159 0</pose>
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_motor.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <gazebo reference="chassis">
+      <material>Gazebo/Orange</material>
+    </gazebo>
+
+    <link name='wheel_right'>
+      <pose>0.0414 0 0.03255 0 0 0</pose>
+
+      <inertial>
+        <pose>0.017868 0 0 0 0 0</pose>
+        <mass>0.057</mass>
+        <inertia>
+          <ixx>4.210e-5</ixx>
+          <ixy>2.013e-12</ixy>
+          <ixz>-4.599e-13</ixz>
+          <iyy>2.434e-5</iyy>
+          <iyz>6.608e-12</iyz>
+          <izz>2.434e-5</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="collision">
+        <pose>0.017 0 0 0 1.5707 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>.032255</radius>
+            <length>.026</length>
+          </cylinder>
+        </geometry>
+
+        <!--
+        <surface>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>1.1</kd>
+              <max_vel>0.1</max_vel>
+              <min_depth>0.002</min_depth>
+            </ode>
+          </contact>
+          <friction>
+            <ode>
+              <mu>0.8</mu>
+              <mu2>0.8</mu2>
+            </ode>
+          </friction>
+        </surface>
+      -->
+      </collision>
+
+      <visual name="twister_rim_right">
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_rim.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkYellow</name>
+          </script>
+        </material>
+      </visual>
+
+      <visual name="twister_tire_right">
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_tire.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name='wheel_left'>
+      <pose>-0.0414 0 0.03255 0 0 3.14159</pose>
+
+      <inertial>
+        <pose>0.017868 0 0 0 0 0</pose>
+        <mass>0.057</mass>
+        <inertia>
+          <ixx>4.210e-5</ixx>
+          <ixy>2.013e-12</ixy>
+          <ixz>-4.599e-13</ixz>
+          <iyy>2.434e-5</iyy>
+          <iyz>6.608e-12</iyz>
+          <izz>2.434e-5</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="collision">
+        <pose>0.017 0 0 0 1.5707 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>.032255</radius>
+            <length>.026</length>
+          </cylinder>
+        </geometry>
+
+        <!--
+        <surface>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>1.1</kd>
+              <max_vel>0.1</max_vel>
+              <min_depth>0.002</min_depth>
+            </ode>
+          </contact>
+          <friction>
+            <ode>
+              <mu>0.8</mu>
+              <mu2>0.8</mu2>
+            </ode>
+          </friction>
+        </surface>
+        -->
+      </collision>
+
+      <visual name="twister_rim_left">
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_rim.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkYellow</name>
+          </script>
+        </material>
+      </visual>
+
+      <visual name="twister_tire_left">
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_tire.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name='back_wheel_holder'>
+      <pose>0.0 -0.0687 0.0183 0 0 0</pose>
+
+      <inertial>
+        <pose>0 -0.008 -0.0046 0 0 0</pose>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>4.210e-5</ixx>
+          <ixy>2.013e-12</ixy>
+          <ixz>-4.599e-13</ixz>
+          <iyy>2.434e-5</iyy>
+          <iyz>6.608e-12</iyz>
+          <izz>2.434e-5</izz>
+        </inertia>
+      </inertial>
+
+      <visual name="back_wheel_holder_visual">
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_back_wheel_holder.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+
+    </link>
+    
+    <link name='back_wheel'>
+      <pose>0.0 -0.0847 0.0103 0 0 0</pose>
+
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>4.210e-5</ixx>
+          <ixy>2.013e-12</ixy>
+          <ixz>-4.599e-13</ixz>
+          <iyy>2.434e-5</iyy>
+          <iyz>6.608e-12</iyz>
+          <izz>2.434e-5</izz>
+        </inertia>
+      </inertial>
+
+      <visual name="twister_back_wheel">
+        <geometry>
+          <mesh><uri>file:///home/jst/development/puffin-pilot/twister/gazebo/twister_back_wheel.dae</uri></mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+      
+      <collision name="back_wheel_collision">
+        <pose>0 0 0 0 1.5707 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>.0075</radius>
+            <length>.007</length>
+          </cylinder>
+        </geometry>
+
+        <surface>
+          <contact>
+            <ode>
+              <kp>1000000.0</kp>
+              <kd>0.8</kd>
+              <max_vel>0.1</max_vel>
+              <min_depth>0.002</min_depth>
+            </ode>
+          </contact>
+          <friction>
+            <ode>
+              <mu>0.4</mu>
+              <mu2>0.4</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <!--
+      <visual name="back_wheel_visual">
+        <pose>0 0 0 0 1.5707 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>.0075</radius>
+            <length>.007</length>
+          </cylinder>
+        </geometry>
+      </visual>
+      -->
+
+    </link>
+    
+    <joint type="revolute" name="right_wheel_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>wheel_right</child>
+      <parent>chassis</parent>
+      <axis>
+        <xyz>-1 0 0</xyz>
+        <dynamics>
+          <friction>0.0005</friction>
+        </dynamics>      
+      </axis>
+    </joint>
+
+    <joint type="revolute" name="left_wheel_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>wheel_left</child>
+      <parent>chassis</parent>
+      <axis>
+        <xyz>-1 0 0</xyz>
+        <dynamics>
+          <friction>0.0005</friction>
+        </dynamics>      
+      </axis>
+    </joint>
+
+    <joint type="revolute" name="back_wheel_holder_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>back_wheel_holder</child>
+      <parent>chassis</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <dynamics>
+          <friction>0.001</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <joint type="revolute" name="back_wheel_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>back_wheel</child>
+      <parent>back_wheel_holder</parent>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <dynamics>
+          <friction>0.001</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+  </model>
+</sdf>
+
+
