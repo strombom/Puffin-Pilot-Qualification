@@ -1,12 +1,8 @@
-rosrun camera_calibration_fisheye cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image camera:=/raspicam_node
 
-rosrun camera_calibration cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image camera:=/raspicam_node
 
-rosrun image_view image_view image:=/raspicam_node/image _image_transport:=compressed
+rosrun urdfdom_py display_urdf pt.xml
+rosrun xacro xacro --inorder pt.xacro -o pt2.xml
 
-rosrun image_view image_view image:=/out
-
-rosrun camera_calibration_fisheye cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image/raw camera:=/raspicam_node
 
 
 
@@ -59,6 +55,19 @@ ROS_NAMESPACE=mycam rosrun image_proc_fisheye image_proc_fisheye
 # rosrun image_view image_view image:=/mycam/image_rect _image_transport:=raw
 rosrun image_view video_recorder image:=/mycam/image_rect _image_transport:=raw
 rosrun image_view extract_images image:=/mycam/image_rect raw
+
+
+
+
+rosrun camera_calibration_fisheye cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image camera:=/raspicam_node
+
+rosrun camera_calibration cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image camera:=/raspicam_node
+
+rosrun image_view image_view image:=/raspicam_node/image _image_transport:=compressed
+
+rosrun image_view image_view image:=/out
+
+rosrun camera_calibration_fisheye cameracalibrator.py --size 7x7 --square 0.032 image:=/raspicam_node/image/raw camera:=/raspicam_node
 
 
 

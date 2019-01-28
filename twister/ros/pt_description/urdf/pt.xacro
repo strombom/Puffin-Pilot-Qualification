@@ -4,174 +4,192 @@
 
   <!-- Constants for robot dimensions -->
   <xacro:property name="PI" value="3.1415926535897931"/>
-  <xacro:property name="mass" value="1" /> <!-- arbitrary value for mass -->
-  <xacro:property name="width" value="0.1" /> <!-- Square dimensions (widthxwidth) of beams -->
-  <xacro:property name="height1" value="2" /> <!-- Link 1 -->
-  <xacro:property name="height2" value="1" /> <!-- Link 2 -->
-  <xacro:property name="height3" value="1" /> <!-- Link 3 -->
-  <xacro:property name="camera_link" value="0.05" /> <!-- Size of square 'camera' box -->
-  <xacro:property name="axel_offset" value="0.05" /> <!-- Space btw top of beam and the each joint -->
 
   <!-- Import all Gazebo-customization elements, including Gazebo colors -->
   <xacro:include filename="$(find pt_description)/urdf/pt.gazebo" />
   <!-- Import Rviz colors -->
   <xacro:include filename="$(find pt_description)/urdf/materials.xacro" />
 
-  <!-- Used for fixing robot to Gazebo 'base_link' -->
-  <link name="world"/>
-
-  <joint name="fixed" type="fixed">
-    <parent link="world"/>
-    <child link="link1"/>
+  
+  <link name="base_link"/>
+  
+  <joint name="chassis_joint" type="fixed">
+    <origin xyz="0.0 0.0 0.002"/>
+    <parent link="base_link"/>
+    <child link="chassis"/>
   </joint>
 
-  <!-- Base Link -->
-  <link name="link1">
-    <collision>
-      <origin xyz="0 0 ${height1/2}" rpy="0 0 0"/>
-      <geometry>
-	<box size="${width} ${width} ${height1}"/>
-      </geometry>
-    </collision>
-
+  <link name="chassis">
     <visual>
-      <origin xyz="0 0 ${height1/2}" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-	<box size="${width} ${width} ${height1}"/>
+        <mesh filename="package://pt_description/meshes/twister_base.dae"/>
       </geometry>
       <material name="orange"/>
     </visual>
 
+    <collision>
+      <origin xyz="0.5 -0.015 0.062" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 0.121 0.181"/>
+      </geometry>
+    </collision>
+
     <inertial>
-      <origin xyz="0 0 ${height1/2}" rpy="0 0 0"/>
-      <mass value="${mass}"/>
-      <inertia
-	  ixx="${mass / 12.0 * (width*width + height1*height1)}" ixy="0.0" ixz="0.0"
-	  iyy="${mass / 12.0 * (height1*height1 + width*width)}" iyz="0.0"
-	  izz="${mass / 12.0 * (width*width + width*width)}"/>
+      <origin xyz="0 -0.014693 0.06776" rpy="0 0 0"/>
+      <mass value="0.626"/>
+      <inertia ixx="6.154e-4" ixy="0.0" ixz="0.0"
+               iyy="4.298e-4" iyz="0.0"
+               izz="4.298e-4"/>
     </inertial>
   </link>
 
-  <joint name="joint1" type="continuous">
-    <parent link="link1"/>
-    <child link="link2"/>
-    <origin xyz="0 ${width} ${height1 - axel_offset}" rpy="0 0 0"/>
-    <axis xyz="0 1 0"/>
-    <dynamics damping="0.7"/>
+  <joint name="right_wheel_hinge" type="continuous">
+    <parent link="chassis"/>
+    <child link="right_wheel_rim"/>
+    <origin xyz="0.0414 0 0.03255" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <dynamics damping="0.7" friction="0.0"/>
   </joint>
 
-  <!-- Middle Link -->
-  <link name="link2">
+  <link name="right_wheel_rim">
     <collision>
-      <origin xyz="0 0 ${height2/2 - axel_offset}" rpy="0 0 0"/>
+      <origin xyz="0.017 0 0" rpy="0 1.5707 0"/>
       <geometry>
-	<box size="${width} ${width} ${height2}"/>
+        <cylinder length="0.026" radius="0.032255"/>
       </geometry>
     </collision>
 
     <visual>
-      <origin xyz="0 0 ${height2/2 - axel_offset}" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-	<box size="${width} ${width} ${height2}"/>
+        <mesh filename="package://pt_description/meshes/twister_rim.dae"/>
+      </geometry>
+      <material name="yellow"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="0.0179 0 0" rpy="0 0 0"/>
+      <mass value="0.010"/>
+      <inertia ixx="4.210e-8" ixy="0.0" ixz="0.0"
+               iyy="2.434e-8" iyz="0.0"
+               izz="2.434e-8"/>
+    </inertial>
+  </link>
+
+  <joint name="right_wheel_tire_mount" type="fixed">
+    <parent link="right_wheel_rim"/>
+    <child link="right_wheel_tire"/>
+  </joint>
+
+  <link name="right_wheel_tire">
+    <collision>
+      <origin xyz="0.017 0 0" rpy="0 1.5707 0"/>
+      <geometry>
+        <cylinder length="0.026" radius="0.032255"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://pt_description/meshes/twister_tire.dae"/>
       </geometry>
       <material name="black"/>
     </visual>
 
     <inertial>
-      <origin xyz="0 0 ${height2/2 - axel_offset}" rpy="0 0 0"/>
-      <mass value="${mass}"/>
-      <inertia
-	  ixx="${mass / 12.0 * (width*width + height2*height2)}" ixy="0.0" ixz="0.0"
-	  iyy="${mass / 12.0 * (height2*height2 + width*width)}" iyz="0.0"
-	  izz="${mass / 12.0 * (width*width + width*width)}"/>
+      <origin xyz="0.0179 0 0" rpy="0 0 0"/>
+      <mass value="0.057"/>
+      <inertia ixx="4.210e-5" ixy="0.0" ixz="0.0"
+               iyy="2.434e-5" iyz="0.0"
+               izz="2.434e-5"/>
     </inertial>
   </link>
 
-  <joint name="joint2" type="continuous">
-    <parent link="link2"/>
-    <child link="link3"/>
-    <origin xyz="0 ${width} ${height2 - axel_offset*2}" rpy="0 0 0"/>
-    <axis xyz="0 1 0"/>
-    <dynamics damping="0.7"/>
+  <joint name="left_wheel_hinge" type="continuous">
+    <parent link="chassis"/>
+    <child link="left_wheel_rim"/>
+    <origin xyz="-0.0414 0 0.03255" rpy="0 0 3.14159"/>
+    <axis xyz="1 0 0"/>
+    <dynamics damping="0.7" friction="0"/>
   </joint>
 
-  <!-- Top Link -->
-  <link name="link3">
+  <link name="left_wheel_rim">
     <collision>
-      <origin xyz="0 0 ${height3/2 - axel_offset}" rpy="0 0 0"/>
+      <origin xyz="0.017 0 0" rpy="0 1.5707 0"/>
       <geometry>
-	<box size="${width} ${width} ${height3}"/>
+        <cylinder length="0.026" radius="0.032255"/>
       </geometry>
     </collision>
-
+    
     <visual>
-      <origin xyz="0 0 ${height3/2 - axel_offset}" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-	<box size="${width} ${width} ${height3}"/>
+        <mesh filename="package://pt_description/meshes/twister_rim.dae"/>
       </geometry>
-      <material name="orange"/>
+      <material name="yellow"/>
     </visual>
 
     <inertial>
-      <origin xyz="0 0 ${height3/2 - axel_offset}" rpy="0 0 0"/>
-      <mass value="${mass}"/>
-      <inertia
-	  ixx="${mass / 12.0 * (width*width + height3*height3)}" ixy="0.0" ixz="0.0"
-	  iyy="${mass / 12.0 * (height3*height3 + width*width)}" iyz="0.0"
-	  izz="${mass / 12.0 * (width*width + width*width)}"/>
+      <origin xyz="0.0179 0 0" rpy="0 0 0"/>
+      <mass value="0.010"/>
+      <inertia ixx="4.210e-8" ixy="0.0" ixz="0.0"
+               iyy="2.434e-8" iyz="0.0"
+               izz="2.434e-8"/>
     </inertial>
   </link>
 
-  <joint name="hokuyo_joint" type="fixed">
-    <axis xyz="0 1 0" />
-    <origin xyz="0 0 ${height3 - axel_offset/2}" rpy="0 0 0"/>
-    <parent link="link3"/>
-    <child link="hokuyo_link"/>
+  <joint name="left_wheel_tire_mount" type="fixed">
+    <parent link="left_wheel_rim"/>
+    <child link="left_wheel_tire"/>
   </joint>
 
-  <!-- Hokuyo Laser -->
-  <link name="hokuyo_link">
+  <link name="left_wheel_tire">
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0.017 0 0" rpy="0 1.5707 0"/>
       <geometry>
-	<box size="0.1 0.1 0.1"/>
+        <cylinder length="0.026" radius="0.032255"/>
       </geometry>
     </collision>
 
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/hokuyo.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_tire.dae"/>
       </geometry>
+      <material name="black"/>
     </visual>
 
     <inertial>
-      <mass value="1e-5" />
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+      <origin xyz="0.0179 0 0" rpy="0 0 0"/>
+      <mass value="0.057"/>
+      <inertia ixx="4.210e-5" ixy="0.0" ixz="0.0"
+               iyy="2.434e-5" iyz="0.0"
+               izz="2.434e-5"/>
     </inertial>
   </link>
+
 
   <joint name="camera_joint" type="fixed">
     <axis xyz="0 1 0" />
-    <origin xyz="${camera_link} 0 ${height3 - axel_offset*2}" rpy="0 0 0"/>
-    <parent link="link3"/>
+    <origin xyz="0 0.045 0.090" rpy="0 0 0"/>
+    <parent link="chassis"/>
     <child link="camera_link"/>
   </joint>
 
-  <!-- Camera -->
   <link name="camera_link">
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-	<box size="${camera_link} ${camera_link} ${camera_link}"/>
+        <box size="0.005 0.005 0.005"/>
       </geometry>
     </collision>
 
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-	<box size="${camera_link} ${camera_link} ${camera_link}"/>
+        <box size="0.005 0.005 0.005"/>
       </geometry>
       <material name="red"/>
     </visual>
@@ -179,7 +197,9 @@
     <inertial>
       <mass value="1e-5" />
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+      <inertia ixx="1e-8" ixy="0" ixz="0" 
+               iyy="1e-8" iyz="0" 
+               izz="1e-8" />
     </inertial>
   </link>
 
@@ -196,26 +216,25 @@
   <link name="camera_link_optical">
   </link>
 
-  <transmission name="tran1">
+  <transmission name="right_wheel_transmission" type="SimpleTransmission">
     <type>transmission_interface/SimpleTransmission</type>
-    <joint name="joint1">
+    <joint name="right_wheel_hinge">
       <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
     </joint>
-    <actuator name="motor1">
-      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-      <mechanicalReduction>1</mechanicalReduction>
+    <actuator name="right_wheel_motor">
+      <mechanicalReduction>48</mechanicalReduction>
     </actuator>
   </transmission>
 
-  <transmission name="tran2">
+  <transmission name="left_wheel_transmission" type="SimpleTransmission">
     <type>transmission_interface/SimpleTransmission</type>
-    <joint name="joint2">
+    <joint name="left_wheel_hinge">
       <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
     </joint>
-    <actuator name="motor2">
-      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-      <mechanicalReduction>1</mechanicalReduction>
+    <actuator name="left_wheel_motor">
+      <mechanicalReduction>48</mechanicalReduction>
     </actuator>
   </transmission>
+
 
 </robot>

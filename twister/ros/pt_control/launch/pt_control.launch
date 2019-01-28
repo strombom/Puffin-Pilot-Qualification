@@ -4,15 +4,18 @@
   <rosparam file="$(find pt_control)/config/pt_control.yaml" command="load"/>
 
   <!-- load the controllers -->
-  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
-	output="screen" ns="/puffin_twister" args="joint_state_controller
-					  joint1_position_controller
-					  joint2_position_controller"/>
+  <node name="controller_manager" pkg="controller_manager" type="spawner" respawn="false"
+	output="screen" ns="/puffin_twister" args="right_wheel_position_controller
+                                  					 left_wheel_position_controller
+                                             joint_state_controller"/>
 
   <!-- convert joint states to TF transforms for rviz, etc -->
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
 	respawn="false" output="screen">
     <remap from="/joint_states" to="/puffin_twister/joint_states" />
   </node>
+
+  <!-- Allow for Gazebo to broadcast odom -->
+  <node pkg="pt_gazebo" name="pt_gazebo_odometry" type="pt_gazebo_odometry.py"/>
 
 </launch>
