@@ -42,6 +42,161 @@
     </inertial>
   </link>
 
+  <joint name="camera_holder_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="camera_holder"/>
+    <origin xyz="0.0 0.0458 0.0488" rpy="0 0 0"/>
+  </joint>
+
+  <link name="camera_holder">
+    <collision>
+      <origin xyz="0.0 -0.0055 0.033" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.037 0.011 0.066"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://pt_description/meshes/twister_camera_holder.dae"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="0 0.002 0.035" rpy="0 0 0"/>
+      <mass value="0.012"/>
+      <inertia ixx="3.717e-6" ixy="0.0" ixz="0.0"
+               iyy="5.325e-6" iyz="0.0"
+               izz="1.839e-6"/>
+    </inertial>
+  </link>
+
+  <joint name="right_motor_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="right_motor"/>
+    <origin xyz="0.0497 0.0 0.03255" rpy="0 0 0"/>
+  </joint>
+
+  <link name="right_motor">
+    <collision>
+      <origin xyz="-0.0185 -0.0205 0.0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.023 0.065 0.023"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://pt_description/meshes/twister_motor.dae"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="-0.0185 -0.0183 0.0" rpy="0 0 0"/>
+      <mass value="0.025"/>
+      <inertia ixx="9.2e-6" ixy="0.0" ixz="0.0"
+               iyy="1.7e-6" iyz="0.0"
+               izz="9.0e-6"/>
+    </inertial>
+  </link>
+
+  <joint name="left_motor_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="left_motor"/>
+    <origin xyz="-0.0497 0.0 0.03255" rpy="0 3.14159 0"/>
+  </joint>
+
+  <link name="left_motor">
+    <collision>
+      <origin xyz="-0.0185 -0.0205 0.0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.023 0.065 0.023"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://pt_description/meshes/twister_motor.dae"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="-0.0185 -0.0183 0.0" rpy="0 0 0"/>
+      <mass value="0.025"/>
+      <inertia ixx="9.2e-6" ixy="0.0" ixz="0.0"
+               iyy="1.7e-6" iyz="0.0"
+               izz="9.0e-6"/>
+    </inertial>
+  </link>
+
+  <joint name="battery_holder_front_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="battery_holder_front"/>
+    <origin xyz="0.0 0.0213 0.0488" rpy="0 0 3.14159"/>
+  </joint>
+
+  <link name="battery_holder_front">
+    <collision>
+      <origin xyz="-0.0185 -0.0205 0.0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.023 0.065 0.023"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://pt_description/meshes/twister_battery_holder.dae"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="0.030 -0.0089 0.0212" rpy="0 0 0"/>
+      <mass value="0.011"/>
+      <inertia ixx="2.0e-6" ixy="0.0" ixz="0.0"
+               iyy="1.1e-5" iyz="0.0"
+               izz="9.4e-6"/>
+    </inertial>
+  </link>
+
+  <joint name="battery_holder_back_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="battery_holder_back"/>
+    <origin xyz="0.0 -0.0517 0.0488" rpy="0 0 0"/>
+  </joint>
+
+  <link name="battery_holder_back">
+    <collision>
+      <origin xyz="-0.0185 -0.0205 0.0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.023 0.065 0.023"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://pt_description/meshes/twister_battery_holder.dae"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="0.030 -0.0089 0.0212" rpy="0 0 0"/>
+      <mass value="0.011"/>
+      <inertia ixx="2.0e-6" ixy="0.0" ixz="0.0"
+               iyy="1.1e-5" iyz="0.0"
+               izz="9.4e-6"/>
+    </inertial>
+  </link>
+
   <joint name="back_wheel_holder_hinge" type="continuous">
     <parent link="chassis"/>
     <child link="back_wheel_holder"/>
@@ -113,7 +268,7 @@
     <child link="right_wheel_rim"/>
     <origin xyz="0.0414 0 0.03255" rpy="0 0 0"/>
     <axis xyz="1 0 0"/>
-    <dynamics damping="0.001"/>
+    <dynamics damping="0.01" friction="0.001"/>
   </joint>
 
   <link name="right_wheel_rim">
@@ -171,46 +326,12 @@
     </inertial>
   </link>
 
-  <joint name="joint2" type="fixed">
-    <parent link="right_wheel_rim"/>
-    <child link="right_wheel_tire2"/>
-    <origin xyz="0.03 0 0.05" rpy="0 0 0"/>
-    <axis xyz="0 1 0"/>
-    <dynamics damping="0.001"/>
-  </joint>
-
-  <link name="right_wheel_tire2">
-    <collision>
-      <origin xyz="0 0 ${height3/2 - axel_offset}" rpy="0 0 0"/>
-      <geometry>
-        <box size="${width} ${width} ${height3}"/>
-      </geometry>
-    </collision>
-
-    <visual>
-      <origin xyz="0 0 ${height3/2 - axel_offset}" rpy="0 0 0"/>
-      <geometry>
-        <box size="${width} ${width} ${height3}"/>
-      </geometry>
-      <material name="yellow"/>
-    </visual>
-
-    <inertial>
-      <origin xyz="0 0 ${height3/2 - axel_offset}" rpy="0 0 0"/>
-      <mass value="${mass}"/>
-      <inertia
-    ixx="${mass / 12.0 * (width*width + height3*height3)}" ixy="0.0" ixz="0.0"
-    iyy="${mass / 12.0 * (height3*height3 + width*width)}" iyz="0.0"
-    izz="${mass / 12.0 * (width*width + width*width)}"/>
-    </inertial>
-  </link>
-
   <joint name="left_wheel_hinge" type="continuous">
     <parent link="chassis"/>
     <child link="left_wheel_rim"/>
     <origin xyz="-0.0414 0 0.03255" rpy="0 0 3.14159"/>
     <axis xyz="1 0 0"/>
-    <dynamics damping="0.001"/>
+    <dynamics damping="0.01" friction="0.001"/>
   </joint>
 
   <link name="left_wheel_rim">
@@ -261,11 +382,8 @@
     </inertial>
   </link>
 
-
-
   <joint name="camera_joint" type="fixed">
-    <axis xyz="0 1 0" />
-    <origin xyz="0 0.05 0.090" rpy="0 0 0"/>
+    <origin xyz="0 0.05 0.088" rpy="0 0 1.5707"/>
     <parent link="chassis"/>
     <child link="camera_link"/>
   </joint>
@@ -283,7 +401,7 @@
       <geometry>
         <box size="0.005 0.005 0.005"/>
       </geometry>
-      <material name="red"/>
+      <material name="yellow"/>
     </visual>
 
     <inertial>

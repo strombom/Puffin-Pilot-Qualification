@@ -12,13 +12,43 @@
   <gazebo reference="chassis">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
-    <material>Gazebo/Orange</material>
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+
+  <gazebo reference="camera_holder">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+
+  <gazebo reference="right_motor">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+
+  <gazebo reference="left_motor">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+
+  <gazebo reference="battery_holder_front">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+
+  <gazebo reference="battery_holder_back">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/DarkGrey</material>
   </gazebo>
 
   <gazebo reference="back_wheel_holder">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
-    <material>Gazebo/DarkYellow</material>
+    <material>Gazebo/DarkGrey</material>
   </gazebo>
 
   <gazebo reference="back_wheel">
@@ -28,7 +58,7 @@
       <restitution_coefficient>0</restitution_coefficient>
       <threshold>0</threshold>
     </bounce>
-    <material>Gazebo/Orange</material>
+    <material>Gazebo/DarkGrey</material>
   </gazebo>
 
   <gazebo reference="right_wheel_rim">
@@ -38,8 +68,8 @@
   </gazebo>
 
   <gazebo reference="right_wheel_tire">
-    <mu1>0.2</mu1>
-    <mu2>0.2</mu2>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
     <material>Gazebo/DarkGrey</material>
   </gazebo>
 
@@ -50,8 +80,8 @@
   </gazebo>
 
   <gazebo reference="left_wheel_tire">
-    <mu1>0.2</mu1>
-    <mu2>0.2</mu2>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
     <material>Gazebo/DarkGrey</material>
   </gazebo>
 
@@ -67,7 +97,7 @@
   <gazebo reference="camera_link">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
-    <material>Gazebo/Red</material>
+    <material>Gazebo/DarkYellow</material>
   </gazebo>
 
   <!-- camera -->
