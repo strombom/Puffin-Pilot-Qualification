@@ -15,6 +15,22 @@
     <material>Gazebo/Orange</material>
   </gazebo>
 
+  <gazebo reference="back_wheel_holder">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <material>Gazebo/DarkYellow</material>
+  </gazebo>
+
+  <gazebo reference="back_wheel">
+    <mu1>0.9</mu1>
+    <mu2>0.9</mu2>
+    <bounce>
+      <restitution_coefficient>0</restitution_coefficient>
+      <threshold>0</threshold>
+    </bounce>
+    <material>Gazebo/Orange</material>
+  </gazebo>
+
   <gazebo reference="right_wheel_rim">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
@@ -37,6 +53,14 @@
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
     <material>Gazebo/DarkGrey</material>
+  </gazebo>
+
+  <gazebo reference="back_wheel_holder_hinge">
+    <implicitSpringDamper>true</implicitSpringDamper>
+  </gazebo>
+
+  <gazebo reference="back_wheel_hinge">
+    <implicitSpringDamper>true</implicitSpringDamper>
   </gazebo>
 
   <!-- camera_link -->

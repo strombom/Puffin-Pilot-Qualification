@@ -1,10 +1,9 @@
 
 
-rosrun urdfdom_py display_urdf pt.xml
-rosrun xacro xacro --inorder pt.xacro -o pt2.xml
-
-
-
+rosrun xacro xacro --inorder pt.xacro -o pt.urdf
+rosrun urdfdom_py display_urdf pt.urdf > pt.check
+urdf_to_graphiz pt.urdf
+check_urdf pt.urdf
 
 == Calibration normal ==
 rosrun image_transport republish compressed in:=/raspicam_node/image raw out:=/raspicam_node/image/raw
@@ -147,4 +146,9 @@ ubuntu@ubiquityrobot:/opt/ros/kinetic/share/raspicam_node/camera_info$
 [ INFO] [1548293145.799803806]: Starting video capture (640, 480, 80, 30)
 
 file:///opt/ros/kinetic/share/raspicam_node/camera_info/camerav2_640x480.yaml
+
+
+.bash.rc
+alias killgazebo="killall -9 gazebo & killall -9 gzserver  & killall -9 gzclient"
+alias killros="killgazebo & killall -9 roscore & killall -9 rosmaster"
 
