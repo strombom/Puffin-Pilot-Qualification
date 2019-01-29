@@ -93,14 +93,37 @@
     <implicitSpringDamper>true</implicitSpringDamper>
   </gazebo>
 
-  <!-- camera_link -->
+  <gazebo>
+    <plugin name="differential_drive_controller" filename="libgazebo_ros_diff_drive.so">
+      <legacyMode>false</legacyMode>
+      <alwaysOn>true</alwaysOn>
+      <updateRate>100</updateRate>
+      <robotNamespace>/puffin_twister</robotNamespace>
+      <leftJoint>left_wheel_hinge</leftJoint>
+      <rightJoint>right_wheel_hinge</rightJoint>
+      <wheelSeparation>0.114</wheelSeparation>
+      <wheelDiameter>0.054</wheelDiameter>
+      <torque>0.5</torque>
+      <commandTopic>cmd_vel</commandTopic>
+      <odometryTopic>odom_diffdrive</odometryTopic>
+      <odometryFrame>odom</odometryFrame>
+      <publishOdomTF>1</publishOdomTF>
+      <odometrySource>1</odometrySource>
+      <rosDebugLevel>na</rosDebugLevel>
+      <wheelAcceleration>0</wheelAcceleration>
+      <wheelTorque>0.2</wheelTorque>
+      <robotBaseFrame>chassis</robotBaseFrame>
+      <publishWheelTF>false</publishWheelTF>
+      <publishWheelJointState>false</publishWheelJointState>
+    </plugin>
+  </gazebo>
+
   <gazebo reference="camera_link">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
     <material>Gazebo/DarkYellow</material>
   </gazebo>
 
-  <!-- camera -->
   <gazebo reference="camera_link">
     <sensor type="camera" name="camera">
       <update_rate>30.0</update_rate>

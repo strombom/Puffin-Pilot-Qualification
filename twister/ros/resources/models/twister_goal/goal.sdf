@@ -1,0 +1,17 @@
+<?xml version='1.0'?>
+<sdf version="1.4">
+  <model name="goal">
+    <pose>0 0 0 0 0 0</pose>
+    <static>true</static>
+    <link name="goal_foot">
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal/meshes/goal_foot.dae</uri>
+          </mesh>
+        </geometry>
+        <material>Gazebo/DarkGrey</material>
+      </visual>
+    </link>
+  </model>
+</sdf>

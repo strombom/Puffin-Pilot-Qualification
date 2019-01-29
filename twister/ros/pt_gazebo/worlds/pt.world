@@ -12,6 +12,15 @@
       <uri>model://sun</uri>
     </include>
 
+    <!-- Goal 
+    <include>
+      <uri>model://pt_gazebo/worlds/goal.sdf</uri>
+    </include>
+    -->
+    <include>
+      <uri>model://twister_goal</uri>
+    </include>
+
     <!-- Focus camera on tall pendulum -->
     <gui fullscreen='0'>
       <camera name='user_camera'>
