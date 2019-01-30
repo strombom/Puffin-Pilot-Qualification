@@ -89,7 +89,7 @@ Visualization Manager:
     - Class: rviz/Camera
       Enabled: true
       Image Rendering: background and overlay
-      Image Topic: /puffin_twister/camera/image_raw
+      Image Topic: /puffin_twister/camera/image
       Name: Camera
       Overlay Alpha: 0.5
       Queue Size: 2
@@ -97,7 +97,7 @@ Visualization Manager:
       Unreliable: false
       Value: true
       Visibility:
-        Grid: true
+        Grid: false
         RobotModel: true
         Value: true
       Zoom Factor: 1

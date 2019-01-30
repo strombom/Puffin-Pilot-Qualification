@@ -1,5 +1,12 @@
 
 
+rosrun image_view image_view image:=/puffin_twister/camera/image
+
+
+
+rostopic pub /puffin_twister/cmd_vel geometry_msgs/Twist '{linear:  {x: 0.1, y: 0.0, z: 0.0}, angular: {x: 0.0,y: 0.0,z: 0.0}}'
+
+
 rosrun xacro xacro --inorder pt.xacro -o pt.urdf
 rosrun urdfdom_py display_urdf pt.urdf > pt.check
 urdf_to_graphiz pt.urdf

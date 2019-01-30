@@ -1,0 +1,212 @@
+<?xml version='1.0'?>
+<sdf version="1.4">
+  <model name="goal_green">
+    <pose>0 0 0 0 0 0</pose>
+    <static>true</static>
+
+    <link name="left_goal_foot">
+      <visual name="visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_foot.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="left_goal_post">
+      <visual name="visual">
+        <pose>0.0 -0.014 0.014 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_post.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="left_light">
+      <visual name="visual">
+        <pose>0.0 -0.008 0.014 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_light.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/GreenGlow</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="left_bottom_angle">
+        <pose>0 0 0.179 0 3.14159 0</pose>
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_angle.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="left_top_angle">
+        <pose>0 0 0.179 -1.5707 0 0</pose>
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_angle.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="top_goal_post">
+      <visual name="visual">
+        <pose>0 0.015 0.194 -1.5707 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_post.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="top_light">
+      <visual name="visual">
+        <pose>0 0.015 0.188 -1.5707 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_light.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/GreenGlow</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="right_top_angle">
+      <visual name="visual">
+        <pose>0 0.18 0.179 -1.5707 0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_angle.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="right_bottom_angle">
+      <visual name="visual">
+        <pose>0 0.18 0.179 0 3.14159 3.14159</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_angle.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="right_goal_post">
+      <visual name="visual">
+        <pose>0.0 0.195 0.014 0 0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_post.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="right_light">
+      <visual name="visual">
+        <pose>0.0 0.189 0.014 0 0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_light.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/GreenGlow</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="right_goal_foot">
+      <visual name="visual">
+        <pose>0 0.181 0 0 0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <uri>model://twister_goal_green/meshes/goal_foot.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/DarkGrey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+  </model>
+</sdf>

@@ -52,8 +52,8 @@
   </gazebo>
 
   <gazebo reference="back_wheel">
-    <mu1>0.9</mu1>
-    <mu2>0.9</mu2>
+    <mu>1.9</mu>
+    <mu2>1.9</mu2>
     <bounce>
       <restitution_coefficient>0</restitution_coefficient>
       <threshold>0</threshold>
@@ -151,7 +151,7 @@
         <alwaysOn>true</alwaysOn>
         <updateRate>0.0</updateRate>
         <cameraName>puffin_twister/camera</cameraName>
-        <imageTopicName>image_raw</imageTopicName>
+        <imageTopicName>image</imageTopicName>
         <cameraInfoTopicName>camera_info</cameraInfoTopicName>
         <frameName>camera_link_optical</frameName>
         <!-- setting hackBaseline to anything but 0.0 will cause a misalignment

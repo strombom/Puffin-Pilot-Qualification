@@ -17,6 +17,15 @@
   <!-- Import Rviz colors -->
   <xacro:include filename="$(find pt_description)/urdf/materials.xacro" />
 
+  <link name="puffin">
+  </link>
+
+  <joint name="chassis_fix" type="fixed">
+    <parent link="puffin"/>
+    <child link="chassis"/>
+    <origin xyz="0.45 0.30 0" rpy="0 0 0"/>
+  </joint>
+
   <link name="chassis">
     <collision>
       <origin xyz="0.0 -0.015 0.0615" rpy="0 0 0"/>
@@ -28,7 +37,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_base.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_base.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -47,7 +56,6 @@
     <child link="camera_holder"/>
     <origin xyz="0.0 0.0458 0.0488" rpy="0 0 0"/>
   </joint>
-
   <link name="camera_holder">
     <collision>
       <origin xyz="0.0 -0.0055 0.033" rpy="0 0 0"/>
@@ -59,7 +67,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_camera_holder.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_camera_holder.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -90,7 +98,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_motor.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_motor.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -121,7 +129,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_motor.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_motor.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -152,7 +160,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_battery_holder.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_battery_holder.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -183,7 +191,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_battery_holder.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_battery_holder.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -216,7 +224,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_back_wheel_holder.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_back_wheel_holder.stl"/>
       </geometry>
       <material name="yellow"/>
     </visual>
@@ -249,7 +257,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_back_wheel.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_back_wheel.stl"/>
       </geometry>
       <material name="yellow"/>
     </visual>
@@ -267,7 +275,7 @@
     <parent link="chassis"/>
     <child link="right_wheel_rim"/>
     <origin xyz="0.0414 0 0.03255" rpy="0 0 0"/>
-    <axis xyz="1 0 0"/>
+    <axis xyz="-1 0 0"/>
     <dynamics damping="0.01" friction="0.001"/>
   </joint>
 
@@ -282,7 +290,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_rim.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_rim.stl"/>
       </geometry>
       <material name="yellow"/>
     </visual>
@@ -312,7 +320,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_tire.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_tire.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
@@ -338,7 +346,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_rim.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_rim.stl"/>
       </geometry>
       <material name="yellow"/>
     </visual>
@@ -368,7 +376,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://pt_description/meshes/twister_tire.dae"/>
+        <mesh filename="package://pt_description/meshes/twister_tire.stl"/>
       </geometry>
       <material name="black"/>
     </visual>

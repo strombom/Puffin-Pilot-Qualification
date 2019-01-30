@@ -1,5 +1,0 @@
-
-Make links in the .gazebo models directory.
-
-ln -s /home/[user_name]/development/puffin-pilot/twister/ros/resources/models/[model_name]/ [model_name]
-
