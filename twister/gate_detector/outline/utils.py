@@ -10,32 +10,31 @@ def load_data(data_path):
     def read_images(path):
         inputs, outputs = [], []
 
-        annotations = json.load(open(os.path.join(data_path, path, 'via_region_data.json')))
-        annotations = annotations['_via_img_metadata']
-        annotations = list(annotations.values())
+        for filename in os.listdir(path):
+            if '_mask' in filename:
+                continue
 
-        for annotation in annotations:
-            image_filename = annotation['filename']
+            image_filename = os.path.join(path, filename)
             outline_filename = image_filename.replace('.png', '_mask.png')
 
-            image = cv2.imread(os.path.join(data_path, path, image_filename))
-            outline = cv2.imread(os.path.join(data_path, path, outline_filename))
+            image = cv2.imread(image_filename)
+            outline = cv2.imread(outline_filename)
 
-            image = image / 256
-            outline = outline / 256
+            image = image / 256.
+            outline = outline / 256.
             outline = outline[:,:,0]
             outline = outline.reshape((outline.shape[0], outline.shape[1], 1))
 
             inputs.append(image)
             outputs.append(outline)
-
+      
         inputs = np.array(inputs)
         outputs = np.array(outputs)
 
         return inputs, outputs
 
-    training_data = read_images('train')
-    validation_data = read_images('val')
+    training_data = read_images(os.path.join('data', 'train'))
+    validation_data = read_images(os.path.join('data', 'val'))
 
     return training_data, validation_data
 

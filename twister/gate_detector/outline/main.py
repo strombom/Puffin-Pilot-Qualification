@@ -45,7 +45,7 @@ def gatenet():
             x = _bottleneck(x, filters, kernel, t, 1, True)
         return x
 
-    input_shape = (288, 360, 3)
+    input_shape = (240, 320, 3)
 
     n_filters = 16
 
@@ -178,7 +178,7 @@ except:
 
 data_gen_args = dict(#featurewise_center=True,
                      #featurewise_std_normalization=True,
-                     rotation_range=30,
+                     #rotation_range=30,
                      width_shift_range=.15,
                      height_shift_range=.15,
                      #width_shift_range=0.1,
