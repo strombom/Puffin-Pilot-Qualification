@@ -470,6 +470,8 @@ def merge_line_pairs(arcs, line_pairs, merging_degrees):
             arc_j = arcs[arc_idx_line_j]
 
             if test_line_merging_condition(arc_j[0], line_i):
+                print("Error ska det vara line_i pa nasta rad!?")
+                quit()
                 if test_fitting_condition([arc_j], [line_j])[0]:
                     arc_j.insert(0, line_i)
 

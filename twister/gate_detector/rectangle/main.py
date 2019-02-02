@@ -9,14 +9,14 @@ from scipy import stats
 from numba import jit, njit, jitclass, int32, float32, float64
 
 
-ellipse_fitting_threshold = 3.0
 
 
 def read_image(filename):
     image = skimage.io.imread(filename)
 
+    # Skeletonize image
     #thresh = skimage.filters.threshold_minimum(image, nbins=256, max_iter=10000)
-    thresh = 100
+    thresh = 110
     image = image > thresh
     image = skimage.morphology.skeletonize(image)
 
@@ -141,11 +141,15 @@ def magn(v):
     return (v[0] * v[0] + v[1] * v[1]) ** 0.5
 
 @jit(nopython=True)
+def line_length(line_segment):
+    return magn(line_segment[0] - line_segment[1])
+
+@jit(nopython=True)
 def split_strips(strips):
-    line_segments = np.zeros((1000,2,2), dtype=np.int32)
+    line_segments = np.zeros((1000,2,2)) #, dtype=np.int32)
 
     segment_count = 0
-    minimum_segment_length = 10
+    minimum_segment_length = 7
     maximum_point_to_line_distance = 1.3
 
     for strip in strips:
@@ -186,7 +190,7 @@ def split_strips(strips):
             if distance > maximum_point_to_line_distance:
                 # Store line segment
                 line_segments[segment_count][0] = strip[line_start_idx]
-                line_segments[segment_count][1] = strip[idx]
+                line_segments[segment_count][1] = strip[idx - 1]
                 segment_count += 1
 
                 # Initialize next line segment
@@ -230,33 +234,14 @@ def vector_intersection_angle(v1, v2):
     return math.atan2(det, dot)
 
 @jit(nopython=True)
-def line_merging_degree(d, theta, l1, l2):
-    return 1 / (d*2 + 1) * math.cos(math.pi - theta) * min(l1, l2) / max(l1, l2)
-
-@jit(nopython=True)
-def line_length(line):
-    return magn(line[1] - line[0])
-
-@jit(nopython=True)
-def make_line_pair_clockwise(line_pair):
-    v1 = line_pair[0][1] - line_pair[0][0]
-    v2 = line_pair[1][1] - line_pair[1][0]
-    theta1 = math.atan2(v1[1], v1[0])
-    theta2 = math.atan2(v2[1], v2[0])
-    delta_theta = theta2 - theta1
-    if delta_theta < 0:
-        delta_theta += math.pi * 2
-    if delta_theta < math.pi:
-        # Swap line positions
-        line_pair[:] = line_pair[::-1]
-    # Change i direction
-    line_pair[0][:] = line_pair[0][::-1]
+def line_merging_degree(d, theta):
+    return 1.0 / (d*0.2 + 1) * math.cos((math.pi - theta)**0.2)
 
 @jit(nopython=True)
 def form_line_pairs(line_segments):
-    d_max = 5.0
-    theta_min = 145.0 / 180 * math.pi
-    theta_max = 179.9 / 180 * math.pi
+    d_max = 3.0
+    theta_min = 160.0 / 180 * math.pi
+    theta_max = 10.0 / 180 * math.pi
     line_pairs = np.zeros((1000, 2, 2, 2))
     merging_degrees = np.zeros((1000,))
     pair_count = 0
@@ -268,24 +253,12 @@ def form_line_pairs(line_segments):
             line_pairs[pair_count][1] = line_segments[j]
             d = min_distance(line_pairs[pair_count][0], line_pairs[pair_count][1])
             theta = abs(line_intersection_angle(line_pairs[pair_count][0], line_pairs[pair_count][1]))
-            if d < d_max and theta > theta_min: # and theta < theta_max:
-                make_line_pair_clockwise(line_pairs[pair_count])
-                li, lj = line_length(line_pairs[pair_count][0]), line_length(line_pairs[pair_count][1])
-                merging_degrees[pair_count] = line_merging_degree(d, theta, li, lj)
+            if d < d_max and theta > theta_min:
+                line_pairs[pair_count][0][:] = line_pairs[pair_count][0][::-1]
+                merging_degrees[pair_count] = line_merging_degree(d, theta)
                 pair_count += 1
                 if pair_count == merging_degrees.shape[0]:
                     return line_pairs, merging_degrees
-
-                if theta > 176 / 180 * math.pi:
-                    # Nearly 180 degrees, save rotated copy also
-                    line_pairs[pair_count][0][0] = line_pairs[pair_count-1][1][1]
-                    line_pairs[pair_count][0][1] = line_pairs[pair_count-1][0][1]
-                    line_pairs[pair_count][1][0] = line_pairs[pair_count-1][1][0]
-                    line_pairs[pair_count][1][1] = line_pairs[pair_count-1][0][0]
-                    merging_degrees[pair_count] = merging_degrees[pair_count-1]
-                    pair_count += 1
-                    if pair_count == merging_degrees.shape[0]:
-                        return line_pairs, merging_degrees
 
     return line_pairs[0:pair_count], merging_degrees[0:pair_count]
 
@@ -306,104 +279,18 @@ def line_intersection(line1, line2):
     return np.array((x, y))
 
 @jit(nopython=True)
-def test_line_merging_condition(arc_line, line):
-    aj, bj, ak, bk = line[0], line[1], arc_line[1], arc_line[0]
-    theta = abs(line_intersection_angle((aj, bj), (ak, bk)))
-    if theta < math.pi / 2:
-        # Angle condition failed, check length condition
-        m = line_intersection((aj, bj), (ak, bk))
-        length = magn(aj - bj) + magn(ak - bk)
-        length /= magn(m - bj) + magn(m - bk)
-        if length > 0.7:
-            # Length condition also failed
-            return False
-    return True
-
-@jit(nopython=True)
 def rotate_vector_2d(v, theta):
     c, s = np.cos(theta), np.sin(theta)
     r = np.array(((c, -s), (s, c)))
     return np.dot(r, v)
 
-ellipse_spec = [
-    ('center', float64[:]),
-    ('axes', float64[:]),
-    ('angle', float64),
-    ('area', float64),
-    ('perimeter', float64)
-]
-
-@jitclass(ellipse_spec)
-class Ellipse(object):
-    def __init__(self, ellipse):
-        self.center = np.array((ellipse[0][0], ellipse[0][1]), dtype=np.float64)
-        self.axes = np.array((ellipse[1][0], ellipse[1][1]), dtype=np.float64) / 2
-        self.angle = np.radians(ellipse[2])
-        self.area = self._area()
-        self.perimeter = self._perimeter()
-
-    def is_inside(self, point, scale):
-        p1 = (point - self.center) / scale
-        p2 = rotate_vector_2d(p1, -self.angle)
-        if p2[0]**2 / self.axes[0]**2 + p2[1]**2 / self.axes[1]**2 <= 1:
-            return True
-        else:
-            return False
-
-    def _area(self):
-        return math.pi * self.axes[0] * self.axes[1]
-
-    def _perimeter(self):
-        a, b = self.axes
-        return math.pi * (3 * (a + b) - math.sqrt((3 * a + b) * (a + 3 * b)))
-
-    def point_distance(self, p):
-        # https://github.com/0xfaded/ellipse_demo/issues/1
-        p = np.abs(rotate_vector_2d(p - self.center, -self.angle))
-        tx, ty = 0.707106, 0.707106
-        a, b = self.axes
-        for itn in range(0, 2): # Originally 3, but 2 might be enough
-            x, y = a * tx, b * ty
-            ex = (a * a - b * b) * tx ** 3 / a
-            ey = (b * b - a * a) * ty ** 3 / b
-            rx, ry = x - ex, y - ey
-            qx, qy = p[0] - ex, p[1] - ey
-            r, q = np.hypot(ry, rx), np.hypot(qy, qx)
-            tx = min(1, max(0, (qx * r / q + ex) / a))
-            ty = min(1, max(0, (qy * r / q + ey) / b))
-            t = np.hypot(tx, ty)
-            tx, ty = tx / t, ty / t
-        p2 = np.array(((a * tx), (b * ty)))
-        return magn(p - p2)
-
-    def fitting_score(self, points):
-        score = 0
-        for idx in range(points.shape[0]):
-            d = self.point_distance(points[idx])
-            if d <  ellipse_fitting_threshold:
-                score += 1
-        return score / points.shape[0]
-
-    def to_tuple(self):
-        return ((self.center[0], self.center[1]), (self.axes[0]*2, self.axes[1]*2), np.degrees(self.angle))
-
-    def line_intersection(slope, inception):
-        print("line_intersection")
-        print("slope, inception", slope, inception)
-
-        quit()
-
-        #p0, p1 = ellipse.line_intersection(goal_end)
-
-
-def test_fitting_condition(arcs, lines = None):
-    arc_points = []
-    for arc in arcs:
-        for line in arc:
-            arc_points.append(line[0])
-            arc_points.append(line[1])
-    arc_points = np.unique(arc_points, axis=0).astype(np.float64)
-
+def test_fitting_condition(start_point, end_point, line_trains, lines = None, debug = False):
+    lt_points = []
+    for line_train in line_trains:
+        for line in line_train:
+            lt_points.append(line[0])
+            lt_points.append(line[1])
+    lt_points = np.unique(lt_points, axis=0).astype(np.float64)
     line_points = []
     if lines is not None:
         for line in lines:
@@ -411,72 +298,89 @@ def test_fitting_condition(arcs, lines = None):
             line_points.append(line[1])
     if len(line_points) > 0:
         line_points = np.unique(line_points, axis=0)
-        points = np.vstack((arc_points, line_points))
+        points = np.vstack((lt_points, line_points))
         points = np.unique(points, axis=0)
     else:
-        points = arc_points
+        points = lt_points
 
-    if len(points) < 6:
-        return True, None
+    if len(points) < 3:
+        return False
 
-    points = np.array(points).astype(dtype=np.int32)
-    ellipse = Ellipse(cv2.fitEllipseDirect(points))
+    line = (start_point, end_point)
+    x1, y1 = line[0]
+    x2, y2 = line[1]
+    div = np.sqrt(np.square(x2-x1) + np.square(y2-y1))
+    for point in points:
+        distance = abs((x2-x1)*(y1-point[1]) - (x1-point[0])*(y2-y1)) / div
+        if distance > 10.0:
+            return False
+    return True
 
-    score_arc = ellipse.fitting_score(arc_points)
-    if len(line_points) > 0:
-        score_line = ellipse.fitting_score(line_points)
-    else:
-        score_line = 1.0
-
-    threshold_fit = 0.8
-
-    if score_arc < threshold_fit or score_line < threshold_fit:
-        return False, ellipse
-
-    return True, ellipse
-
-def merge_line_pairs(arcs, line_pairs, merging_degrees):
-
-    for line_pair, merging_degree in zip(line_pairs, merging_degrees):
+def merge_line_pairs(line_trains, line_pairs):
+    for line_pair in line_pairs:
         line_i, line_j = line_pair
 
-        # Check if lines are in any arc
-        arc_idx_line_i, arc_idx_line_j = -1, -1
-        for arc_idx, arc in enumerate(arcs):
-            if np.array_equal(arc[0], line_j):
-                arc_idx_line_j = arc_idx
-            if np.array_equal(arc[-1], line_i):
-                arc_idx_line_i = arc_idx
+        # Check if lines are in any line_train
+        lt_idx_line_i, lt_idx_line_j = -1, -1
+        for lt_idx, line_train in enumerate(line_trains):
+            if np.array_equal(line_train[0], line_j):
+                lt_idx_line_j = lt_idx
+            elif np.array_equal(line_train[-1], line_i):
+                lt_idx_line_i = lt_idx
+            elif np.array_equal(line_train[0], line_j[::-1]):
+                print("1")
+                quit()
+            elif np.array_equal(line_train[-1], line_i[::-1]):
+                print("2")
+                quit()
+            elif np.array_equal(line_train[0], line_i):
+                print("3")
+                quit()
+            elif np.array_equal(line_trains[-1], line_j):
+                print("4")
+                quit()
+            elif np.array_equal(line_train[0], line_i[::-1]):
+                print("5")
+                quit()
+            elif np.array_equal(line_trains[-1], line_j[::-1]):
+                print("6")
+                quit()
 
-        if arc_idx_line_i >= 0 and arc_idx_line_j >= 0:
-            arc_i = arcs[arc_idx_line_i]
-            arc_j = arcs[arc_idx_line_j]
+        if lt_idx_line_i >= 0 and lt_idx_line_j >= 0:
+            lt_i = line_trains[lt_idx_line_i]
+            lt_j = line_trains[lt_idx_line_j]
+            if test_fitting_condition(start_point = lt_i[0][0],
+                                      end_point = lt_j[-1][1],
+                                      line_trains = [lt_i, lt_j],
+                                      lines = []):
+                line_trains[lt_idx_line_i] = lt_i + lt_j
+                print("long one")
+                print(lt_i + lt_j)
+                quit()
+                del line_trains[lt_idx_line_j]
 
-            if test_line_merging_condition(line_i, line_j):
-                if test_fitting_condition([arc_i, arc_j], [])[0]:
-                    arcs[arc_idx_line_i] = arc_i + arc_j
-                    del arcs[arc_idx_line_j]
+        elif lt_idx_line_i >= 0:
+            # Join line j into line_train
+            lt_i = line_trains[lt_idx_line_i]
+            if test_fitting_condition(start_point = lt_i[0][0],
+                                      end_point = line_j[1],
+                                      line_trains = [lt_i],
+                                      lines = [line_j]):
+                lt_i.append(line_j)
 
-        elif arc_idx_line_i >= 0:
-            # Join line j into arc
-            arc_i = arcs[arc_idx_line_i]
-
-            if test_line_merging_condition(arc_i[-2], line_j):
-                if test_fitting_condition([arc_i], [line_j])[0]:
-                    arc_i.append(line_j)
-
-        elif arc_idx_line_j >= 0:
-            # Join line i into arc
-            arc_j = arcs[arc_idx_line_j]
-
-            if test_line_merging_condition(arc_j[0], line_i):
-                if test_fitting_condition([arc_j], [line_j])[0]:
-                    arc_j.insert(0, line_i)
+        elif lt_idx_line_j >= 0:
+            # Join line i into line_train
+            lt_j = line_trains[lt_idx_line_j]
+            if test_fitting_condition(start_point = lt_j[-1][1],
+                                      end_point = line_i[1],
+                                      line_trains = [lt_j],
+                                      lines = [line_i]):
+                lt_j.insert(0, line_i)
 
         else:
-            # Create new arc
-            arc = [line_i, line_j]
-            arcs.append(arc)
+            # Create new line_train
+            line_train = [line_i, line_j]
+            line_trains.append(line_train)
 
 
 def merge_line_segments(line_segments):
@@ -496,80 +400,145 @@ def merge_line_segments(line_segments):
             merging_degrees_good, merging_degrees_bad = merging_degrees_good[0:idx], merging_degrees_good[idx:]
             break
 
-    arcs = []
-    merge_line_pairs(arcs, line_pairs_good, merging_degrees_good)
-    merge_line_pairs(arcs, line_pairs_bad, merging_degrees_bad)
-    
-    arcs_to_remove = [i for i, val in enumerate(arcs) if len(val) <= 3]
-    for idx in reversed(arcs_to_remove):
-        del arcs[idx]
+    line_trains = []
+    merge_line_pairs(line_trains, line_pairs_good)
+    merge_line_pairs(line_trains, line_pairs_bad)
 
     unused_line_segments = []
     for line_segment in line_segments:
         found = False
-        for arc in arcs:
-            for line in arc:
+        for line_train in line_trains:
+            for line in line_train:
                 if np.array_equal(line_segment, line) or np.array_equal(line_segment, line[::-1]):
                     found = True
                     break
             if found:
                 break
         if not found:
-            unused_line_segments.append(line_segment)
+            if line_length(line_segment) > 12:
+                unused_line_segments.append(line_segment)
 
-    return arcs, unused_line_segments
+    for line_segment in unused_line_segments:
+        line_train.append([line_segment])
 
-def form_arc_pairs(arcs):
-    arc_pairs = []
+    merge i, j from line_trains, not from unused_line_segments:::\/
 
-    # Calculate rotating ranges
-    for arc_idx, arc in enumerate(arcs):
-        v0 = arc[0][1] - arc[0][0]
-        v1 = arc[-1][1] - arc[-1][0]
-        rotating_degree = np.math.atan2(np.linalg.det([v0,v1]),np.dot(v0,v1))
-        rotating_range = np.array((np.math.atan2(-v0[1], v0[0]) + math.pi,
-                                   np.math.atan2(-v1[1], v1[0]) + math.pi))
-        arcs[arc_idx] = (arc, rotating_degree, rotating_range)
+    merging = True
+    while merging:
+        merging = False
+        for uls_idx, line_segment in enumerate(unused_line_segments):
+            line_segment_length = line_length(line_segment)
+            for lt_idx, line_train in enumerate(line_trains):
+                line_p1, line_p2 = line_segment
+                train_p1, train_p2 = line_train[0][0], line_train[-1][1]
+                # Check if line is closest to the start or end of the line train
+                # No need to check both ends of the line segment since we will
+                #  make sure that line and train don't overlap later.
+                train_front = True
+                if magn(train_p1 - line_p1) >= magn(train_p2 - line_p1):
+                    train_front = False
+                if train_front:
+                    if magn(train_p1 - line_p1) < magn(train_p1 - line_p2):
+                        line_segment = line_segment[::-1]
+                else:
+                    if magn(train_p2 - line_p2) < magn(train_p2 - line_p1):
+                        line_segment = line_segment[::-1]
+                candidate_train = np.empty((len(line_train) + 1, 2, 2))
+                if train_front:
+                    candidate_train[0] = line_segment
+                    candidate_train[1:len(line_train) + 1] = line_train
+                else:
+                    candidate_train[0:len(line_train)] = line_train
+                    candidate_train[-1] = line_segment
+
+                # Check length of candidate
+                line_train_length = line_length([line_train[0][0], line_train[-1][1]])
+                length_min = line_segment_length + line_train_length
+                length_max = length_min * 1.2
+                candidate_length = magn(candidate_train[0][0] - candidate_train[-1][1])
+                if candidate_length < length_min or candidate_length > length_max:
+                    continue
+                fc = test_fitting_condition(start_point = candidate_train[0][0],
+                                            end_point = candidate_train[-1][1],
+                                            line_trains = [candidate_train])
+                if fc:
+                    line_trains[lt_idx] = copy.deepcopy(candidate_train)
+                    del unused_line_segments[uls_idx]
+
+                    merging = True
+                    break
+            if merging:
+                break
+
+    # Create all polytrains
+    polytrains = []
+    for line_train in line_trains:
+        polytrain = []
+        for ls in line_train:
+            polytrain.append(ls[0])
+            polytrain.append(ls[1])
+        polytrains.append(np.array(polytrain))
+    for ls in unused_line_segments:
+        polytrains.append(ls)
+
+    return polytrains
+    """
+    import random
+    from seaborn import color_palette
+    palette = color_palette("husl", len(polytrains))
+    image = skimage.io.imread("img_in.png")
+    im = np.zeros((image.shape[0], image.shape[1], 3))
+    def ln(lln, col):
+        rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+        im[rr, cc] = col
+    #ln(line_segment, palette[0])
+    for pidx, polytrain in enumerate(polytrains):
+        cl = palette[pidx]
+        for idx in range(1, len(polytrain)):
+            p0, p1 = polytrain[idx-1], polytrain[idx]
+            ln((p0, p1), cl)
+    skimage.io.imsave("img_merge2.png", (im * 255).astype(np.uint8))
+    quit()
+    """
+
+
+
+def form_poly_pairs(polytrains):
+    polytrain_pairs = []
+
+    # Calculate polytrain lengths
+    #for pt_idx, polytrain in enumerate(polytrains):
+    #    polytrains[pt_idx] = (polytrain, line_length(polytrain[[0,-1]]))
 
     # Evaluate arc pairs
-    for arc_idx_i in range(len(arcs)):
-        for arc_idx_j in range(arc_idx_i + 1, len(arcs)):
-            arc_i, degree_i, range_a = arcs[arc_idx_i]
-            arc_j, degree_j, range_b = arcs[arc_idx_j]
+    for pt_idx_i in range(len(polytrains)):
+        for pt_idx_j in range(pt_idx_i + 1, len(polytrains)):
+            pt_i = polytrains[pt_idx_i]
+            pt_j = polytrains[pt_idx_j]
 
-            # Check that the arcs' angles do not overlap
-            start_angle = min(range_a[1], range_b[1])            
-            range_a, range_b = range_a - start_angle, range_b - start_angle
+            line_i, line_j = pt_i[[0,-1]], pt_j[[0,-1]]
+            d = [magn(line_i[0] - line_j[0]),
+                 magn(line_i[0] - line_j[1]),
+                 magn(line_i[1] - line_j[0]),
+                 magn(line_i[1] - line_j[1])]
+            i = np.argmin(d)
+            distance = d[i]
 
-            if range_a[1] > range_b[1]:
-                range_a, range_b = range_b, range_a
-
-            # A small overlap is permitted
-            max_coinciding_degree = min(degree_i, degree_j) / 10
-            limit_0 = math.pi * 2 + max_coinciding_degree
-            limit_1 = range_a[0] - max_coinciding_degree
-
-            if range_b[0] > limit_0 or range_b[1] < limit_1:
-                # Overlapping too much
+            # Check that the corners are close enough
+            if distance > 15:
+                continue
+            if i == 1 or i == 3:
+                line_j[:] = line_j[::-1]
+            if i == 2 or i == 3:
+                line_i[:] = line_i[::-1]
+            angle = abs(line_intersection_angle(line_i, line_j))
+            if angle < 1.05 or angle > 2.1:
                 continue
 
-            # Check rotating direction
-            line_1 = np.array((arc_i[-1][1], arc_j[0][0]))
-            line_2 = np.array((arc_j[-1][1], arc_i[0][0]))
-            a = line_intersection_angle(arc_i[-1], line_1)
-            b = line_intersection_angle(line_1, arc_j[0])
-            c = line_intersection_angle(arc_j[-1], line_2)
-            d = line_intersection_angle(line_2, arc_i[0])
-            if a < 0 or b < 0 or c < 0 or d < 0:
-                # At least one intersection has the wrong direction
-                continue
-            
-            # Check fitting condition
-            fitting_contition, ellipse = test_fitting_condition([arc_i, arc_j], None)
-            if fitting_contition:
-                arc_pairs.append(((arc_idx_i, arc_idx_j), ellipse))
+            merging_degree = 1 / (distance + 1)
+            polytrain_pairs.append(((pt_idx_i, pt_idx_j), merging_degree))
 
-    return arc_pairs
+    return polytrain_pairs
 
 @jit(nopython=True)
 def arc_length(arc):
@@ -588,8 +557,32 @@ def arc_merging_degree(arc_i, arc_j, degree_i, degree_j, ellipse):
     return merging_degree
 
 
-def merge_arcs(arcs, unused_line_segments):
-    arc_pairs = form_arc_pairs(arcs)
+def merge_polytrains(polytrains):
+    poly_pairs = form_poly_pairs(polytrains)
+
+    import random
+    from seaborn import color_palette
+    palette = color_palette("husl", len(poly_pairs))
+    image = skimage.io.imread("img_in.png")
+    im = np.zeros((image.shape[0], image.shape[1], 3))
+    def ln(lln, col):
+        rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
+        im[rr, cc] = col
+    #ln(line_segment, palette[0])
+    for pidx, poly_pair in enumerate(poly_pairs):
+
+        for ptr_idx in poly_pair[0]:
+            polytrain = polytrains[ptr_idx]
+            cl = palette[pidx]
+            for idx in range(1, len(polytrain)):
+                p0, p1 = polytrain[idx-1], polytrain[idx]
+                ln((p0, p1), cl)
+    skimage.io.imsave("img_merge3.png", (im * 255).astype(np.uint8))
+    quit()
+
+
+    print(poly_pairs)
+    quit()
 
     for arc_pair_idx, (arc_pair, ellipse) in enumerate(arc_pairs):
         arc_i, degree_i, range_a = arcs[arc_pair[0]]
@@ -946,6 +939,7 @@ def merge_ellipses(ellipses, line_segments):
 if __name__ == '__main__':
     import pickle
 
+    
     if True:
         image = read_image("img_in.png")
         strips = extract_strips(image)
@@ -957,57 +951,25 @@ if __name__ == '__main__':
         with open('line_segments.dat', 'rb') as f:
             line_segments = pickle.load(f)
 
-
-    import random
-    from seaborn import color_palette
-    palette = color_palette("husl", len(line_segments))
-    image = skimage.io.imread("img_in.png")
-    im = np.zeros((image.shape[0], image.shape[1], 3))
-
-    for idx, line in enumerate(line_segments):
-        cl = palette[idx]
-
-        def ln(lln, col):
-            rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-            im[rr, cc] = col
-
-        ln(line, cl)
-
-    skimage.io.imsave("img_line_segments.png", (im * 255).astype(np.uint8))
+    print("1")
+    polytrains = merge_line_segments(line_segments)
+    print("2")
 
 
-    arcs, unused_line_segments = merge_line_segments(line_segments)
+    #with open('polytrains.dat', 'wb') as f:
+    #    pickle.dump(polytrains, f, pickle.HIGHEST_PROTOCOL)
+    #quit()
+    
 
+    with open('polytrains.dat', 'rb') as f:
+        polytrains = pickle.load(f)
 
-    import random
-    from seaborn import color_palette
-    palette = color_palette("husl", len(unused_line_segments))
-    image = skimage.io.imread("img_in.png")
-    im = np.zeros((image.shape[0], image.shape[1], 3))
+    goals = merge_polytrains(polytrains)
 
-    for idx, line in enumerate(unused_line_segments):
-        cl = palette[idx]
-
-        def ln(lln, col):
-            rr, cc = skimage.draw.line(int(lln[0][1]), int(lln[0][0]), int(lln[1][1]), int(lln[1][0]))
-            im[rr, cc] = col
-
-        ln(line, cl)
-
-    skimage.io.imsave("img_unused_line_segments.png", (im * 255).astype(np.uint8))
-
+    print(goals)
     quit()
 
-    with open('rectangles.dat', 'wb') as f:
-        pickle.dump((arcs, unused_line_segments), f, pickle.HIGHEST_PROTOCOL)
-    quit()
-
-    with open('rectangles.dat', 'rb') as f:
-        arcs, unused_line_segments = pickle.load(f)
-
-    ellipses = merge_arcs(arcs, unused_line_segments)
-
-    goals = merge_ellipses(ellipses, unused_line_segments)
+    #goals = merge_ellipses(ellipses, unused_line_segments)
 
 
     """
