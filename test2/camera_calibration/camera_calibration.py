@@ -3,6 +3,7 @@ import os
 import cv2
 import json
 import math
+import pickle
 import numpy as np
 
 class_title_names = {'Outer': 'outer_perimeter',
@@ -64,6 +65,8 @@ def find_center_points(outer_corners, inner_corners, center_points):
     return ordered_points
 
 def create_calibration_points(outer_corners, inner_corners, center_points, goal_size, goal_post_width):
+    bottom_right_corner_z = -0.020 # Special case for lower right corner which seems to stick out a bit
+
     objpoints = [] # 3d point in real world space
     imgpoints = [] # 2d points in image plane.
 
@@ -77,8 +80,8 @@ def create_calibration_points(outer_corners, inner_corners, center_points, goal_
         outer_x = col * goal_size / 2
         outer_y = row * goal_size / 2
         outer_z = 0.0
-        if idx == 2 or idx == 3:
-            outer_z = -0.005
+        if idx == 2:
+            outer_z = bottom_right_corner_z
         objpoints.append((outer_x, outer_y, outer_z))
         imgpoints.append(outer_corners[idx])
 
@@ -94,13 +97,15 @@ def create_calibration_points(outer_corners, inner_corners, center_points, goal_
         # Add outer center point if exists
         if np.all(center_points[idx * 2]):
             center_x, center_y = outer_x * col, outer_y * row
-            objpoints.append((center_x, center_y, 0))
+            center_z = 0.0
+            objpoints.append((center_x, center_y, center_z))
             imgpoints.append(center_points[idx * 2])
 
         # Add inner center point if exists
         if np.all(center_points[idx * 2 + 1]):
             center_x, center_y = inner_x * col, inner_y * row
-            objpoints.append((center_x, center_y, 0))
+            center_z = 0.0
+            objpoints.append((center_x, center_y, center_z))
             imgpoints.append(center_points[idx * 2 + 1])
 
     objpoints = np.array(objpoints, dtype=np.float32)
@@ -112,19 +117,15 @@ def get_image_size(filename):
     return img.shape
 
 
-
-#for goal_post_width in np.linspace(0.4,0.5,88):
-
 calibration_points = {'obj': [], 'img': []}
-
 for annotation in annotations:
-    print("Filename", annotation['filename'])
+    #print("Filename", annotation['filename'])
     outer_corners = find_rectangle_corners(annotation['outer_perimeter'])
     inner_corners = find_rectangle_corners(annotation['inner_perimeter'])
     center_points = find_center_points(outer_corners, inner_corners, annotation['center_points'])
 
-    goal_size = 0.3048 * 11 #3.3528
-    goal_post_width = 0.4529
+    goal_size = 11 * 0.3048 # Assumed, 11 ft, 3.344 m
+    goal_post_width = 0.4525 # Optimized
 
     objpoints, imgpoints = create_calibration_points(outer_corners, inner_corners, center_points, goal_size, goal_post_width)
     calibration_points['obj'].append(objpoints)
@@ -137,29 +138,21 @@ dist_coefs = np.array([[-0.15204789,  0.14581479, -0.00107285, -0.00019929,  0.0
 
 image_size = (864, 1296)
 rms, camera_matrix, dist_coefs, rvecs, tvecs = cv2.calibrateCamera(calibration_points['obj'], calibration_points['img'], image_size, camera_matrix, dist_coefs, None, None, flags = cv2.CALIB_USE_INTRINSIC_GUESS)
+print("rms", goal_post_width, rms)
+
+quit()
 
 camera_calibration = {'rms': rms,
-                      'camera_matrix': camera_matrix.tolist(),
-                      'dist_coefs': dist_coefs.tolist(),
-                      'rvecs': np.array(rvecs).tolist(),
-                      'tvecs': np.array(tvecs).tolist()}
-print(camera_calibration)
+                      'camera_matrix': camera_matrix,
+                      'dist_coefs': dist_coefs,
+                      'rvecs': rvecs,
+                      'tvecs': tvecs}
 
-with open('camera_calibration.json', 'w') as calibration_file:
-    json.dump(camera_calibration, calibration_file)
-
-#for annotation in annotations:
-#filename = annotation['filename']
-calibration_path = '/home/jst/development/data-puffin-pilot/Data_Training'
-
-filename = "IMG_0047.json"
-img = cv2.imread(os.path.join(calibration_path, filename.replace('.json', '.JPG')), 0)
-dst = cv2.undistort(img, camera_matrix, dist_coefs)
-cv2.imwrite(filename.replace('.json', 'a.JPG'), dst)
+pickle.dump(camera_calibration, open( "camera_calibration.pickle", "wb" ) )
 
 
-map1, map2 = cv2.initUndistortRectifyMap(camera_matrix, dist_coefs, None, camera_matrix, image_size[::-1], cv2.CV_32FC1)
 
+"""
 
 import time
 print("undistort")
@@ -173,34 +166,6 @@ print(totaltime / loops)
 quit()
 
 
-cv2.imwrite(filename.replace('.json', 'b.JPG'), dst)
-
-quit()
-
-
-
-
-print("rms", rms, goal_post_width)
-
-print("camera_matrix", camera_matrix)
-print("dist_coefs", dist_coefs)
-#print("rvecs", rvecs)
-#print("tvecs", tvecs)
-
-for tvec in tvecs:
-    print(tvec[0], 0.3048*11/2+tvec[1], tvec[2])
-
-print("end")
-quit()
-
-quit()
-
-print(calibration_points['obj'])
-
-
-
-
-"""
 import random
 import skimage
 from seaborn import color_palette
