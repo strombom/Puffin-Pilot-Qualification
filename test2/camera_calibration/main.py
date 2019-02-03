@@ -1,13 +1,15 @@
 
 import os
+import cv2
 import json
 import math
 import numpy as np
 
-
 class_title_names = {'Outer': 'outer_perimeter',
                      'Inner': 'inner_perimeter',
                      'center points': 'center_points'}
+calibration_path = '/home/jst/development/data-puffin-pilot/CameraCalibration'
+
 
 annotations = []
 annotation_path = os.path.join('calibration_data', 'ds', 'ann')
@@ -26,7 +28,7 @@ for filename in os.listdir(annotation_path):
             annotation[key] = np.array(annotation[key])
         annotation['filename'] = filename
         annotations.append(annotation)
-    #break
+
 
 def vector_intersection_angle(v1, v2):
     dot = v1[0] * v2[0] + v1[1] * v2[1]
@@ -60,19 +62,103 @@ def find_center_points(outer_corners, inner_corners, center_points):
         closest_idx = np.argmin(distances)
         ordered_points[closest_idx] = center_point
     return ordered_points
-    
+
+def create_calibration_points(outer_corners, inner_corners, center_points, goal_size, goal_post_width):
+    objpoints = [] # 3d point in real world space
+    imgpoints = [] # 2d points in image plane.
+
+    # Corners
+    for idx in range(4):
+        # Corner position
+        row = (idx // 2) * 2 - 1
+        col = ((idx + idx // 2) % 2) * 2 - 1
+
+        # Add outer corner
+        outer_x = col * goal_size / 2
+        outer_y = row * goal_size / 2
+        objpoints.append((outer_x, outer_y, 0))
+        imgpoints.append(outer_corners[idx])
+
+        # Add inner corner
+        inner_x = outer_x - col * goal_post_width
+        inner_y = outer_y - row * goal_post_width
+        objpoints.append((inner_x, inner_y, 0))
+        imgpoints.append(inner_corners[idx])
+
+        # Center point position mask
+        row, col = 1 - idx % 2, idx % 2
+
+        # Add outer center point if exists
+        if np.all(center_points[idx * 2]):
+            center_x, center_y = outer_x * col, outer_y * row
+            objpoints.append((center_x, center_y, 0))
+            imgpoints.append(center_points[idx * 2])
+
+        # Add inner center point if exists
+        if np.all(center_points[idx * 2 + 1]):
+            center_x, center_y = inner_x * col, inner_y * row
+            objpoints.append((center_x, center_y, 0))
+            imgpoints.append(center_points[idx * 2 + 1])
+
+    objpoints = np.array(objpoints, dtype=np.float32)
+    imgpoints = np.array(imgpoints, dtype=np.float32)
+    return objpoints, imgpoints
+
+def get_image_size(filename):
+    img = cv2.imread(filename, 0)
+    return img.shape
+
+
+
+#for goal_post_width in np.linspace(0.4,0.5,88):
+
+calibration_points = {'obj': [], 'img': []}
+
 for annotation in annotations:
     print("Filename", annotation['filename'])
     outer_corners = find_rectangle_corners(annotation['outer_perimeter'])
     inner_corners = find_rectangle_corners(annotation['inner_perimeter'])
     center_points = find_center_points(outer_corners, inner_corners, annotation['center_points'])
 
+    goal_size = 0.3048 * 11 #3.3528
+    goal_post_width = 0.4529
+
+    objpoints, imgpoints = create_calibration_points(outer_corners, inner_corners, center_points, goal_size, goal_post_width)
+    calibration_points['obj'].append(objpoints)
+    calibration_points['img'].append(imgpoints)
+
+image_size = (864, 1296)
+rms, camera_matrix, dist_coefs, rvecs, tvecs = cv2.calibrateCamera(calibration_points['obj'], calibration_points['img'], image_size, None, None)
+
+
+#for annotation in annotations:
+#filename = annotation['filename']
+calibration_path = '/home/jst/development/data-puffin-pilot/Difficult'
+
+filename = "IMG_0238.json"
+img = cv2.imread(os.path.join(calibration_path, filename.replace('.json', '.JPG')), 0)
+dst = cv2.undistort(img, camera_matrix, dist_coefs)
+cv2.imwrite(filename.replace('.json', '.JPG'), dst)
 
 
 
+
+print("rms", rms, goal_post_width)
+
+print("camera_matrix", camera_matrix)
+print("dist_coefs", dist_coefs)
+#print("rvecs", rvecs)
+#print("tvecs", tvecs)
+
+for tvec in tvecs:
+    print(tvec[0], 0.3048*11/2+tvec[1], tvec[2])
 
 print("end")
 quit()
+
+quit()
+
+print(calibration_points['obj'])
 
 
 
