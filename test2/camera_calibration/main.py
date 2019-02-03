@@ -8,7 +8,7 @@ import numpy as np
 class_title_names = {'Outer': 'outer_perimeter',
                      'Inner': 'inner_perimeter',
                      'center points': 'center_points'}
-calibration_path = '/home/jst/development/data-puffin-pilot/CameraCalibration'
+calibration_path = '/home/jst/development/data-puffin-pilot/Data_Training'
 
 
 annotations = []
@@ -76,7 +76,10 @@ def create_calibration_points(outer_corners, inner_corners, center_points, goal_
         # Add outer corner
         outer_x = col * goal_size / 2
         outer_y = row * goal_size / 2
-        objpoints.append((outer_x, outer_y, 0))
+        outer_z = 0.0
+        if idx == 2 or idx == 3:
+            outer_z = -0.005
+        objpoints.append((outer_x, outer_y, outer_z))
         imgpoints.append(outer_corners[idx])
 
         # Add inner corner
@@ -127,18 +130,52 @@ for annotation in annotations:
     calibration_points['obj'].append(objpoints)
     calibration_points['img'].append(imgpoints)
 
-image_size = (864, 1296)
-rms, camera_matrix, dist_coefs, rvecs, tvecs = cv2.calibrateCamera(calibration_points['obj'], calibration_points['img'], image_size, None, None)
+camera_matrix = np.array([[1.11615226e+03, 0.00000000e+00, 6.42354107e+02],
+                          [0.00000000e+00, 1.11453403e+03, 4.53277504e+02],
+                          [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+dist_coefs = np.array([[-0.15204789,  0.14581479, -0.00107285, -0.00019929,  0.04981551]])
 
+image_size = (864, 1296)
+rms, camera_matrix, dist_coefs, rvecs, tvecs = cv2.calibrateCamera(calibration_points['obj'], calibration_points['img'], image_size, camera_matrix, dist_coefs, None, None, flags = cv2.CALIB_USE_INTRINSIC_GUESS)
+
+camera_calibration = {'rms': rms,
+                      'camera_matrix': camera_matrix.tolist(),
+                      'dist_coefs': dist_coefs.tolist(),
+                      'rvecs': np.array(rvecs).tolist(),
+                      'tvecs': np.array(tvecs).tolist()}
+print(camera_calibration)
+
+with open('camera_calibration.json', 'w') as calibration_file:
+    json.dump(camera_calibration, calibration_file)
 
 #for annotation in annotations:
 #filename = annotation['filename']
-calibration_path = '/home/jst/development/data-puffin-pilot/Difficult'
+calibration_path = '/home/jst/development/data-puffin-pilot/Data_Training'
 
-filename = "IMG_0238.json"
+filename = "IMG_0047.json"
 img = cv2.imread(os.path.join(calibration_path, filename.replace('.json', '.JPG')), 0)
 dst = cv2.undistort(img, camera_matrix, dist_coefs)
-cv2.imwrite(filename.replace('.json', '.JPG'), dst)
+cv2.imwrite(filename.replace('.json', 'a.JPG'), dst)
+
+
+map1, map2 = cv2.initUndistortRectifyMap(camera_matrix, dist_coefs, None, camera_matrix, image_size[::-1], cv2.CV_32FC1)
+
+
+import time
+print("undistort")
+loops = 100
+totaltime = 0
+for i in range(loops):
+    ts = time.time()
+    dst = cv2.remap(img, map1, map2, cv2.INTER_CUBIC)
+    totaltime += time.time() - ts
+print(totaltime / loops)
+quit()
+
+
+cv2.imwrite(filename.replace('.json', 'b.JPG'), dst)
+
+quit()
 
 
 
