@@ -29,11 +29,13 @@ from keras.layers import Activation, BatchNormalization, Dropout, ReLU
 from keras.layers import UpSampling2D, Reshape, MaxPooling2D
 from keras.layers import add, concatenate
 from keras.optimizers import Adam, SGD
+from keras.utils import multi_gpu_model
 
 
 def gatenet():
-    input_shape = (864, 1296, 3)
-    n_filters = [12, 8, 6, 4, 2]
+    input_shape = (864, 1296, 1)
+    #n_filters = [8, 8, 2, 2, 8]
+    n_filters = [8, 4, 2, 2, 2]
 
     #K.set_floatx('float32')
     #K.set_epsilon(1e-4)
@@ -116,6 +118,7 @@ def gatenet():
     conv10 = Conv2D(1, 1, activation = 'sigmoid')(conv9)
 
     model = Model(inputs = inputs, outputs = conv10)
+    #model = multi_gpu_model(model, gpus=2)
 
     def soft_dice_loss(y_true, y_pred, epsilon=1e-6):
         ''' 
@@ -179,7 +182,7 @@ def gatenet():
 
     #Adam(1e-4, epsilon = 1e-4)
 
-    model.compile(optimizer = Adam(lr=0.00001), loss = model_loss, metrics = ['accuracy'])
+    model.compile(optimizer = Adam(lr=0.000001), loss = model_loss, metrics = ['accuracy'])
     #model.summary()
 
     #quit()

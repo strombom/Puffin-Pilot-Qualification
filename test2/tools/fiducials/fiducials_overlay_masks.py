@@ -1,5 +1,6 @@
 
 import os
+import sys
 import cv2
 import json
 import math
@@ -9,7 +10,9 @@ import skimage
 import numpy as np
 from sklearn.cluster import KMeans
 from seaborn import color_palette
+from inspect import getsourcefile
 
+sys.path.insert(0, "../../")
 from gate_model import GateModel
 
 
@@ -57,53 +60,109 @@ def fix_fiducials(fiducials, image_name):
     return gate_model.fiducials_from_corners(fiducials)
 
 def make_masks():
-    mins, maxs = [], []
+    tops, bots = [], []
+    lefts, rights = [], []
 
-    mass = []
+    widths = []
+    heights = []
+
+    #poss = []
 
     for annotation in annotations:
         fiducials = annotation['fiducials'].astype(np.int64)
         image_name = annotation['image_name']
 
-        #print(image_name)
         fiducials = fix_fiducials(fiducials, image_name)
         if fiducials is None:
             continue
 
-        filename = os.path.join(original_path, image_name + '.JPG')
-        input_image = cv2.imread(filename, 0)
-        output_image = input_image.copy()
-        height, width = input_image.shape[0], input_image.shape[1]
-
-        img_mask = np.zeros((height, width, 3), dtype=np.uint8)
+        xs, ys = [], []
         for idx, fiducial in enumerate(fiducials):
             x, y = int(round(fiducial[0])), int(round(fiducial[1]))
+            xs.append(x)
+            ys.append(y)
 
-            region = input_image[y-3:y+4,x-3:x+4]
+        tops.append(min(ys))
+        bots.append(max(ys))
+        lefts.append(min(xs))
+        rights.append(max(xs))
 
-            contrast = np.max(region) - np.min(region)
-
-            mins.append(np.min(region))
-            maxs.append(np.max(region))
-
-            if contrast > 18:
-                cv2.circle(img_mask, (int(x), int(y)), 1, (255, 255, 255), thickness = 2)
-                img_mask[y-2:y+3,x-2:x+3] = (255, 255, 255)
-
-                cv2.circle(output_image, (int(x), int(y)), 3, (255), thickness = 2)
-                cv2.circle(output_image, (int(x), int(y)), 2, (0), thickness = 2)
+        widths.append(max(xs)-min(xs))
+        heights.append(max(ys)-min(ys))
 
 
-        img_mask = cv2.GaussianBlur(img_mask,(3,3),0)
+    print(widths)
+    print(heights)
 
-        file_path = os.path.join(masks_path, image_name + '_mask.png')
-        cv2.imwrite(file_path, img_mask)
+    print(min(widths), min(heights))
+    print(max(widths), max(heights))
+    quit()
 
-        #print(input_image[:].shape, img_mask[:,:,0].shape)
-        #img_mask = (img_mask * 0.5).astype(np.uint8)
-        #input_image[:] = cv2.subtract(input_image[:], img_mask[:,:,0])
 
-        cv2.imwrite(os.path.join('fiducial_maketest', image_name + '.jpg'), output_image)
+    filename = os.path.join(original_path, image_name + '.JPG')
+    input_image = cv2.imread(filename, 0)
+    height, width = input_image.shape[0], input_image.shape[1]
+    output_image = np.zeros((height, width, 3), dtype=np.uint8)
+
+    colors = [(75,234,255),
+              (255,75,213),
+              (123,75,255),
+              (75,255,117)]
+
+    for x in lefts:
+        cv2.line(output_image, (int(x), 0), (int(x), height-1), colors[0])
+    for x in rights:
+        cv2.line(output_image, (int(x), 0), (int(x), height-1), colors[1])
+    for y in tops:
+        cv2.line(output_image, (0, int(y)), (width-1, int(y)), colors[2])
+    for y in bots:
+        cv2.line(output_image, (0, int(y)), (width-1, int(y)), colors[3])
+
+    #for pos in poss:
+    #    x, y = pos
+    #    cv2.circle(output_image, (int(x), int(y)), 1, (255), thickness = 1)
+
+    cv2.imwrite('test.png', output_image)
+
+    #print(poss)
+    #print(poss.shape)
+
+    """
+    img_mask = np.zeros((height, width, 3), dtype=np.uint8)
+
+    region = input_image[y-3:y+4,x-3:x+4]
+
+    contrast = np.max(region) - np.min(region)
+
+    mins.append(np.min(region))
+    maxs.append(np.max(region))
+
+    if contrast > 18:
+        cv2.circle(img_mask, (int(x), int(y)), 1, (255, 255, 255), thickness = 2)
+        img_mask[y-2:y+3,x-2:x+3] = (255, 255, 255)
+
+        cv2.circle(output_image, (int(x), int(y)), 3, (255), thickness = 2)
+        cv2.circle(output_image, (int(x), int(y)), 2, (0), thickness = 2)
+    """
+
+    """
+    filename = os.path.join(original_path, image_name + '.JPG')
+    input_image = cv2.imread(filename, 0)
+    height, width = input_image.shape[0], input_image.shape[1]
+
+    output_image = input_image.copy()
+    img_mask = cv2.GaussianBlur(img_mask,(3,3),0)
+
+    file_path = os.path.join(masks_path, image_name + '_mask.png')
+    cv2.imwrite(file_path, img_mask)
+    """
+
+    #print(input_image[:].shape, img_mask[:,:,0].shape)
+    #img_mask = (img_mask * 0.5).astype(np.uint8)
+    #input_image[:] = cv2.subtract(input_image[:], img_mask[:,:,0])
+
+    """
+    cv2.imwrite(os.path.join('fiducial_maketest', image_name + '.jpg'), output_image)
 
 
     mins = np.array(mins)
@@ -124,6 +183,7 @@ def make_masks():
     plt.hist(maxs-mins, bins=100)  # arguments are passed to np.histogram
     plt.title("Histogram with 'auto' bins")
     plt.show()
+    """
 
 make_masks()
 

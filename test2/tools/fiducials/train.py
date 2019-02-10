@@ -29,12 +29,13 @@ def read_images(image_names):
         input_filepath = os.path.join(original_path, image_name + '.JPG')
         output_filepath = os.path.join(masks_path, image_name + '_mask.png')
 
-        input_image = cv2.imread(input_filepath)
-        output_image = cv2.imread(output_filepath)
+        input_image = cv2.imread(input_filepath, 0)
+        output_image = cv2.imread(output_filepath, 0)
 
         #image = image / 256
         #outline = outline / 256
-        output_image = output_image[:,:,0]
+        #output_image = output_image[:,:,0]
+        input_image = input_image.reshape((input_image.shape[0], input_image.shape[1], 1))
         output_image = output_image.reshape((output_image.shape[0], output_image.shape[1], 1))
 
         #input_image = input_image.astype(np.float16)
@@ -61,7 +62,7 @@ def load_data():
 
     training_names, validation_names = [], []
     for image_name in image_names:
-        if random.random() < 0.9:
+        if random.random() < 0.95:
             training_names.append(image_name)
         else:
             validation_names.append(image_name)
@@ -129,7 +130,7 @@ def timeit():
     quit()
 #timeit()
 
-batch_size = 6
+batch_size = 8
 
 
 model.fit(x = training_data[0], 
@@ -143,15 +144,15 @@ model.fit(x = training_data[0],
 
 quit()
 
-data_gen_args = dict(#featurewise_center=True,
-                     #featurewise_std_normalization=True,
-                     ##rotation_range=30,
-                     ##width_shift_range=.15,
-                     ##height_shift_range=.15,
-                     #width_shift_range=0.1,
-                     #height_shift_range=0.1,
-                     #zoom_range=0.2,
-                     #horizontal_flip=True
+
+
+data_gen_args = dict(featurewise_center=True,
+                     featurewise_std_normalization=True,
+                     rotation_range=5,
+                     width_shift_range=.1,
+                     height_shift_range=.1,
+                     zoom_range=0.05,
+                     horizontal_flip=True
                      )
 
 train_image_datagen = ImageDataGenerator(**data_gen_args)
@@ -174,7 +175,9 @@ model.fit_generator(train_generator,
                     steps_per_epoch = 4 * len(training_data[0]) / batch_size,
                     validation_steps = 1,
                     validation_data = validation_data, #val_generator,
-                    callbacks=[memory_callback, progress_image_saver, checkpoint_saver]) #tensorboard, 
+                    callbacks=[memory_callback, progress_image_saver, checkpoint_saver],
+                    workers=1,
+                    use_multiprocessing=False) #tensorboard, 
 
 
 #datagen.flow(x_train, y_train, batch_size=32),
