@@ -4,6 +4,7 @@ import cv2
 from point_extraction import extract_points
 from clusters import make_clusters
 from corners import make_corners
+from frames import match_corners
 
 
 def match_fiducials(img, img_scale = 2):
@@ -29,11 +30,8 @@ def match_fiducials(img, img_scale = 2):
     #  consist of a single point.
     corners = make_corners(clusters)
 
-
-    for corner in corners:
-        print("---")
-        for point in cluster:
-            print(point)
+    # Make frames from matching corners
+    frames = match_corners(corners)
 
     quit()
 

@@ -4,35 +4,37 @@ import numpy as np
 from numba import jit, njit, jitclass
 from numba import int64, float64, boolean
 
+from common import distance_from_point_to_points
+
 
 max_cluster_count = 10
-max_points_per_cluster = 15
+MAX_POINTS = 15
 max_point_dist = 30.0
 
 
 def make_clusters(points):
     clusters = jit_make_clusters(points)
 
-    # Return only the cluster points
-    return [cluster.points for cluster in clusters]
+    # Return the clusters
+    return clusters # [cluster.points for cluster in clusters]
 
 
 cluster_spec = [
-    ('points', float64[:,:]),
-    ('point_count', int64),
-    ('max_y', float64),
-    ('active', boolean),
-    ('box_xmin', float64),
-    ('box_xmax', float64),
-    ('box_ymin', float64),
-    ('box_ymax', float64)
+    ('points',       float64[:,:]),
+    ('points_count', int64),
+    ('max_y',        float64),
+    ('active',       boolean),
+    ('box_xmin',     float64),
+    ('box_xmax',     float64),
+    ('box_ymin',     float64),
+    ('box_ymax',     float64)
 ]
 
 @jitclass(cluster_spec)
 class Cluster(object):
     def __init__(self, point):
-        self.points = np.zeros((max_points_per_cluster, 2), dtype=np.float64)
-        self.point_count = 1
+        self.points = np.zeros((MAX_POINTS, 2), dtype=np.float64)
+        self.points_count = 1
         self.max_y = point[1]
         self.points[0] = point
         self.active = True
@@ -52,19 +54,20 @@ class Cluster(object):
             self.active = False
             return False
 
-        if self._distance_from_point(point) > max_point_dist:
+        distance = distance_from_point_to_points(point, self.points, self.points_count)
+        if distance > max_point_dist:
             # Point is too far away from this cluster.
             return False
 
-        if self.point_count == max_points_per_cluster:
+        if self.points_count == MAX_POINTS:
             # We silently ignore if too many points are appended
             #  to a cluster. The cluster is malformed and we can
             #  only hope that subsequent steps will be able to
             #  fit one or two lines to the cluster points.
             return True
 
-        self.points[self.point_count] = point
-        self.point_count += 1
+        self.points[self.points_count] = point
+        self.points_count += 1
         self.max_y = point[1]
 
         self.box_xmin = min(self.box_xmin, point[0] - max_point_dist * 0.5)
@@ -80,37 +83,31 @@ class Cluster(object):
             return False
         
         merge = False
-        for pidx in range(cluster.point_count):
-            if self._distance_from_point(cluster.points[pidx]) <= max_point_dist:
+        for pidx in range(cluster.points_count):
+            if distance_from_point_to_points(cluster.points[pidx], self.points, self.points_count) <= max_point_dist:
                 merge = True
                 break
         if merge:
-            for idx in range(cluster.point_count):
-                if self.point_count == max_points_per_cluster:
+            for idx in range(cluster.points_count):
+                if self.points_count == MAX_POINTS:
                     break
-                self.points[self.point_count] = cluster.points[idx]
-                self.point_count += 1
+                self.points[self.points_count] = cluster.points[idx]
+                self.points_count += 1
             return True
         else:
             return False
 
-    def _distance_from_point(self, point):
-        if self.point_count == 0:
-            return 0.0
-        min_distance = 1e9
-        for pidx in range(self.point_count):
-            v = point - self.points[pidx]
-            min_distance = min(min_distance, math.sqrt(v[0]*v[0] + v[1]*v[1]))
-        return min_distance
+    def get_center_of_gravity(self):
+        return np.sum(self.points, axis=0) / self.points_count
 
     def shrink(self):
-        self.points = self.points[0:self.point_count]
+        self.points = self.points[0:self.points_count]
 
 
 @njit
 def jit_make_clusters(points):
     # The points are collected form top to bottom, we compare
-    #  new points with newly formed clusters only to reduce
+    #  new points only with newly formed clusters to reduce
     #  the number of distance evaluations.
 
     clusters = []
