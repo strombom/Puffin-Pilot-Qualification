@@ -7,7 +7,6 @@ import numpy as np
 
 # Implement a function that takes an image as an input, performs any preprocessing steps and outputs a list of bounding box detections and assosciated confidence score. 
 
-
 class GenerateFinalDetections():
     def __init__(self):
         self.seed = 2018
