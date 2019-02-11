@@ -25,9 +25,10 @@ def jit_match_corners(corners):
     for corner in corners:
         print("---", corner)
 
-        #for corner in cluster:
-        #    print(point)
+    #for corner in cluster:
+    #    print(point)
 
-        quit()
+    print(len(corners))
+    quit()
 
     return []

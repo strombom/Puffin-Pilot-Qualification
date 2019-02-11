@@ -1,20 +1,29 @@
 
 import math
-import numpy
+import numpy as np
 from numba import jit, njit
 
 @njit
 def norm(v):
-	return math.sqrt(v[0]*v[0] + v[1]*v[1])
+    return math.sqrt(v[0]*v[0] + v[1]*v[1])
 
 @njit
 def make_line_from_points(points, points_count):
-	p1 = get_farthest_point_from_point(points, points_count, points[0])
-	p2 = get_farthest_point_from_point(points, points_count, p1)
-	return (p1, p2)
+    line = np.empty((2, 2))
+    line[0] = get_farthest_point_from_point(points, points_count, points[0])
+    line[1] = get_farthest_point_from_point(points, points_count, line[0])
+    return line
 
 @njit
-def distance_from_point_to_points(point, points, points_count):
+def has_common_point(points1, points1_count, points2, points2_count):
+    for first_idx in range(points1_count):
+        for second_idx in range(points2_count):
+            if np.all(np.equal(points1[first_idx], points2[second_idx])):
+                return True
+    return False
+
+@njit
+def distance_from_points_to_point(points, points_count, point):
     if points_count == 0:
         return 0.0
 
@@ -26,13 +35,27 @@ def distance_from_point_to_points(point, points, points_count):
     return min_distance
 
 @njit
-def get_farthest_point_from_point(points, points_count, p):
+def get_closest_point(points, points_count, point):
+    min_pidx = 0
+    min_distance = 1e9
+    for pidx in range(points_count):
+        # No need for exact distance, a relative distance is ok
+        v = point - points[pidx]
+        distance = v[0]*v[0] + v[1]*v[1]
+
+        if distance > 1 and distance < min_distance:
+            min_distance = distance
+            min_pidx = pidx
+
+    return points[min_pidx]
+
+@njit
+def get_farthest_point_from_point(points, points_count, point):
     farthest_pidx = 0
     farthest_distance = 0
     for pidx in range(points_count):
-
         # No need for exact distance, a relative distance is ok
-        v = points[pidx] - p
+        v = points[pidx] - point
         distance = v[0]*v[0] + v[1]*v[1]
 
         if distance > farthest_distance:
@@ -95,3 +118,10 @@ def get_points_close_to_line(cluster, line, line_points, line_points_count):
         if append_point:
             line_points[line_points_count] = cluster.points[p_idx]
             line_points_count[0] += 1
+
+@njit
+def line_intersection_angle(l1, l2):
+    v1, v2 = l1[1] - l1[0],  l2[1] - l2[0]
+    dot    = v1[0] * v2[0] + v1[1] * v2[1]
+    det    = v1[0] * v2[1] - v1[1] * v2[0]
+    return math.atan2(det, dot)

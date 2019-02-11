@@ -4,7 +4,7 @@ import numpy as np
 from numba import jit, njit, jitclass
 from numba import int64, float64, boolean
 
-from common import distance_from_point_to_points
+from common import distance_from_points_to_point
 
 
 max_cluster_count = 10
@@ -54,7 +54,7 @@ class Cluster(object):
             self.active = False
             return False
 
-        distance = distance_from_point_to_points(point, self.points, self.points_count)
+        distance = distance_from_points_to_point(self.points, self.points_count, point)
         if distance > max_point_dist:
             # Point is too far away from this cluster.
             return False
@@ -84,7 +84,7 @@ class Cluster(object):
         
         merge = False
         for pidx in range(cluster.points_count):
-            if distance_from_point_to_points(cluster.points[pidx], self.points, self.points_count) <= max_point_dist:
+            if distance_from_points_to_point(self.points, self.points_count, cluster.points[pidx]) <= max_point_dist:
                 merge = True
                 break
         if merge:
