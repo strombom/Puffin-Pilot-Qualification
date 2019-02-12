@@ -8,6 +8,10 @@ def norm(v):
     return math.sqrt(v[0]*v[0] + v[1]*v[1])
 
 @njit
+def line_length(line):
+    return norm(line[1] - line[0])
+
+@njit
 def make_line_from_points(points, points_count):
     line = np.empty((2, 2))
     line[0] = get_farthest_point_from_point(points, points_count, points[0])
@@ -122,6 +126,13 @@ def get_points_close_to_line(cluster, line, line_points, line_points_count):
 @njit
 def line_intersection_angle(l1, l2):
     v1, v2 = l1[1] - l1[0],  l2[1] - l2[0]
+    #v1, v2 = v1 / norm(v1), v2 / norm(v2)
     dot    = v1[0] * v2[0] + v1[1] * v2[1]
     det    = v1[0] * v2[1] - v1[1] * v2[0]
     return math.atan2(det, dot)
+
+def point_to_line_distance(point, line):
+    distance = norm(point - line[0])
+    v_line = line[1] - line[0]
+    point_on_line = distance * v_line / norm(v_line)
+    return norm(point - point_on_line)
