@@ -16,12 +16,12 @@
 #              `~~~`
 #
 
-from 1_gate_finder              import GateFinder
-from 2_fiducial_finder          import FiducialFinder
-from 3_fiducial_matcher         import FiducialMatcher
-from 4_pose_estimator           import PoseEstimator
-from 5_pillar_finder            import PillarFinder
-from 6_flying_region_generator  import FlyingRegionGenerator
+from step_1_gate_finder               import GateFinder
+from step_2_fiducial_finder           import FiducialFinder
+from step_3_fiducial_matcher          import FiducialMatcher
+from step_4_pose_estimator            import PoseEstimator
+from step_5_pillar_finder             import PillarFinder
+from step_6_flying_region_generator   import FlyingRegionGenerator
 
 
 class GenerateFinalDetections():

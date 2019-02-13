@@ -59,6 +59,7 @@ def jit_make_clusters(points):
     return clusters
 
 
+
 cluster_spec = [
     ('points',       float64[:,:]),
     ('points_count', int64),

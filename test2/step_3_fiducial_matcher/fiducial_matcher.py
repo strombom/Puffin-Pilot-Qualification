@@ -44,6 +44,8 @@ if __name__ == '__main__':
     fiducial_matcher = FiducialMatcher()
     img = cv2.imread('img_in.png', cv2.IMREAD_GRAYSCALE)
     frames = fiducial_matcher.process(img)
+    print(frames)
+    print(type(frames))
     import pickle
     with open('frames.pickle', 'wb') as f:
-        pickle.dump(frames, f, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(frames, f)

@@ -28,6 +28,7 @@ def jit_make_corners(clusters):
     return corners
 
 
+
 class MatchingCriterion(IntEnum):
     NONE   = 1
     POINTS = 2

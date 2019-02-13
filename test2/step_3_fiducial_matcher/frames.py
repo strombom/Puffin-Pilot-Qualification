@@ -10,20 +10,6 @@ from numba import int64, float64, boolean
 from corners import MatchingCriterion
 
 
-class Frame:
-    def __init__(self, corners):
-        self.points = []
-        self.corners = []
-
-        for corner in corners:
-            if corner.matching_criterion == MatchingCriterion.LINES:
-                self.corners.append(corner.matching_lines[1][0])
-            else:
-                self.corners.append(corner.matching_points[1][0])
-            self.points.extend(corner.matching_points[0][0:corner.matching_points_count[0]])
-            self.points.extend(corner.matching_points[1][0:corner.matching_points_count[1]])
-
-
 def match_corners(corners):
 
     # Add all corners to frames, make new frames when required
@@ -54,9 +40,27 @@ def match_corners(corners):
 
     # Make frames
     for idx, frame in enumerate(frames):
-        frames[idx] = Frame(frame).points
+        frames[idx] = Frame(frame)
 
     return frames
+
+
+class Frame:
+    def __init__(self, corners):
+        self.corners = []
+        for corner in corners:
+            self.corners.append(FrameCorner(corner))
+
+class FrameCorner:
+    def __init__(self, corner):
+        if corner.matching_criterion == MatchingCriterion.LINES:
+            self.has_line = True
+        else:
+            self.has_line = False
+
+        self.points = corner.matching_points
+        self.points_count = corner.matching_points_count
+        self.lines = corner.matching_lines
 
 
 def merge_point_corners(frames, point_corners):
