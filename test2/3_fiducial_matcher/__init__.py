@@ -1,2 +1,2 @@
 
-from fiducial_matcher import match_fiducials
+from fiducial_matcher import FiducialMatcher
