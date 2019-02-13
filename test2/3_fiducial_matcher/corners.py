@@ -1,4 +1,6 @@
 
+from __future__ import print_function
+
 import math
 import numpy as np
 from enum import IntEnum
@@ -6,15 +8,10 @@ from numba import jit, njit, jitclass
 from numba import boolean, int64, float64
 
 from clusters import MAX_POINTS
-from common import norm, line_length
-from common import point_to_line_distance
-from common import has_common_point
-from common import make_line_from_points
-from common import get_closest_point
-from common import get_farthest_point_from_point
-from common import get_farthest_point_from_line
-from common import get_points_close_to_line
-from common import line_intersection_angle
+from common import norm, line_length, has_common_point, make_line_from_points
+from common import get_closest_point, get_points_close_to_line
+from common import get_point_farthest_from_points, get_point_farthest_from_line
+from common import line_to_line_angle, line_to_point_angle, point_to_point_distance
 
 
 def make_corners(clusters):
@@ -34,23 +31,24 @@ def jit_make_corners(clusters):
 class MatchingCriterion(IntEnum):
     NONE   = 1
     POINTS = 2
-    LINE   = 3
+    LINES  = 3
 
 corner_spec = [
-    ('matching_criteria',      int64[:]),
+    ('matching_criterion',     int64),
     ('matching_points',        float64[:,:,:]),
     ('matching_points_count',  int64[:]),
     ('matching_lines',         float64[:,:,:]),
-    ('matching_matched',       boolean[:]),
-    ('matching_score',         float64)
+    ('matching_angle_tol',     float64[:]),
+    #('matching_score',         float64)
 ]
 
-#@jitclass(corner_spec)
+@jitclass(corner_spec)
 class Corner(object):
-    # A corner has two sides, here called matching features 
+    # A corner has two sides, here called matching features, 
     #  that are used to match two corners together.
-    #  Example: A point in one corner can be matched with a 
-    #           line of another corner.
+    #
+    # Example: A point in one corner can be matched with a 
+    #          line of another corner.
     #
     # The corners will be sorted by matching_score when
     #  they are later matched together as quadilaterals.
@@ -59,55 +57,120 @@ class Corner(object):
     #
 
     def __init__(self, cluster):
-        self.matching_criteria     = np.array((MatchingCriterion.NONE, MatchingCriterion.NONE), dtype=np.int64)
+        self.matching_criterion    = MatchingCriterion.NONE
+        #self.matching_score        = 0.0
+
         self.matching_points       = np.empty((2, MAX_POINTS, 2))
         self.matching_points_count = np.zeros((2), dtype=np.int64)
         self.matching_lines        = np.empty((2, 2, 2))
-        self.matching_matched      = np.zeros((2), dtype=np.bool)
-        self.matching_score        = 0.0
+        self.matching_angle_tol    = np.zeros((2))
 
         self._fit_lines(cluster)
+        self._make_clockwise()
 
-    def match(self, corner, mark_matched):
+    def match(self, corner):
         # Test if this corner fits together with another corner
 
-        # Match lines
-        for i in range(2):
-            for j in range(2):
-                if self.matching_criteria[i] == MatchingCriterion.LINE:
-                    if corner.matching_criteria[j] == MatchingCriterion.LINE:
+        # Line - Line
+        if self.  matching_criterion == MatchingCriterion.LINES and \
+           corner.matching_criterion == MatchingCriterion.LINES:
+            angle_0 = line_to_point_angle(self.matching_lines[1],   corner.matching_lines[0][0])
+            angle_1 = line_to_point_angle(corner.matching_lines[0], self.matching_lines[1][0])
+            if angle_0 < self.matching_angle_tol[1] and angle_1 < corner.matching_angle_tol[0]:
+                return True
+            return False
 
-                        # Check that the lines are parallell
-                        angle = line_intersection_angle(self.matching_lines[i], corner.matching_lines[j])
-                        if abs(angle) < math.radians(10):
-                            # Check that the lines are pointing in the same direction
+        # Line - Point
+        if self.  matching_criterion == MatchingCriterion.LINES and \
+           corner.matching_criterion == MatchingCriterion.POINTS:
+            angle = line_to_point_angle(self.matching_lines[1], corner.matching_points[0][0])
+            if angle < self.matching_angle_tol[1]:
+                return True
 
+        # Point - Line
+        if self.  matching_criterion == MatchingCriterion.POINTS and \
+           corner.matching_criterion == MatchingCriterion.LINES:
+            angle = line_to_point_angle(corner.matching_lines[0], self.matching_points[1][0])
+            if angle < corner.matching_angle_tol[0]:
+                return True
 
-                        print(self.matching_lines[i])
-                        print(corner.matching_lines[j])
-                        print("lineline", angle)
-                        quit()
+        # Point - Point                
+        if self.  matching_criterion == MatchingCriterion.POINTS and \
+           corner.matching_criterion == MatchingCriterion.POINTS:
+            # Two points can always be matched since there is no geometric constraint
+            return True
 
+        # No match found
+        return False
 
+    def get_distance(self, corner):
+        if self.matching_criterion == MatchingCriterion.LINES:
+            p0 = self.matching_lines[1][0]
+        else:
+            p0 = self.matching_points[1][0]
 
+        if corner.matching_criterion == MatchingCriterion.LINES:
+            p1 = corner.matching_lines[0][0]
+        else:
+            p1 = corner.matching_points[0][0]
 
-        print(mark_matched)
-        print(corner)
-        print(self)
-        quit()
+        return norm(p1 - p0)
+
+    def _swap_matching_features(self):
+        self.matching_points       = self.matching_points[::-1]
+        self.matching_points_count = self.matching_criterion[::-1]
+        self.matching_lines        = self.matching_lines[::-1]
+
+    #@jit(nopython=True)
+    def test_line_pair_clockwise(self, line_pair):
+        v1 = line_pair[0][1] - line_pair[0][0]
+        v2 = line_pair[1][1] - line_pair[1][0]
+        theta1 = math.atan2(v1[1], v1[0])
+        theta2 = math.atan2(v2[1], v2[0])
+        delta_theta = theta2 - theta1
+        if delta_theta < 0:
+            delta_theta += math.pi * 2
+        if delta_theta < math.pi:
+            # Swap line positions
+            return False
+        return True
+
+    def _make_clockwise(self):
+        if self.matching_criterion != MatchingCriterion.LINES:
+            return
+
+        # Make sure that both lines start in a common origin and point outwards
+        origo_idx = (0, 0)
+        min_distance = 1e9
+        for idx in range(4):
+            i, j = idx // 2, idx % 2
+            distance = point_to_point_distance(self.matching_lines[0][i], self.matching_lines[1][j])
+            if distance < min_distance:
+                min_distance = distance
+                origo_idx = (i, j)
+        
+        for line_idx in range(2):
+            if origo_idx[line_idx] != 0:
+                self.matching_lines[line_idx] = self.matching_lines[line_idx][::-1]
+
+        # Make lines clockwise
+        if not self.test_line_pair_clockwise(self.matching_lines):
+            self.matching_lines[:]        = self.matching_lines[::-1]
+            self.matching_points[:]       = self.matching_points[::-1]
+            self.matching_points_count[:] = self.matching_points_count[::-1]
 
 
     def _fit_lines(self, cluster):
         if cluster.points_count < 3:
             # Only two points in the cluster, no need to look for lines
-            self.matching_criteria[:] = (MatchingCriterion.POINTS, MatchingCriterion.POINTS)
+            self.matching_criterion = MatchingCriterion.POINTS
             self.matching_points[0][0] = cluster.points[0]
             if cluster.points_count == 1:
                 self.matching_points[1][0] = cluster.points[0]
             else:
                 self.matching_points[1][0] = cluster.points[1]
             self.matching_points_count[:] = (1, 1)
-            self.matching_score = 100 * cluster.points_count
+            #self.matching_score = 100 * cluster.points_count
             return
 
         # Get the three points in the cluster that are
@@ -115,9 +178,9 @@ class Corner(object):
         #  Those will serve as end points for potential lines.
         cog           = cluster.get_center_of_gravity()
         end_points    = np.empty((3, 2))
-        end_points[0] = get_farthest_point_from_point(cluster.points, cluster.points_count, cog)
-        end_points[1] = get_farthest_point_from_point(cluster.points, cluster.points_count, end_points[0])
-        end_points[2] = get_farthest_point_from_line (cluster.points, cluster.points_count, end_points[0], end_points[1])
+        end_points[0] = get_point_farthest_from_points(cluster.points, cluster.points_count, cog)
+        end_points[1] = get_point_farthest_from_points(cluster.points, cluster.points_count, end_points[0])
+        end_points[2] = get_point_farthest_from_line (cluster.points, cluster.points_count, end_points[0], end_points[1])
 
         # Draw lines between closest points
         lines = np.empty((6, 2, 2))
@@ -145,20 +208,17 @@ class Corner(object):
 
         if line_points_count[0] == 2:
             # The best line has only 2 points
-            self.matching_criteria[0]     = MatchingCriterion.POINTS
+            self.matching_criterion       = MatchingCriterion.POINTS
             self.matching_points[0]       = line_points[0]
             self.matching_points_count[0] = line_points_count[0]
 
             # Set the second matching feature as the remaining point
-            self.matching_criteria[1] = MatchingCriterion.POINTS
-            self.matching_points[1][0] = get_farthest_point_from_line(points       = end_points, 
+            self.matching_points[1][0] = get_point_farthest_from_line(points       = end_points, 
                                                                       points_count = 3, 
                                                                       p1           = line_points[0][0], 
                                                                       p2           = line_points[0][1])
             self.matching_points_count[1] = 1
-
-            self.matching_score += 10 * 3
-            self.make_clockwise()
+            #self.matching_score += 10 * 3
             return
 
         # The best lines has at least 3 points, make a line
@@ -170,58 +230,44 @@ class Corner(object):
             second_feature_line = make_line_from_points(line_points[i], line_points_count[i])
 
             # Check that the angle between the corner sides are sufficiently large for a proper corner
-            angle = abs(line_intersection_angle(first_feature_line, second_feature_line))
+            angle = abs(line_to_line_angle(first_feature_line, second_feature_line))
             if angle > math.radians(20.0) and angle < math.radians(180.0 - 20.0):
 
                 # The best lines has at least 3 points, make it a line
-                self.matching_criteria[0]     = MatchingCriterion.LINE
+                self.matching_criterion       = MatchingCriterion.LINES
                 self.matching_lines[0]        = first_feature_line
                 self.matching_points[0]       = line_points[0]
                 self.matching_points_count[0] = line_points_count[0]
-                self.matching_score += 1000 + 100 * line_points_count[0] + line_length(first_feature_line)
-
-                if line_points_count[1] == 2:  
-                    if not has_common_point(line_points[0], line_points_count[0], line_points[i], line_points_count[i]):
-                        # No common point found, set the second matching feature as a point feature
-                        self.matching_criteria[1]     = MatchingCriterion.POINTS
-                        self.matching_points[1]       = line_points[i]
-                        self.matching_points_count[1] = line_points_count[i]
-                        self.matching_score += 100 * line_points_count[i]
-                        self.make_clockwise()
-                        return
+                #self.matching_score += 1000 + 100 * line_points_count[0] + line_length(first_feature_line)
 
                 # We can now assume that the second matching feature is a line
-                self.matching_criteria[1]     = MatchingCriterion.LINE
                 self.matching_lines[1]        = second_feature_line
                 self.matching_points[1]       = line_points[i]
                 self.matching_points_count[1] = line_points_count[i]
-                self.matching_score += 1000 + 100 * line_points_count[i] + line_length(second_feature_line)
-                self.make_clockwise()
+                #self.matching_score += 1000 + 100 * line_points_count[i] + line_length(second_feature_line)
+
+                if line_points_count[1] == 2:
+                    if not has_common_point(line_points[0], line_points_count[0], line_points[i], line_points_count[i]):
+                        # No common point found, set the second matching feature as a point feature
+                        point = get_point_farthest_from_line(self.matching_points[1], self.matching_points_count[1], 
+                                                             self.matching_lines[0][0], self.matching_lines[0][1])
+                        origo = get_closest_point(self.matching_lines[0], 2, point)
+                        self.matching_lines[1][0] = origo
+                        self.matching_lines[1][1] = point
+                        #self.matching_score -= 1000
+
+                # Set angle tolerance for matching. Long lines have better precisions and therefore lower tolerance.
+                for idx in range(2):
+                    self.matching_angle_tol[idx] = max(math.radians(25 - 0.25 * line_length(self.matching_lines[idx])), math.radians(5))
+
                 return
 
         # No good second feature was found, all points are probably in a straight line.
         #  We take the extreme points and put them in one feature each.
-        self.matching_criteria[0]     = MatchingCriterion.POINTS
+        self.matching_criterion       = MatchingCriterion.POINTS
         self.matching_points[0][0]    = end_points[0]
         self.matching_points_count[0] = 1
-
-        self.matching_criteria[1]     = MatchingCriterion.POINTS
         self.matching_points[1][0]    = end_points[1]
         self.matching_points_count[1] = 1
-
-        self.matching_score += 100 * 2
-        self.make_clockwise()
+        #self.matching_score += 100 * 2
         return
-
-        """
-        print("first line")
-        print(np.round(self.matching_lines[0], 1))
-        print(np.round(self.matching_points[0][0:self.matching_points_count[0]], 1))
-        print(self.matching_points_count[0])
-        print("second line")
-        #print(np.round(self.matching_lines[1], 1))
-        print(np.round(self.matching_points[1][0:self.matching_points_count[1]], 1))
-        print(self.matching_points_count[1])
-        print("---")
-        """
-

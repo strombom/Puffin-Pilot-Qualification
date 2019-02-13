@@ -14,8 +14,8 @@ def line_length(line):
 @njit
 def make_line_from_points(points, points_count):
     line = np.empty((2, 2))
-    line[0] = get_farthest_point_from_point(points, points_count, points[0])
-    line[1] = get_farthest_point_from_point(points, points_count, line[0])
+    line[0] = get_point_farthest_from_points(points, points_count, points[0])
+    line[1] = get_point_farthest_from_points(points, points_count, line[0])
     return line
 
 @njit
@@ -54,7 +54,7 @@ def get_closest_point(points, points_count, point):
     return points[min_pidx]
 
 @njit
-def get_farthest_point_from_point(points, points_count, point):
+def get_point_farthest_from_points(points, points_count, point):
     farthest_pidx = 0
     farthest_distance = 0
     for pidx in range(points_count):
@@ -69,7 +69,7 @@ def get_farthest_point_from_point(points, points_count, point):
     return points[farthest_pidx]
 
 @njit
-def get_farthest_point_from_line(points, points_count, p1, p2):
+def get_point_farthest_from_line(points, points_count, p1, p2):
     # Calculate approximately shortest distance from 
     #  line p1-p2 to all cluster points
     minimum_distance = 4.0
@@ -94,7 +94,6 @@ def get_farthest_point_from_line(points, points_count, p1, p2):
             farthest_pidx = pidx
 
     return points[farthest_pidx]
-
 
 @njit
 def get_points_close_to_line(cluster, line, line_points, line_points_count):
@@ -124,15 +123,31 @@ def get_points_close_to_line(cluster, line, line_points, line_points_count):
             line_points_count[0] += 1
 
 @njit
-def line_intersection_angle(l1, l2):
+def line_to_line_angle(l1, l2):
     v1, v2 = l1[1] - l1[0],  l2[1] - l2[0]
     #v1, v2 = v1 / norm(v1), v2 / norm(v2)
     dot    = v1[0] * v2[0] + v1[1] * v2[1]
     det    = v1[0] * v2[1] - v1[1] * v2[0]
     return math.atan2(det, dot)
 
-def point_to_line_distance(point, line):
+@njit
+def line_to_point_angle(line, point):
+    v1, v2 = line[1] - line[0], point - line[0]
+    v1, v2 = v1 / norm(v1), v2 / norm(v2)
+    dot    = v1[0] * v2[0] + v1[1] * v2[1]
+    det    = v1[0] * v2[1] - v1[1] * v2[0]
+    angle  = abs(math.atan2(det, dot))
+    if angle > math.pi / 2:
+        angle = math.pi - angle
+    return angle
+
+@njit
+def line_to_point_distance(line, point):
     distance = norm(point - line[0])
     v_line = line[1] - line[0]
     point_on_line = distance * v_line / norm(v_line)
     return norm(point - point_on_line)
+
+@njit
+def point_to_point_distance(p1, p2):
+    return norm(p2 - p1)

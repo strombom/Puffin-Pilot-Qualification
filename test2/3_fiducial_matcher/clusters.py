@@ -18,6 +18,46 @@ def make_clusters(points):
     # Return the clusters
     return clusters # [cluster.points for cluster in clusters]
 
+@njit
+def jit_make_clusters(points):
+    # The points are collected form top to bottom, we compare
+    #  new points only with newly formed clusters to reduce
+    #  the number of distance evaluations.
+
+    clusters = []
+
+    # Form clusters
+    for pidx in range(points.shape[0]):
+        # Check if point belongs to an existing cluster
+        found_a_friendly_cluster = False
+        for cluster in clusters:
+            if cluster.try_to_append(points[pidx]):
+                found_a_friendly_cluster = True
+                break
+
+        # No cluster found, build new home
+        if not found_a_friendly_cluster:
+            new_home = Cluster(points[pidx])
+            clusters.append(new_home)
+
+    # Merge clusters
+    merging = True
+    while merging:
+        merging = False
+        for idx_i in range(len(clusters)):
+            for idx_j in range(idx_i + 1, len(clusters)):
+                if clusters[idx_i].try_to_merge(clusters[idx_j]):
+                    del clusters[idx_j]
+                    merging = True
+                    break
+            if merging:
+                break
+
+    for cluster in clusters:
+        cluster.shrink()
+
+    return clusters
+
 
 cluster_spec = [
     ('points',       float64[:,:]),
@@ -32,6 +72,9 @@ cluster_spec = [
 
 @jitclass(cluster_spec)
 class Cluster(object):
+    # A cluster is a collection of centroids with close proximity,
+    #  clusters are later turned into corners.
+
     def __init__(self, point):
         self.points = np.zeros((MAX_POINTS, 2), dtype=np.float64)
         self.points_count = 1
@@ -103,43 +146,3 @@ class Cluster(object):
     def shrink(self):
         self.points = self.points[0:self.points_count]
 
-
-@njit
-def jit_make_clusters(points):
-    # The points are collected form top to bottom, we compare
-    #  new points only with newly formed clusters to reduce
-    #  the number of distance evaluations.
-
-    clusters = []
-
-    # Form clusters
-    for pidx in range(points.shape[0]):
-        # Check if point belongs to an existing cluster
-        found_a_friendly_cluster = False
-        for cluster in clusters:
-            if cluster.try_to_append(points[pidx]):
-                found_a_friendly_cluster = True
-                break
-
-        # No cluster found, build new home
-        if not found_a_friendly_cluster:
-            new_home = Cluster(points[pidx])
-            clusters.append(new_home)
-
-    # Merge clusters
-    merging = True
-    while merging:
-        merging = False
-        for idx_i in range(len(clusters)):
-            for idx_j in range(idx_i + 1, len(clusters)):
-                if clusters[idx_i].try_to_merge(clusters[idx_j]):
-                    del clusters[idx_j]
-                    merging = True
-                    break
-            if merging:
-                break
-
-    for cluster in clusters:
-        cluster.shrink()
-
-    return clusters
