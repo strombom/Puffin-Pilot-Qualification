@@ -20,8 +20,8 @@ class Frame:
                 self.corners.append(corner.matching_lines[1][0])
             else:
                 self.corners.append(corner.matching_points[1][0])
-            self.points.extend(corner.matching_points[0])
-            self.points.extend(corner.matching_points[1])
+            self.points.extend(corner.matching_points[0][0:corner.matching_points_count[0]])
+            self.points.extend(corner.matching_points[1][0:corner.matching_points_count[1]])
 
 
 def match_corners(corners):
@@ -54,7 +54,7 @@ def match_corners(corners):
 
     # Make frames
     for idx, frame in enumerate(frames):
-        frames[idx] = Frame(frame)
+        frames[idx] = Frame(frame).points
 
     return frames
 

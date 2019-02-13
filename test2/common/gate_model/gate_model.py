@@ -25,8 +25,6 @@ class GateModel:
         self.light_corners      = self._make_light_corners()
         self.back_frame_corners = self._make_back_frame_corners()
 
-    def estimate_
-
     def fiducials_from_corners(self, corners):
         # Sort fiducials, first top left, clockwise
         corners = sort_corners(corners)

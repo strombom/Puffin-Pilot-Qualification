@@ -1,4 +1,3 @@
-
 #   ______                 ___       _______    
 #  /_  __/__ ___ ___ _    / _ \__ __/ _/ _(_)__ 
 #   / / / -_) _ `/  ' \  / ___/ // / _/ _/ / _ \
@@ -37,13 +36,19 @@ class GenerateFinalDetections():
         # Predict a dummy image to make sure that all jit methods
         # are compiled and that the tensorflow models are loaded.
         self.predict(None)
-        
-    def predict(self, image):
+
+    def _predict_flying_regions(self, image):
         gate_image     = self.gate_finder.process(image)
         fiducials      = self.fiducial_finder.process(gate_image)
-        corners        = self.fiducial_matcher.process(fiducials)
-        gates          = self.pose_estimator.process(corners)
-        pillars        = self.pillar_finder.process(gate_image, gates)
+        frames         = self.fiducial_matcher.process(fiducials)
+        gate_poses     = self.pose_estimator.process(frames)
+        pillars        = self.pillar_finder.process(gate_image, gate_poses)
         flying_regions = self.flying_region_generator.process(gates, pillars)
 
         return flying_regions
+        
+    def predict(self, image):
+        try:
+            return self._predict_flying_regions(image)
+        except:
+            return []
