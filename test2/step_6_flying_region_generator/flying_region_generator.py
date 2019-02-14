@@ -19,9 +19,26 @@ class FlyingRegionGenerator:
     def process(self, gate_poses):
         flying_regions = []
         for n, gate_pose in enumerate(gate_poses):
+
+            flying_region = self.get_flying_region(gate_pose)
+
+            print(flying_region)
+            quit()
             pass
 
         return flying_regions
+
+    def get_flying_region(self, gate_pose):
+        corners = self.gate_model.get_distorted_flying_region(gate_pose['rvec'], gate_pose['tvec'])
+        inner_corners, light_corners, back_frame_corners = corners
+
+        print(inner_corners)
+        print(light_corners)
+        print(back_frame_corners)
+
+        
+
+        quit()
 
 
 if __name__ == '__main__':

@@ -46,21 +46,11 @@ class GateModel:
             return None
 
         # Project all gate model fiducials on image
-        fiducials, jac = cv2.projectPoints(objectPoints = self.fiducial_points, 
-                                           rvec = rvec, 
-                                           tvec = tvec, 
-                                           cameraMatrix = self.camera_matrix, 
-                                           distCoeffs = self.dist_coefs)
+        fiducials = self._get_distorted_points(rvec, tvec, self.fiducial_points)
         return fiducials[:,0,:]
 
     def get_undistorted_fiducial_corners(self, rvec, tvec):
-        fiducial_corners, jac = cv2.projectPoints(objectPoints = self.fiducial_corners,
-                                                  rvec = rvec,
-                                                  tvec = tvec,
-                                                  cameraMatrix = self.camera_matrix,
-                                                  distCoeffs = None)
-        return fiducial_corners.reshape((fiducial_corners.shape[0], 2))
-
+        return self._get_undistorted_points(rvec, tvec, self.fiducial_corners)
 
     def get_distorted_front_polygons(self, fiducials):
         # Undistort points to 3D space
@@ -78,39 +68,35 @@ class GateModel:
                                            distCoeffs = None)
 
         # Project outer gate on image
-        outer_polygon, jac = cv2.projectPoints(objectPoints = quad_to_poly(self.outer_corners),
-                                               rvec = rvec,
-                                               tvec = tvec,
-                                               cameraMatrix = self.camera_matrix,
-                                               distCoeffs = self.dist_coefs)
+        outer_polygon = self._get_distorted_points(rvec, tvec, quad_to_poly(self.outer_corners))
 
         # Project inner gate on image
-        inner_polygon, jac = cv2.projectPoints(objectPoints = quad_to_poly(self.inner_corners),
-                                               rvec = rvec,
-                                               tvec = tvec,
-                                               cameraMatrix = self.camera_matrix,
-                                               distCoeffs = self.dist_coefs)
+        inner_polygon = self._get_distorted_points(rvec, tvec, quad_to_poly(self.inner_corners))
 
-        outer_polygon = outer_polygon.reshape((outer_polygon.shape[0], 2))
-        inner_polygon = inner_polygon.reshape((outer_polygon.shape[0], 2))
         return outer_polygon, inner_polygon
 
-    def fit_fiducials(self, fiducials):
-        if len(fiducials == 4):
-            return sort_corners(fiducials)
+    def get_distorted_flying_region(self, rvec, tvec):
+        inner_corners      = self._get_distorted_points(rvec, tvec, self.inner_corners)
+        light_corners      = self._get_distorted_points(rvec, tvec, self.light_corners)
+        back_frame_corners = self._get_distorted_points(rvec, tvec, self.back_frame_corners)
 
-        def quadrilateral_loss(quadrilateral, fiducials):
-            quadrilateral = np.reshape(quadrilateral, (4, 2))
-            print("quadrilateral_fiducial_loss")
-            quit()
+        return inner_corners, light_corners, back_frame_corners
 
-        quadrilateral_0 = np.array(((-1, -1), (1, -1), (1, 1), (-1, 1))) # Initial guess
-        sol = scipy.optimize.root(quadrilateral_loss, 
-                                  np.reshape(quadrilateral_0, (8,)), 
-                                  args=(fiducials,))
+    def _get_distorted_points(self, rvec, tvec, points):
+        points, jac = cv2.projectPoints(objectPoints = points,
+                                        rvec = rvec,
+                                        tvec = tvec,
+                                        cameraMatrix = self.camera_matrix,
+                                        distCoeffs = self.dist_coefs)
+        return points.reshape((points.shape[0], 2))
 
-        quit()
-
+    def _get_undistorted_points(self, rvec, tvec, points):
+        points, jac = cv2.projectPoints(objectPoints = points,
+                                        rvec = rvec,
+                                        tvec = tvec,
+                                        cameraMatrix = self.camera_matrix,
+                                        distCoeffs = None)
+        return points.reshape((points.shape[0], 2))
 
     def _make_outer_corners(self):
         p = self.gate_size / 2
@@ -121,10 +107,12 @@ class GateModel:
         return make_corners(p)
 
     def _make_light_corners(self):
-        pass
+        p = self.gate_size / 2 - self.gate_post_width - 0.05
+        return make_corners(p, z = 0.15)
         
     def _make_back_frame_corners(self):
-        pass
+        p = self.gate_size / 2 - self.gate_post_width + 0.05
+        return make_corners(p, z = 0.30)
     
     def _make_fiducials_corners(self):
         p = self.gate_size / 2 - self.fiducial_size * 2
