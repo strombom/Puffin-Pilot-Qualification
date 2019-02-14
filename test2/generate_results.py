@@ -36,6 +36,7 @@ class GenerateFinalDetections():
         # Predict a dummy image to make sure that all jit methods
         # are compiled and that the tensorflow models are loaded.
         self.predict(None)
+        self.error_count = 0
 
     def _predict_flying_regions(self, image):
         gate_image     = self.gate_finder.process(image)
@@ -51,4 +52,8 @@ class GenerateFinalDetections():
         try:
             return self._predict_flying_regions(image)
         except:
+            self.error_count += 1
+            if self.error_count == 5:
+                # Something is seriously wrong, reload everything.
+                self.__init__()
             return []

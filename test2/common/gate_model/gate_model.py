@@ -7,9 +7,9 @@ from gate_model_utils import quad_to_poly, make_corners, rotate_points, sort_cor
 
 
 class GateModel:
-    gate_size = 11 * 0.3048  # Assumed 11 ft = 3.3528 m
-    gate_post_width = 0.4525 # Optimized
-    fiducial_size = 0.1143   # Assumed 3/8 ft = 0.1143 m
+    gate_size       = 11 * 0.3048 # Assumed 11 ft = 3.3528 m
+    gate_post_width = 0.4525      # Optimized ~1.5 ft
+    fiducial_size   = 0.1143      # Assumed 3/8 ft
 
     def __init__(self, camera_matrix, dist_coefs):
         self.camera_matrix = camera_matrix
@@ -25,7 +25,7 @@ class GateModel:
         self.light_corners      = self._make_light_corners()
         self.back_frame_corners = self._make_back_frame_corners()
 
-    def fiducials_from_corners(self, corners):
+    def camera_position_from_corners(self, corners):
         # Sort fiducials, first top left, clockwise
         corners = sort_corners(corners)
         fiducials_2d = np.ones((corners.shape[0], 1, 2))
@@ -37,6 +37,14 @@ class GateModel:
                                            cameraMatrix = self.camera_matrix, 
                                            distCoeffs = self.dist_coefs)
 
+        return success, rvec, tvec
+
+    def fiducials_from_corners(self, corners):
+        success, rvec, tvec = self.camera_position_from_corners(corners)
+
+        if not success:
+            return None
+
         # Project all gate model fiducials on image
         fiducials, jac = cv2.projectPoints(objectPoints = self.fiducial_points, 
                                            rvec = rvec, 
@@ -44,6 +52,15 @@ class GateModel:
                                            cameraMatrix = self.camera_matrix, 
                                            distCoeffs = self.dist_coefs)
         return fiducials[:,0,:]
+
+    def get_undistorted_fiducial_corners(self, rvec, tvec):
+        fiducial_corners, jac = cv2.projectPoints(objectPoints = self.fiducial_corners,
+                                                  rvec = rvec,
+                                                  tvec = tvec,
+                                                  cameraMatrix = self.camera_matrix,
+                                                  distCoeffs = None)
+        return fiducial_corners.reshape((fiducial_corners.shape[0], 2))
+
 
     def get_distorted_front_polygons(self, fiducials):
         # Undistort points to 3D space
@@ -77,7 +94,6 @@ class GateModel:
         outer_polygon = outer_polygon.reshape((outer_polygon.shape[0], 2))
         inner_polygon = inner_polygon.reshape((outer_polygon.shape[0], 2))
         return outer_polygon, inner_polygon
-
 
     def fit_fiducials(self, fiducials):
         if len(fiducials == 4):

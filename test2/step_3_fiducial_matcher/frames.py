@@ -30,13 +30,48 @@ def match_corners(corners):
         frame = frames[i]
         if len(frame) == 1:
             del frames[i]
-        has_line = False
+            continue
+        has_lines = False
         for corner in frame:
             if corner.matching_criterion == MatchingCriterion.LINES:
-                has_line = True
+                has_lines = True
                 break
-        if not has_line:
+        if not has_lines:
             del frames[i]
+
+    """
+    import cv2
+    from seaborn import color_palette
+    palette = color_palette("bright", len(frames))
+    image_filepath = 'img_in.png'
+    image = cv2.imread(image_filepath)
+    for frame_idx, frame in enumerate(frames):
+        color = palette[frame_idx]
+        color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+
+        for corner in frame:
+            for i in range(2):
+                if corner.matching_criterion == MatchingCriterion.POINTS:
+                    for j in range(corner.matching_points_count[i]):
+                        point = corner.matching_points[i][j].astype(np.int64)
+                        #print("point")
+                        #print(tuple(point))
+                        cv2.circle(image, tuple(point), 3, color, -1)
+                elif corner.matching_criterion == MatchingCriterion.LINES:
+
+                    for j in range(corner.matching_points_count[i]):
+                        point = corner.matching_points[i][j].astype(np.int64)
+                        #print("point")
+                        #print(tuple(point))
+                        cv2.circle(image, tuple(point), 3, color, -1)
+                    line = corner.matching_lines[i].astype(np.int64)
+                    #print("line")
+                    #print(tuple(line[0]))
+                    cv2.line(image, tuple(line[0]), tuple(line[1]), color, 2)
+
+    print("write frames")
+    cv2.imwrite('img_frames.png', image)
+    """
 
     # Make frames
     for idx, frame in enumerate(frames):
@@ -54,9 +89,9 @@ class Frame:
 class FrameCorner:
     def __init__(self, corner):
         if corner.matching_criterion == MatchingCriterion.LINES:
-            self.has_line = True
+            self.has_lines = True
         else:
-            self.has_line = False
+            self.has_lines = False
 
         self.points = corner.matching_points
         self.points_count = corner.matching_points_count
