@@ -6,7 +6,6 @@ from numba import int64, float64, boolean
 
 from common import distance_from_points_to_point
 
-
 max_cluster_count = 10
 MAX_POINTS = 15
 max_point_dist = 30.0
@@ -58,8 +57,6 @@ def jit_make_clusters(points):
 
     return clusters
 
-
-
 cluster_spec = [
     ('points',       float64[:,:]),
     ('points_count', int64),
@@ -83,10 +80,10 @@ class Cluster(object):
         self.points[0] = point
         self.active = True
 
-        self.box_xmin = point[0] - max_point_dist * 0.5
-        self.box_xmax = point[0] + max_point_dist * 0.5
-        self.box_ymin = point[1] - max_point_dist * 0.5
-        self.box_ymax = point[1] + max_point_dist * 0.5
+        self.box_xmin = point[0] - max_point_dist / 2
+        self.box_xmax = point[0] + max_point_dist / 2
+        self.box_ymin = point[1] - max_point_dist / 2
+        self.box_ymax = point[1] + max_point_dist / 2
 
     def try_to_append(self, point):
         if not self.active:
@@ -114,15 +111,15 @@ class Cluster(object):
         self.points_count += 1
         self.max_y = point[1]
 
-        self.box_xmin = min(self.box_xmin, point[0] - max_point_dist * 0.5)
-        self.box_xmax = max(self.box_xmax, point[0] + max_point_dist * 0.5)
-        self.box_ymin = min(self.box_ymin, point[1] - max_point_dist * 0.5)
-        self.box_ymax = max(self.box_ymax, point[1] + max_point_dist * 0.5)
+        self.box_xmin = min(self.box_xmin, point[0] - max_point_dist / 2)
+        self.box_xmax = max(self.box_xmax, point[0] + max_point_dist / 2)
+        self.box_ymin = min(self.box_ymin, point[1] - max_point_dist / 2)
+        self.box_ymax = max(self.box_ymax, point[1] + max_point_dist / 2)
         return True
 
     def try_to_merge(self, cluster):
-        if not (self.box_xmax >= cluster.box_xmin and cluster.box_xmax >= self.box_xmin and \
-                self.box_ymax >= cluster.box_ymin and cluster.box_ymax >= self.box_ymin):
+        if self.box_xmin > cluster.box_xmax or cluster.box_xmin > self.box_xmax or \
+           self.box_ymin > cluster.box_ymax or cluster.box_ymin > self.box_ymax:
             # No overlap, don't try to merge
             return False
         
@@ -137,6 +134,10 @@ class Cluster(object):
                     break
                 self.points[self.points_count] = cluster.points[idx]
                 self.points_count += 1
+            self.box_xmin = min(self.box_xmin, cluster.box_xmin)
+            self.box_xmax = max(self.box_xmax, cluster.box_xmax)
+            self.box_ymin = min(self.box_ymin, cluster.box_ymin)
+            self.box_ymax = max(self.box_ymax, cluster.box_ymax)
             return True
         else:
             return False

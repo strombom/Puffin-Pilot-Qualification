@@ -10,7 +10,7 @@ from numba import int64, float64, boolean
 from corners import MatchingCriterion
 
 
-def match_corners(corners):
+def match_corners(corners, debug = False):
 
     # Add all corners to frames, make new frames when required
     # Frames are lists of corners
@@ -39,17 +39,18 @@ def match_corners(corners):
         if not has_lines:
             del frames[i]
 
-    """
+    
+    import os
     import cv2
     from seaborn import color_palette
-    palette = color_palette("bright", len(frames))
-    image_filepath = 'img_in.png'
+    palette = color_palette("bright", 4)
+    source_path = os.path.dirname(os.path.abspath(__file__))
+    image_filepath = os.path.join(source_path, '../step_1_gate_finder/dummy_image.jpg')
     image = cv2.imread(image_filepath)
     for frame_idx, frame in enumerate(frames):
-        color = palette[frame_idx]
-        color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-
-        for corner in frame:
+        for corner_idx, corner in enumerate(frame):
+            color = palette[corner_idx]
+            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
             for i in range(2):
                 if corner.matching_criterion == MatchingCriterion.POINTS:
                     for j in range(corner.matching_points_count[i]):
@@ -70,8 +71,8 @@ def match_corners(corners):
                     cv2.line(image, tuple(line[0]), tuple(line[1]), color, 2)
 
     print("write frames")
-    cv2.imwrite('img_frames.png', image)
-    """
+    cv2.imwrite('img_frames3.png', image)
+    
 
     # Make frames
     for idx, frame in enumerate(frames):

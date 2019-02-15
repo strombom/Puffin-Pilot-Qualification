@@ -30,7 +30,7 @@ def sort_corners(corners):
 
 def rotate_points(points, theta):
     c, s = np.cos(theta), np.sin(theta)
-    R = np.array(((c,-s, 0), (s, c, 0), (0, 0, 0)))
+    R = np.array(((c,-s, 0), (s, c, 0), (0, 0, 1)))
     return points.dot(R)
 
 def make_corners(p, z = 0.0):

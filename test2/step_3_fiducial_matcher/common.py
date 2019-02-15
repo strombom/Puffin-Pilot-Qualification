@@ -13,10 +13,39 @@ def line_length(line):
 
 @njit
 def make_line_from_points(points, points_count):
-    line = np.empty((2, 2))
-    line[0] = get_point_farthest_from_points(points, points_count, points[0])
-    line[1] = get_point_farthest_from_points(points, points_count, line[0])
-    return line
+    line_1 = np.empty((2, 2))
+    line_2 = np.empty((2, 2))
+    line_3 = np.empty((2, 2))
+
+    line_1[0] = get_point_farthest_from_points(points, points_count, points[0])
+    line_1[1] = get_point_farthest_from_points(points, points_count, line_1[0])
+
+    if points_count > 3:
+        p2 = get_closest_point(points, points_count, line_1[0])
+        p3 = get_closest_point(points, points_count, line_1[1])
+
+        line_2[0], line_2[1] = p2, line_1[1]
+        line_3[0], line_3[1] = line_1[0], p3
+
+        line_score_1 = line_score(line_1, points[1:points_count-1])
+        line_score_2 = line_score(line_2, points[2:points_count-1])
+        line_score_3 = line_score(line_3, points[1:points_count-2])
+
+        if line_score_1 < line_score_2 and line_score_1 < line_score_3:
+            return line_1
+        elif line_score_2 < line_score_1 and line_score_2 < line_score_3:
+            return line_2
+        else:
+            return line_3
+
+    return line_1
+
+@njit
+def line_score(line, points):
+    score = 0
+    for idx in range(points.shape[0]):
+        score += line_to_point_distance(line, points[idx]) ** 2
+    return score
 
 @njit
 def has_common_point(points1, points1_count, points2, points2_count):
@@ -145,7 +174,7 @@ def line_to_point_angle(line, point):
 def line_to_point_distance(line, point):
     distance = norm(point - line[0])
     v_line = line[1] - line[0]
-    point_on_line = distance * v_line / norm(v_line)
+    point_on_line = distance * v_line / norm(v_line) + line[0]
     return norm(point - point_on_line)
 
 @njit

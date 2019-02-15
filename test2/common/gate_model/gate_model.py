@@ -11,9 +11,9 @@ class GateModel:
     gate_post_width = 0.4525      # Optimized ~1.5 ft
     fiducial_size   = 0.1143      # Assumed 3/8 ft
 
-    def __init__(self, camera_matrix, dist_coefs):
+    def __init__(self, camera_matrix, dist_coeffs):
         self.camera_matrix = camera_matrix
-        self.dist_coefs    = dist_coefs
+        self.dist_coeffs    = dist_coeffs
         self.camera_pos    = np.zeros(3)
         self.camera_rot    = np.identity(3)
 
@@ -25,17 +25,21 @@ class GateModel:
         self.light_corners      = self._make_light_corners()
         self.back_frame_corners = self._make_back_frame_corners()
 
-    def camera_position_from_corners(self, corners):
+    def camera_position_from_corners(self, corners, use_distortion = True):
         # Sort fiducials, first top left, clockwise
         corners = sort_corners(corners)
         fiducials_2d = np.ones((corners.shape[0], 1, 2))
         fiducials_2d[:,0,:] = corners
 
+        dist_coeffs = None
+        if use_distortion:
+            dist_coeffs = self.dist_coeffs
+
         # Estimate camera position
         success, rvec, tvec = cv2.solvePnP(objectPoints = self.fiducial_corners, 
                                            imagePoints = fiducials_2d, 
                                            cameraMatrix = self.camera_matrix, 
-                                           distCoeffs = self.dist_coefs)
+                                           distCoeffs = dist_coeffs)
 
         return success, rvec, tvec
 
@@ -55,7 +59,7 @@ class GateModel:
     def get_distorted_front_polygons(self, fiducials):
         # Undistort points to 3D space
         fiducials = np.reshape(fiducials, (fiducials.shape[0], 1, 2)).astype(np.float32)
-        object_points = cv2.undistortPoints(fiducials, self.camera_matrix, self.dist_coefs)
+        object_points = cv2.undistortPoints(fiducials, self.camera_matrix, self.dist_coeffs)
 
         # Fit quadrilateral to fiducials
         quadrilateral = np.ones((4, 1, 2))
@@ -87,7 +91,7 @@ class GateModel:
                                         rvec = rvec,
                                         tvec = tvec,
                                         cameraMatrix = self.camera_matrix,
-                                        distCoeffs = self.dist_coefs)
+                                        distCoeffs = self.dist_coeffs)
         return points.reshape((points.shape[0], 2))
 
     def _get_undistorted_points(self, rvec, tvec, points):
@@ -107,12 +111,12 @@ class GateModel:
         return make_corners(p)
 
     def _make_light_corners(self):
-        p = self.gate_size / 2 - self.gate_post_width - 0.05
-        return make_corners(p, z = 0.15)
+        p = self.gate_size / 2 - self.gate_post_width - 0.04
+        return make_corners(p, z = 0.15) + np.array((0, 0.01, 0))
         
     def _make_back_frame_corners(self):
-        p = self.gate_size / 2 - self.gate_post_width + 0.05
-        return make_corners(p, z = 0.30)
+        p = self.gate_size / 2 - self.gate_post_width + 0.02
+        return make_corners(p, z = 0.35)
     
     def _make_fiducials_corners(self):
         p = self.gate_size / 2 - self.fiducial_size * 2

@@ -39,8 +39,7 @@ corner_spec = [
     ('matching_points',        float64[:,:,:]),
     ('matching_points_count',  int64[:]),
     ('matching_lines',         float64[:,:,:]),
-    ('matching_angle_tol',     float64[:]),
-    #('matching_score',         float64)
+    ('matching_angle_tol',     float64[:])
 ]
 
 @jitclass(corner_spec)
@@ -51,16 +50,9 @@ class Corner(object):
     # Example: A point in one corner can be matched with a 
     #          line of another corner.
     #
-    # The corners will be sorted by matching_score when
-    #  they are later matched together as quadilaterals.
-    #
-    # Matching score = lines * 1000 + points * 100 + line_length
-    #
 
     def __init__(self, cluster):
         self.matching_criterion    = MatchingCriterion.NONE
-        #self.matching_score        = 0.0
-
         self.matching_points       = np.empty((2, MAX_POINTS, 2))
         self.matching_points_count = np.zeros((2), dtype=np.int64)
         self.matching_lines        = np.empty((2, 2, 2))
@@ -171,7 +163,6 @@ class Corner(object):
             else:
                 self.matching_points[1][0] = cluster.points[1]
             self.matching_points_count[:] = (1, 1)
-            #self.matching_score = 100 * cluster.points_count
             return
 
         # Get the three points in the cluster that are
@@ -219,7 +210,6 @@ class Corner(object):
                                                                       p1           = line_points[0][0], 
                                                                       p2           = line_points[0][1])
             self.matching_points_count[1] = 1
-            #self.matching_score += 10 * 3
             return
 
         # The best lines has at least 3 points, make a line
@@ -239,13 +229,11 @@ class Corner(object):
                 self.matching_lines[0]        = first_feature_line
                 self.matching_points[0]       = line_points[0]
                 self.matching_points_count[0] = line_points_count[0]
-                #self.matching_score += 1000 + 100 * line_points_count[0] + line_length(first_feature_line)
 
                 # We can now assume that the second matching feature is a line
                 self.matching_lines[1]        = second_feature_line
                 self.matching_points[1]       = line_points[i]
                 self.matching_points_count[1] = line_points_count[i]
-                #self.matching_score += 1000 + 100 * line_points_count[i] + line_length(second_feature_line)
 
                 if line_points_count[1] == 2:
                     if not has_common_point(line_points[0], line_points_count[0], line_points[i], line_points_count[i]):
@@ -255,7 +243,6 @@ class Corner(object):
                         origo = get_closest_point(self.matching_lines[0], 2, point)
                         self.matching_lines[1][0] = origo
                         self.matching_lines[1][1] = point
-                        #self.matching_score -= 1000
 
                 # Set angle tolerance for matching. Long lines have better precisions and therefore lower tolerance.
                 for idx in range(2):
@@ -270,5 +257,4 @@ class Corner(object):
         self.matching_points_count[0] = 1
         self.matching_points[1][0]    = end_points[1]
         self.matching_points_count[1] = 1
-        #self.matching_score += 100 * 2
         return

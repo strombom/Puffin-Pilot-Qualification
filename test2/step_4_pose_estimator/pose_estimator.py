@@ -1,4 +1,5 @@
 
+import os
 import cv2
 import sys
 import pickle
@@ -15,7 +16,9 @@ from quadrilateral_fitter import QuadrilateralFitter
 
 class PoseEstimator:
     def __init__(self):
-        camera_calibration = pickle.load(open("../common/camera_calibration/camera_calibration.pickle", "rb"))
+        source_path = os.path.dirname(os.path.abspath(__file__))
+        calibration_path = os.path.join(source_path, "../common/camera_calibration/camera_calibration.pickle")
+        camera_calibration = pickle.load(open(calibration_path, "rb"))
         self.camera_matrix = camera_calibration['camera_matrix']
         self.dist_coefs    = camera_calibration['dist_coefs']
         self.image_size    = camera_calibration['image_size']
@@ -27,6 +30,14 @@ class PoseEstimator:
     def process(self, frames):
         gate_poses = []
         for n, frame in enumerate(frames):
+
+            for corner in frame.corners:
+                print("Corner")
+                print(corner.points[0][0:corner.points_count[0]])
+                print(corner.points[1][0:corner.points_count[1]])
+                print(corner.lines[0])
+                print(corner.lines[1])
+
             # First, try to use the quadrilateral fitter that uses the corners
             #  to estimate a quadrilateral directly on the undistorted image plane.
             result = self.quadrilateral_fitter.fit(frame.corners)
@@ -41,23 +52,29 @@ class PoseEstimator:
             if result is not None:
                 gate_poses.append({'rvec': result[0], 'tvec': result[1]})
 
+        print(gate_poses)
+
         return gate_poses
 
 
 if __name__ == '__main__':
-    pose_estimator = PoseEstimator()
-
+    import os
     import pickle
-    with open('../step_3_fiducial_matcher/frames.pickle', 'rb') as f:
+    source_path = os.path.dirname(os.path.abspath(__file__))
+    frames_path = os.path.join(source_path, '../step_3_fiducial_matcher/frames.pickle')
+    with open(frames_path, 'rb') as f:
         frames = pickle.load(f)
 
+    pose_estimator = PoseEstimator()
     gate_poses = pose_estimator.process(frames)
 
     for gate_pose in gate_poses:
         print(gate_pose)
 
+    frames_path = os.path.join(source_path, 'gate_poses.pickle')
     with open('gate_poses.pickle', 'wb') as f:
         pickle.dump(gate_poses, f)
+
 
 
 """

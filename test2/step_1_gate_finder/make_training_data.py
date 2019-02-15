@@ -24,12 +24,12 @@ metadata_path = 'ds/ann'
 camera_calibration = pickle.load(open("../camera_calibration/camera_calibration.pickle", "rb"))
 
 camera_matrix = camera_calibration['camera_matrix']
-dist_coefs = camera_calibration['dist_coefs']
+dist_coeffs = camera_calibration['dist_coefs']
 image_size = camera_calibration['image_size']
 
-gate_model = GateModel(camera_matrix, dist_coefs)
+gate_model = GateModel(camera_matrix, dist_coeffs)
 
-map_x, map_y = cv2.initUndistortRectifyMap(camera_matrix, dist_coefs, None, camera_matrix, image_size, cv2.CV_32FC1)
+map_x, map_y = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, image_size, cv2.CV_32FC1)
 
 exclusions = [219,220,226,2411,2631,2713,2816,4067,5984,6328,6454,6543,6572,6600,6673,7643,8518,8757,8777,8797,8817,8825,8837,8846,8853,8861,8862,8865,8870,8876,8914,8942,9080,9243,9275,9282,9292,9294,9300,7313,9324]
 

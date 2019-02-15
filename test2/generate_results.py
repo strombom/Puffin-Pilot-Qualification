@@ -32,28 +32,38 @@ class GenerateFinalDetections():
         self.pose_estimator          = PoseEstimator()
         self.pillar_finder           = PillarFinder()
         self.flying_region_generator = FlyingRegionGenerator()
+        
+        self.error_count = 0
 
         # Predict a dummy image to make sure that all jit methods
         # are compiled and that the tensorflow models are loaded.
         self.predict(None)
-        self.error_count = 0
+        """
+        import time
+        for i in range(10):
+            tic = time.time()
+            self.predict(None)
+            toc = time.time()
+            print(toc-tic)
+        quit()
+        """
 
-    def _predict_flying_regions(self, image):
+    def _predict_flying_regions(self, image, img_key):
         gate_image     = self.gate_finder.process(image)
         fiducials      = self.fiducial_finder.process(gate_image)
         frames         = self.fiducial_matcher.process(fiducials)
         gate_poses     = self.pose_estimator.process(frames)
-        pillars        = self.pillar_finder.process(gate_image, gate_poses)
-        flying_regions = self.flying_region_generator.process(gates, pillars)
+        pillars        = self.pillar_finder.process(gate_poses, gate_image)
+        flying_regions = self.flying_region_generator.process(gate_poses, pillars, gate_image, img_key)
 
         return flying_regions
         
-    def predict(self, image):
-        try:
-            return self._predict_flying_regions(image)
-        except:
-            self.error_count += 1
-            if self.error_count == 5:
-                # Something is seriously wrong, reload everything.
-                self.__init__()
-            return []
+    def predict(self, image, img_key = ""):
+        #try:
+        return self._predict_flying_regions(image, img_key)
+        #except:
+        #    self.error_count += 1
+        #    if self.error_count == 5:
+        #        # Something is seriously wrong, reload everything.
+        #        self.__init__()
+        #    return []

@@ -8,13 +8,13 @@ from numba import jit, njit
 
 
 class QuadrilateralFitter:
-    def __init__(self, camera_matrix, dist_coefs, image_size, gate_model):
+    def __init__(self, camera_matrix, dist_coeffs, image_size, gate_model):
         self.gate_model = gate_model
         self.image_size = image_size
 
-        map_x, map_y = cv2.initUndistortRectifyMap(camera_matrix, dist_coefs, None, camera_matrix, image_size, cv2.CV_32FC1)
-        self.map_x = map_x
-        self.map_y = map_y
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+        self.gate_model = gate_model
 
     def fit(self, corners):
         points = []
@@ -62,8 +62,17 @@ class QuadrilateralFitter:
                                               max_nfev  = 20)
         quadrilateral = np.reshape(result.x, (4, 2))
 
+        """
+        for i, corner in enumerate(quadrilateral):
+            color = palette[i]
+            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+            
+            point = corner.astype(np.int64)
+            cv2.circle(image, tuple(point), 5, color, -1)
+        """
+
         # Estimate the camera position
-        success, rvec, tvec = self.gate_model.camera_position_from_corners(quadrilateral)
+        success, rvec, tvec = self.gate_model.camera_position_from_corners(quadrilateral, use_distortion = False)
 
         if success:
             return rvec, tvec
@@ -72,19 +81,16 @@ class QuadrilateralFitter:
 
     def _undistorted_points(self, points):
         # Undistort points to 3D space
-        #points = np.reshape(points, (points.shape[0], 1, 2)).astype(np.float32)
-        #points = cv2.undistortPoints(points, self.camera_matrix, self.dist_coefs)
-
-        # We use an undistortion map, its fast but we lose subpixel precision
-        points = points.astype(np.int64)
-        points[:,0] = np.maximum(0, np.minimum(self.image_size[0] - 1, points[:,0]))
-        points[:,1] = np.maximum(0, np.minimum(self.image_size[1] - 1, points[:,1]))
-        for i in range(len(points)):
-            x, y = points[i]
-            points[i][0] = self.map_x[y][x]
-            points[i][1] = self.map_y[y][x]
+        points = np.reshape(points, (points.shape[0], 1, 2)).astype(np.float32)
+        object_points = np.zeros((points.shape[0], 1, 3))
+        object_points[:,:,0:2] = cv2.undistortPoints(points, self.camera_matrix, self.dist_coeffs)
+        points, jac = cv2.projectPoints(objectPoints = object_points,
+                                         rvec = np.zeros(3),
+                                         tvec = np.zeros(3),
+                                         cameraMatrix = self.camera_matrix,
+                                         distCoeffs = None)
+        points = points.reshape((points.shape[0], 2))
         return points
-
 
 @njit
 def quadrilateral_loss(quadrilateral, points):
@@ -133,3 +139,17 @@ def line_intersection(line1, line2):
     y =  det(d, ydiff) / div
     return x, y
 
+"""
+        from seaborn import color_palette
+        palette = color_palette("bright", 3)
+        image_filepath = '../step_1_gate_finder/dummy_image.jpg'
+        image = cv2.imread(image_filepath)
+
+        for idx in range(len(points)):
+            color = palette[0]
+            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+            point = points[idx].astype(np.int64)
+            cv2.circle(image, tuple(point), 3, color, -1)
+
+        cv2.imwrite('img_out.png', image)
+"""

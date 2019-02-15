@@ -1,12 +1,12 @@
 
-from numpy import np
+import numpy as np
 
 
 class PillarFinder:
     def __init__(self):
         pass
 
-    def process(self, gate_image, gate_poses):
+    def process(self, gate_poses, gate_image):
         pillars = []
         return pillars
 

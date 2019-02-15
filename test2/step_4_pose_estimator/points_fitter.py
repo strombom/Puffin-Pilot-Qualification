@@ -7,13 +7,13 @@ from numba import jit, njit
 
 
 class PointsFitter:
-    def __init__(self, camera_matrix, dist_coefs, image_size, gate_model):
+    def __init__(self, camera_matrix, dist_coeffs, image_size, gate_model):
         self.gate_model = gate_model
         self.image_size = image_size
 
-        map_x, map_y = cv2.initUndistortRectifyMap(camera_matrix, dist_coefs, None, camera_matrix, image_size, cv2.CV_32FC1)
-        self.map_x = map_x
-        self.map_y = map_y
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+        self.gate_model = gate_model
 
     def fit(self, corners):
         # We need at least two corners
@@ -88,18 +88,16 @@ class PointsFitter:
         return residuals
 
     def _undistorted_points(self, points):
-        # We use an undistortion map, its fast but we lose subpixel precision
-        for side_idx in range(len(points)):
-            if len(points[side_idx]) == 0:
-                continue
-            points[side_idx] = np.array(points[side_idx]).astype(np.int64)
-            side = points[side_idx]
-            side[:,0] = np.maximum(0, np.minimum(self.image_size[0] - 1, side[:,0]))
-            side[:,1] = np.maximum(0, np.minimum(self.image_size[1] - 1, side[:,1]))
-            for i in range(len(side)):
-                x, y = side[i]
-                side[i][0] = self.map_x[y][x]
-                side[i][1] = self.map_y[y][x]
+        # Undistort points to 3D space
+        points = np.reshape(points, (points.shape[0], 1, 2)).astype(np.float32)
+        object_points = np.zeros((points.shape[0], 1, 3))
+        object_points[:,:,0:2] = cv2.undistortPoints(points, self.camera_matrix, self.dist_coeffs)
+        points, jac = cv2.projectPoints(objectPoints = object_points,
+                                         rvec = np.zeros(3),
+                                         tvec = np.zeros(3),
+                                         cameraMatrix = self.camera_matrix,
+                                         distCoeffs = None)
+        points = points.reshape((points.shape[0], 2))
         return points
 
     def _orient_corners(self, corners):
