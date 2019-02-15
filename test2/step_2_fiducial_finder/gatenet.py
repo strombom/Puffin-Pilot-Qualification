@@ -182,9 +182,8 @@ def gatenet(debug_print = False):
 
     #Adam(1e-4, epsilon = 1e-4)
 
-    model.compile(optimizer = Adam(lr=0.000001), loss = model_loss, metrics = ['accuracy'])
-    #model.summary()
-
+    model.compile(optimizer = Adam(lr=0.00001), loss = model_loss, metrics = ['accuracy'])
+    
     #quit()
 
     """

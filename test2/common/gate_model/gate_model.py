@@ -51,7 +51,7 @@ class GateModel:
 
         # Project all gate model fiducials on image
         fiducials = self._get_distorted_points(rvec, tvec, self.fiducial_points)
-        return fiducials[:,0,:]
+        return fiducials #[:,0,:]
 
     def get_undistorted_fiducial_corners(self, rvec, tvec):
         return self._get_undistorted_points(rvec, tvec, self.fiducial_corners)

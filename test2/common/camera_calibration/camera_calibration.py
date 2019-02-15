@@ -134,15 +134,15 @@ for annotation in annotations:
 camera_matrix = np.array([[1.11615226e+03, 0.00000000e+00, 6.42354107e+02],
                           [0.00000000e+00, 1.11453403e+03, 4.53277504e+02],
                           [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
-dist_coefs = np.array([[-0.15204789,  0.14581479, -0.00107285, -0.00019929,  0.04981551]])
+dist_coeffs = np.array([[-0.15204789,  0.14581479, -0.00107285, -0.00019929,  0.04981551]])
 
 image_size = (1296, 864)
-rms, camera_matrix, dist_coefs, rvecs, tvecs = cv2.calibrateCamera(calibration_points['obj'], calibration_points['img'], image_size, camera_matrix, dist_coefs, None, None, flags = cv2.CALIB_USE_INTRINSIC_GUESS)
+rms, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(calibration_points['obj'], calibration_points['img'], image_size, camera_matrix, dist_coefs, None, None, flags = cv2.CALIB_USE_INTRINSIC_GUESS)
 print("rms", goal_post_width, rms)
 
 camera_calibration = {'rms': rms,
                       'camera_matrix': camera_matrix,
-                      'dist_coefs': dist_coefs,
+                      'dist_coefs': dist_coeffs,
                       'rvecs': rvecs,
                       'tvecs': tvecs,
                       'image_size': image_size}
