@@ -8,7 +8,7 @@ from gatenet import gatenet
 class FiducialFinder:
     def __init__(self):
         source_path = os.path.dirname(os.path.abspath(__file__))
-        weights_path = os.path.join(source_path, 'logdir/checkpoint_20190207_loss295')
+        weights_path = os.path.join(source_path, 'logdir/checkpoint_20190214_loss264')
 
         self.model = gatenet()
         self.model.load_weights(weights_path)
@@ -20,15 +20,6 @@ class FiducialFinder:
         #cv2.imwrite(filepath, image)
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        #image2 = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-
-        #image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        #filepath = os.path.join(source_path, "a" + '_mask.png')
-        #cv2.imwrite(filepath, image)
-
-        #quit()
 
         image = image.reshape((1, image.shape[0], image.shape[1], 1))
 
@@ -62,4 +53,9 @@ if __name__ == '__main__':
 
     filepath = os.path.join(source_path, 'fiducials.png')
     cv2.imwrite(filepath, (fiducials * 255).astype(np.uint8))
+
+    import pickle
+    fiducials_path = os.path.join(source_path, 'fiducials.pickle')
+    with open(fiducials_path, 'wb') as f:
+        pickle.dump(fiducials, f)
 

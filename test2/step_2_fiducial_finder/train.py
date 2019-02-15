@@ -32,11 +32,11 @@ def read_images(image_names):
         input_image = cv2.imread(input_filepath)
         output_image = cv2.imread(output_filepath)
 
-        input_image =cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
-        output_image =cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
+        input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+        output_image = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
 
-        input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
-        output_image = cv2.cvtColor(output_image, cv2.COLOR_BGR2GRAY)
+        input_image = cv2.cvtColor(input_image, cv2.COLOR_RGB2GRAY)
+        output_image = cv2.cvtColor(output_image, cv2.COLOR_RGB2GRAY)
 
         #image = image / 256
         #outline = outline / 256
