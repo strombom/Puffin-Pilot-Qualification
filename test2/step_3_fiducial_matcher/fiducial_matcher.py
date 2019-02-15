@@ -7,11 +7,19 @@ from corners import make_corners
 from frames import match_corners
 
 
+import os
+from seaborn import color_palette
+import numpy as np
+
+
 class FiducialMatcher:
     def __init__(self):
         pass
 
     def process(self, image, img_scale = 2):
+        cv2.imwrite('img_1_fiducials.png', (image*255).astype(np.uint8))
+
+
         # Resize image, we lose precision but gain > 4x speed in the point extraction.
         #  cv2.INTER_NEAREST - 0.1 ms
         #  cv2.INTER_LINEAR  - 0.5 ms
@@ -19,10 +27,8 @@ class FiducialMatcher:
                            dsize = (image.shape[1] / img_scale, image.shape[0] / img_scale),
                            interpolation = cv2.INTER_NEAREST)
 
-        import numpy as np
-        print(np.max(image), np.min(image))
 
-        cv2.imwrite('img_step3_fiducials.png', (image*255).astype(np.uint8))
+        cv2.imwrite('img_2_fiducials_small.png', (image*255).astype(np.uint8))
 
 
         # Extract ideally 40 centroids from the raw image. If there are more than 100 points 
@@ -32,9 +38,8 @@ class FiducialMatcher:
             return None
         points *= img_scale
 
-        import os
-        import numpy as np
-        from seaborn import color_palette
+        cv2.imwrite('img_3_fiducials_small_extracted.png', (image*255).astype(np.uint8))
+
         palette = color_palette("bright", 1)
         source_path = os.path.dirname(os.path.abspath(__file__))
         image_filepath = os.path.join(source_path, '../step_1_gate_finder/dummy_image.jpg')
@@ -43,18 +48,13 @@ class FiducialMatcher:
         color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
         for point in points:
             cv2.circle(image, tuple(point.astype(np.int64)), 3, color, -1)
-        cv2.imwrite('img_points2.png', image)
-        #print(points)
-        #quit()
+        cv2.imwrite('img_4_points.png', image)
 
 
         # Group the centroids into ideally 4 corner groups. We need at least two well formed
         #  corners to estimate the flying region.
         clusters = make_clusters(points)
 
-        import os
-        import numpy as np
-        from seaborn import color_palette
         palette = color_palette("bright", len(clusters))
         source_path = os.path.dirname(os.path.abspath(__file__))
         image_filepath = os.path.join(source_path, '../step_1_gate_finder/dummy_image.jpg')
@@ -64,7 +64,7 @@ class FiducialMatcher:
             color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
             for point in cluster.points:
                 cv2.circle(image, tuple(point.astype(np.int64)), 3, color, -1)
-        cv2.imwrite('img_clusters2.png', image)
+        cv2.imwrite('img_4_clusters.png', image)
         #print(points)
         #quit()
 
@@ -81,16 +81,20 @@ class FiducialMatcher:
 
 if __name__ == '__main__':
     import os
+    import pickle
     import numpy as np
 
     source_path = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(source_path, '../step_2_fiducial_finder/fiducials.png')
-    image = cv2.imread(image_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    image = image.astype(np.float32) / 255.0
+    fiducials_path = os.path.join(source_path, '../step_2_fiducial_finder/fiducials.pickle')
+    with open(fiducials_path, 'rb') as f:
+        ficucials_image = pickle.load(f)
+
+    #image = cv2.imread(image_path)
+    #image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    #image = image.astype(np.float32) / 255.0
 
     fiducial_matcher = FiducialMatcher()
-    frames = fiducial_matcher.process(image)
+    frames = fiducial_matcher.process(ficucials_image)
 
     print(frames)
     import pickle
@@ -98,7 +102,7 @@ if __name__ == '__main__':
     with open(frames_path, 'wb') as f:
         pickle.dump(frames, f)
 
-
+    """
     import os
     import cv2
     from seaborn import color_palette
@@ -122,6 +126,7 @@ if __name__ == '__main__':
                     line = corner.lines[i].astype(np.int64)
                     cv2.line(image, tuple(line[0]), tuple(line[1]), color, 2)
     cv2.imwrite('img_frames.png', image)
+    """
 
 
     """

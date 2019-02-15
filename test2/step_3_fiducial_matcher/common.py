@@ -13,12 +13,32 @@ def line_length(line):
 
 @njit
 def make_line_from_points(points, points_count):
+    if points < 4:
+        # If there are only 2 or 3 points, simply return a line
+        #  consisting of the two extreme points.
+        line_1[0] = get_point_farthest_from_points(points, points_count, points[0])
+        line_1[1] = get_point_farthest_from_points(points, points_count, line_1[0])
+        return line_1
+
+    # Remove one point, try to fit a line to the remaining points.
+    #  Do this for each point and chose the best fitting line.
+    line_points = np.empty((points_count-1, 2))
+    for i in rangepoints_count:
+        
+
+
+
+
+
+
+
+
+
+
     line_1 = np.empty((2, 2))
     line_2 = np.empty((2, 2))
     line_3 = np.empty((2, 2))
 
-    line_1[0] = get_point_farthest_from_points(points, points_count, points[0])
-    line_1[1] = get_point_farthest_from_points(points, points_count, line_1[0])
 
     if points_count > 3:
         p2 = get_closest_point(points, points_count, line_1[0])

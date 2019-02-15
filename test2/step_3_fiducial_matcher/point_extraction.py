@@ -6,9 +6,9 @@ import skimage.morphology
 from numba import jit, njit
 
 
-fid_size  = 3  # Fiducial max radius extent
-min_area  = 16 # Minimum acceptable fiducial area
-
+fid_size      = 2      # Fiducial max radius extent
+min_area      = 14     # Minimum acceptable fiducial area
+img_threshold = 0.996
 
 def extract_points(image, max_points):
     points = np.empty((max_points, 2))
@@ -31,7 +31,7 @@ def get_center_of_gravity(image, px, py):
     count = 0
     for y in range(section.shape[0]):
         for x in range(section.shape[1]):
-            if section[y][x] != 0:
+            if section[y][x] > img_threshold:
                 my += y
                 mx += x
                 count += 1
@@ -47,9 +47,11 @@ def jit_extract_points(image, points):
     min_x, max_x = fid_size, image.shape[1] - 1 - fid_size
     min_y, max_y = fid_size, image.shape[0] - 1 - fid_size
 
+    print("minmax", np.max(image), np.min(image))
+
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
-            if image[y][x] < 0.998:
+            if image[y][x] < img_threshold:
                 continue
             section = None
 
@@ -88,7 +90,7 @@ def jit_extract_points(image, points):
 
                 # Erase found point from image
                 section = get_section(image, px, py)
-                section[:] = 0
+                section[:] = 0.5
 
     return point_count
 

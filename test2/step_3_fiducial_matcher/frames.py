@@ -39,7 +39,6 @@ def match_corners(corners, debug = False):
         if not has_lines:
             del frames[i]
 
-    
     import os
     import cv2
     from seaborn import color_palette
@@ -71,7 +70,8 @@ def match_corners(corners, debug = False):
                     cv2.line(image, tuple(line[0]), tuple(line[1]), color, 2)
 
     print("write frames")
-    cv2.imwrite('img_frames3.png', image)
+    cv2.imwrite('img_5_frames.png', image)
+
     
 
     # Make frames
