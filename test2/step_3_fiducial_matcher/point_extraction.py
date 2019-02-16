@@ -47,8 +47,6 @@ def jit_extract_points(image, points):
     min_x, max_x = fid_size, image.shape[1] - 1 - fid_size
     min_y, max_y = fid_size, image.shape[0] - 1 - fid_size
 
-    print("minmax", np.max(image), np.min(image))
-
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
             if image[y][x] < img_threshold:

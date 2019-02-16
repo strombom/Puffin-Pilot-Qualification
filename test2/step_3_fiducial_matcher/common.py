@@ -1,4 +1,6 @@
 
+from __future__ import print_function
+
 import math
 import numpy as np
 from numba import jit, njit
@@ -12,53 +14,42 @@ def line_length(line):
     return norm(line[1] - line[0])
 
 @njit
+def distance_squared(a, b):
+    return (a[0]-b[0])**2 + (a[1]-b[1])**2
+
+@njit
 def make_line_from_points(points, points_count):
-    if points < 4:
+    line = np.empty((2, 2))
+    if points_count < 4:
         # If there are only 2 or 3 points, simply return a line
         #  consisting of the two extreme points.
-        line_1[0] = get_point_farthest_from_points(points, points_count, points[0])
-        line_1[1] = get_point_farthest_from_points(points, points_count, line_1[0])
-        return line_1
+        line[0] = get_point_farthest_from_points(points, points_count, points[0])
+        line[1] = get_point_farthest_from_points(points, points_count, line[0])
+        return line
+
+    # Sort points by distance from one extreme point
+    first_point = get_point_farthest_from_points(points, points_count, points[0])
+    distances = np.zeros(points_count, dtype=np.float64)
+    for idx in range(points_count):
+        distances[idx] = distance_squared(points[idx], first_point)
+    indices = np.argsort(distances)
+    ordered_points = points[0:points_count][indices]
 
     # Remove one point, try to fit a line to the remaining points.
     #  Do this for each point and chose the best fitting line.
+    min_residual = 1e9
+    min_idx = 0
     line_points = np.empty((points_count-1, 2))
-    for i in rangepoints_count:
-        
-
-
-
-
-
-
-
-
-
-
-    line_1 = np.empty((2, 2))
-    line_2 = np.empty((2, 2))
-    line_3 = np.empty((2, 2))
-
-
-    if points_count > 3:
-        p2 = get_closest_point(points, points_count, line_1[0])
-        p3 = get_closest_point(points, points_count, line_1[1])
-
-        line_2[0], line_2[1] = p2, line_1[1]
-        line_3[0], line_3[1] = line_1[0], p3
-
-        line_score_1 = line_score(line_1, points[1:points_count-1])
-        line_score_2 = line_score(line_2, points[2:points_count-1])
-        line_score_3 = line_score(line_3, points[1:points_count-2])
-
-        if line_score_1 < line_score_2 and line_score_1 < line_score_3:
-            return line_1
-        elif line_score_2 < line_score_1 and line_score_2 < line_score_3:
-            return line_2
-        else:
-            return line_3
-
-    return line_1
+    for i in range(points_count):
+        line_points[0:i], line_points[i:] = ordered_points[0:i], ordered_points[i+1:]
+        line[0], line[1] = line_points[0], line_points[-1]
+        residual = line_score(line, line_points)
+        if residual < min_residual:
+            min_residual = residual
+            min_idx = i
+    line_points[0:min_idx], line_points[min_idx:] = ordered_points[0:min_idx], ordered_points[min_idx+1:]
+    line[0], line[1] = line_points[0], line_points[-1]
+    return line
 
 @njit
 def line_score(line, points):

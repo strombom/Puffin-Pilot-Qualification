@@ -67,7 +67,7 @@ def match_corners(corners, debug = False):
                     line = corner.matching_lines[i].astype(np.int64)
                     #print("line")
                     #print(tuple(line[0]))
-                    cv2.line(image, tuple(line[0]), tuple(line[1]), color, 2)
+                    cv2.line(image, tuple(line[0]), tuple(line[-1]), color, 2)
 
     print("write frames")
     cv2.imwrite('img_5_frames.png', image)
