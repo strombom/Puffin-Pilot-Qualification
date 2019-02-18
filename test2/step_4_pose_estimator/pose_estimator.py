@@ -28,6 +28,9 @@ class PoseEstimator:
         self.quadrilateral_fitter = QuadrilateralFitter(self.camera_matrix, self.dist_coefs, self.image_size, self.gate_model)
 
     def process(self, frames):
+        if frames is None:
+            return []
+
         gate_poses = []
         for n, frame in enumerate(frames):
 

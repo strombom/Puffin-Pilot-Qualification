@@ -23,6 +23,11 @@ class QuadrilateralFitter:
         if len(corners) < 3:
             return None
 
+        # Make sure that all corners have lines
+        for i in range(len(corners)):
+            if not corners[i].has_lines:
+                return None
+
         if len(corners) == 3:
             # First and last sides of the frame must be lines to fit a quadrilateral
             if not corners[0].has_lines or not corners[-1].has_lines:

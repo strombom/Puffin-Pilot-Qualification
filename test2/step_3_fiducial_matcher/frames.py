@@ -39,6 +39,7 @@ def match_corners(corners, debug = False):
         if not has_lines:
             del frames[i]
 
+    """   
     import os
     import cv2
     from seaborn import color_palette
@@ -48,7 +49,7 @@ def match_corners(corners, debug = False):
     image = cv2.imread(image_filepath)
     for frame_idx, frame in enumerate(frames):
         for corner_idx, corner in enumerate(frame):
-            color = palette[corner_idx]
+            color = palette[frame_idx]
             color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
             for i in range(2):
                 if corner.matching_criterion == MatchingCriterion.POINTS:
@@ -69,9 +70,9 @@ def match_corners(corners, debug = False):
                     #print(tuple(line[0]))
                     cv2.line(image, tuple(line[0]), tuple(line[-1]), color, 1)
 
-    print("write frames")
+    #print("write frames")
     cv2.imwrite('img_5_frames.png', image)
-
+    """
     
 
     # Make frames
@@ -99,8 +100,11 @@ class FrameCorner:
         self.lines = corner.matching_lines
 
 
+
 def merge_point_corners(frames, point_corners):
     # Make sure that frames with many corners have highest merging priority
+
+    ##print("========= Merge points corners =======")
     frames.sort(key=len, reverse=True)
     frames.extend(point_corners)
     merge_frames(frames)
@@ -110,8 +114,8 @@ def merge_frames(frames):
     best_matches = np.zeros(2, np.int64)
     matches      = np.zeros(2, np.int64)
 
-    print("start")
-    print(frames)
+    #print("start")
+    #print(frames)
 
     # Merge frames
     idx_i = 0
@@ -137,31 +141,33 @@ def merge_frames(frames):
             if best_matches[0]:
                 for idx, corner in enumerate(frames[best_fitness_idx]):
                     frames[idx_i].insert(idx, corner)
-                    print("insert")
+                    #print("insert")
             else:
                 frames[idx_i].extend(frames[best_fitness_idx])
-                print("extend")
+                #print("extend")
 
             del frames[best_fitness_idx]
             idx_i -= 1
         idx_i += 1
 
-    print("end")
-    print(frames)
+    #print("end")
+    #print(frames)
     #quit()
-
 
 def merge_point_corners(frames, point_corners):
     # Make sure that frames with many corners have highest merging priority
+
+    #print("========= Merge points corners =======")
     frames.sort(key=len, reverse=True)
     frames.extend(point_corners)
     merge_frames(frames)
 
 
+
 #@njit
 def merging_fitness(frame1, frame2, matches):
     total_corners = len(frame1) + len(frame2)
-    print("total_corners", total_corners)
+    #print("total_corners", total_corners)
 
     if total_corners > 4:
         return -1
@@ -177,10 +183,12 @@ def merging_fitness(frame1, frame2, matches):
         matches[0] = 0
 
     if not matches[0] and not matches[1]:
+        # No match
         return -1
 
     if total_corners == 4:
         if not matches[0] or not matches[1]:
+            # Only one match, two required
             return -1
 
     if matches[0]:

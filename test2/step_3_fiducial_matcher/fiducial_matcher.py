@@ -17,7 +17,7 @@ class FiducialMatcher:
         pass
 
     def process(self, image, img_scale = 2):
-        cv2.imwrite('img_1_fiducials.png', (image*255).astype(np.uint8))
+        #cv2.imwrite('img_1_fiducials.png', (image*255).astype(np.uint8))
 
 
         # Resize image, we lose precision but gain > 4x speed in the point extraction.
@@ -28,16 +28,16 @@ class FiducialMatcher:
                            interpolation = cv2.INTER_NEAREST)
 
 
-        cv2.imwrite('img_2_fiducials_small.png', (image*255).astype(np.uint8))
+        #cv2.imwrite('img_2_fiducials_small.png', (image*255).astype(np.uint8))
 
 
         # Extract ideally 40 centroids from the raw image. If there are more than 100 points 
         #  there is something wrong and we don't want to waste time processing a bad image.
         points = extract_points(image, max_points = 1000)
         if len(points) < 10:
-            return None
+            return []
         points *= img_scale
-
+        """
         cv2.imwrite('img_3_fiducials_small_extracted.png', (image*255).astype(np.uint8))
 
         palette = color_palette("bright", 1)
@@ -49,12 +49,13 @@ class FiducialMatcher:
         for point in points:
             cv2.circle(image, tuple(point.astype(np.int64)), 3, color, -1)
         cv2.imwrite('img_4_points.png', image)
-
+        """
 
         # Group the centroids into ideally 4 corner groups. We need at least two well formed
         #  corners to estimate the flying region.
         clusters = make_clusters(points)
 
+        """
         palette = color_palette("bright", len(clusters))
         source_path = os.path.dirname(os.path.abspath(__file__))
         image_filepath = os.path.join(source_path, '../step_1_gate_finder/dummy_image.jpg')
@@ -67,6 +68,7 @@ class FiducialMatcher:
         cv2.imwrite('img_4_clusters.png', image)
         #print(points)
         #quit()
+        """
 
 
         # Corners consists of ideally two perpendicular lines. In worst case a corner can

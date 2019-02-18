@@ -32,6 +32,7 @@ class FlyingRegionGenerator:
             flying_region, points = self.get_flying_region(gate_pose)
             flying_regions.append(flying_region.tolist())
 
+            """
             if gate_image is not None:
                 palette = color_palette("bright", 5)
                 image = cv2.cvtColor(gate_image, cv2.COLOR_RGB2BGR)
@@ -46,6 +47,8 @@ class FlyingRegionGenerator:
                     cv2.circle(image, tuple(point), 2, color, -1)
                 filename = 'img_out_%s.png' % img_key
                 cv2.imwrite(filename, image)
+                break
+            """
 
         return flying_regions
 
@@ -168,7 +171,7 @@ class FlyingRegionGenerator:
 
 
     def _get_closest_points(self, points, target):
-        print("closest", target)
+        #print("closest", target)
 
         def distance_squared(a, b):
             return (a[0]-b[0])**2 + (a[1]-b[1])**2

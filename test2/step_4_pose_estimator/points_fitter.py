@@ -29,19 +29,29 @@ class PointsFitter:
         # Put the points into the correct sides, starting with the top left
         #  corner going clockwise
         corners = self._orient_corners(corners)
-        points = [[], [], [], []]
+        corner_points = [[], [], [], [], []]
         for i in range(len(corners)):
             if corners[i] is None:
                 continue
-            for side in range(2):
-                side_idx = (i+side+3)%4
-                for k in range(corners[i].points_count[side]):
-                    point = corners[i].points[side][k]
-                    points[side_idx].append(point)
-        points_count = sum([len(i) for i in points])
+            if corners[i].has_lines:
+                for side in range(2):
+                    side_idx = (i+side+3)%4
+                    for k in range(corners[i].points_count[side]):
+                        point = corners[i].points[side][k]
+                        corner_points[side_idx].append(point)
+            else:
+                for side in range(2):
+                    for k in range(corners[i].points_count[side]):
+                        point = corners[i].points[side][k]
+                        corner_points[4].append(point)
+                continue
+
+        print(corner_points)
+
+        corner_points_count = sum([len(i) for i in corner_points])
 
         # Undistort the points
-        points = self._undistorted_points(points)
+        points = self._undistorted_points(corner_points)
        
         # Initial guess (rvec...tvec), camera placed very close to the gate pointing straight forward
         initial_guess = np.array((0.0, 0.0, 0.0, 0.0, 0.0, 1.0))
@@ -49,7 +59,7 @@ class PointsFitter:
         # Find a camera pose so that the distance to all points is minimized
         result = scipy.optimize.least_squares(fun       = self._points_loss, 
                                               x0        = initial_guess,
-                                              args      = (points, points_count),
+                                              args      = (corner_points, corner_points_count),
                                               ftol      = 1e-2,
                                               max_nfev  = 40)
 
@@ -63,28 +73,50 @@ class PointsFitter:
             return None
 
     def _points_loss(self, camera_pose, points, points_count):
-        residuals = np.empty(points_count, np.float64)
+        residuals = np.full(points_count, 1e9, np.float64)
 
         # Project gate model fiducial corners into image plane
         rvec, tvec = camera_pose[0:3], camera_pose[3:6]
         quadrilateral = self.gate_model.get_undistorted_fiducial_corners(rvec, tvec)
 
+        # Loss for points where there is a known line segment
         point_idx = 0
-        for i in range(4):
-            for j in range(len(points[i])):
+        for quad_i in range(4):
+            for point_j in range(len(points[quad_i])):
                 # Calculate distance from point to side
-                ls1 = quadrilateral[i]
-                ls2 = quadrilateral[(i + 1) % 4]
-                point = points[i][j]
+                ls1 = quadrilateral[(quad_i) % 4]
+                ls2 = quadrilateral[(quad_i + 1) % 4]
+                point = points[quad_i][point_j]
                 l2 = np.sum(np.square(ls2 - ls1))
                 if l2 == 0:
                     distance = np.sum(np.square(point - ls1))
                 else:
                     t = max(0.0, min(1.0, dot(point - ls1, ls2 - ls1) / l2))
                     proj = ls1 + t * (ls2 - ls1)
-                    distance = np.sum(np.square(point - proj))
-                residuals[point_idx] = distance
+                    distance = np.sum(np.square(point - proj))**0.5
+                residuals[point_idx] = min(residuals[point_idx], distance)
                 point_idx += 1
+
+        #print(points)
+        #quit()
+        # Loss for remaining unknown points that still might help
+        quad_i = 4
+        for point_j in range(len(points[quad_i])):
+            for d in range(4):
+                # Calculate distance from point to side
+                ls1 = quadrilateral[(quad_i + d) % 4]
+                ls2 = quadrilateral[(quad_i + d + 1) % 4]
+                point = points[quad_i][point_j]
+                l2 = np.sum(np.square(ls2 - ls1))
+                if l2 == 0:
+                    distance = np.sum(np.square(point - ls1))
+                else:
+                    t = max(0.0, min(1.0, dot(point - ls1, ls2 - ls1) / l2))
+                    proj = ls1 + t * (ls2 - ls1)
+                    distance = np.sum(np.square(point - proj))**0.5
+                residuals[point_idx] = min(residuals[point_idx], distance)
+            point_idx += 1
+
         return residuals
 
     def _undistorted_points(self, corners):
@@ -129,7 +161,7 @@ class PointsFitter:
             scores.append(score)
             corners = [corners[-1]] + corners[0:3]
 
-        # Rotate the frame until the  top left corner is first in the list
+        # Rotate the frame until the top left corner is first in the list
         angle_idx = np.argmin(scores)
         for i in range((angle_idx+2)%4):
             corners = [corners[-1]] + corners[0:3]

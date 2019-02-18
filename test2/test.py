@@ -11,7 +11,7 @@ import time
 
 
 
-img_file = glob.glob('/home/jst/development/data-puffin-pilot/CameraCalibration/*.JPG')
+img_file = glob.glob('/home/jst/development/data-puffin-pilot/Data_LeaderboardTesting/*.JPG')
 img_keys = [img_i.split('/')[-1] for img_i in img_file]
 
 
@@ -22,10 +22,10 @@ finalDetector = GenerateFinalDetections()
 time_all = []
 pred_dict = {}
 for img_key in img_keys:
-    if '5012' not in img_key:
-        continue
+    #if "0168" not in img_key:
+    #    continue
     print(img_key)
-    img =cv2.imread('/home/jst/development/data-puffin-pilot/CameraCalibration/'+img_key)
+    img =cv2.imread('/home/jst/development/data-puffin-pilot/Data_LeaderboardTesting/'+img_key)
     img =cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     tic = time.time() #monotonic()
     bb_all = finalDetector.predict(img, img_key.replace(".JPG", ""))

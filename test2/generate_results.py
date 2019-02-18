@@ -20,8 +20,7 @@ from step_1_gate_finder               import GateFinder
 from step_2_fiducial_finder           import FiducialFinder
 from step_3_fiducial_matcher          import FiducialMatcher
 from step_4_pose_estimator            import PoseEstimator
-from step_5_pillar_finder             import PillarFinder
-from step_6_flying_region_generator   import FlyingRegionGenerator
+from step_5_flying_region_generator   import FlyingRegionGenerator
 
 
 class GenerateFinalDetections():
@@ -30,31 +29,19 @@ class GenerateFinalDetections():
         self.fiducial_finder         = FiducialFinder()
         self.fiducial_matcher        = FiducialMatcher()
         self.pose_estimator          = PoseEstimator()
-        self.pillar_finder           = PillarFinder()
         self.flying_region_generator = FlyingRegionGenerator()
-        
         self.error_count = 0
 
         # Predict a dummy image to make sure that all jit methods
         # are compiled and that the tensorflow models are loaded.
         self.predict(None)
-        """
-        import time
-        for i in range(10):
-            tic = time.time()
-            self.predict(None)
-            toc = time.time()
-            print(toc-tic)
-        quit()
-        """
 
     def _predict_flying_regions(self, image, img_key):
         gate_image     = self.gate_finder.process(image)
         fiducials      = self.fiducial_finder.process(gate_image)
         frames         = self.fiducial_matcher.process(fiducials)
         gate_poses     = self.pose_estimator.process(frames)
-        pillars        = self.pillar_finder.process(gate_poses, gate_image)
-        flying_regions = self.flying_region_generator.process(gate_poses, pillars, gate_image, img_key)
+        flying_regions = self.flying_region_generator.process(gate_poses, gate_image, img_key)
 
         return flying_regions
         

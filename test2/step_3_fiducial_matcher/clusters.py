@@ -8,7 +8,7 @@ from common import distance_from_points_to_point
 
 max_cluster_count = 10
 MAX_POINTS = 15
-max_point_dist = 30.0
+max_point_dist = 34.0
 
 
 def make_clusters(points):
