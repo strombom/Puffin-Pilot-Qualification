@@ -87,18 +87,22 @@ class PointsFitter:
                 point_idx += 1
         return residuals
 
-    def _undistorted_points(self, points):
+    def _undistorted_points(self, corners):
         # Undistort points to 3D space
-        points = np.reshape(points, (points.shape[0], 1, 2)).astype(np.float32)
-        object_points = np.zeros((points.shape[0], 1, 3))
-        object_points[:,:,0:2] = cv2.undistortPoints(points, self.camera_matrix, self.dist_coeffs)
-        points, jac = cv2.projectPoints(objectPoints = object_points,
-                                         rvec = np.zeros(3),
-                                         tvec = np.zeros(3),
-                                         cameraMatrix = self.camera_matrix,
-                                         distCoeffs = None)
-        points = points.reshape((points.shape[0], 2))
-        return points
+        for idx in range(len(corners)):
+            points = np.array(corners[idx])
+            if len(points) > 0:
+                points = np.reshape(points, (points.shape[0], 1, 2)).astype(np.float32)
+                object_points = np.zeros((points.shape[0], 1, 3))
+                object_points[:,:,0:2] = cv2.undistortPoints(points, self.camera_matrix, self.dist_coeffs)
+                points, jac = cv2.projectPoints(objectPoints = object_points,
+                                                 rvec = np.zeros(3),
+                                                 tvec = np.zeros(3),
+                                                 cameraMatrix = self.camera_matrix,
+                                                 distCoeffs = None)
+                points = points.reshape((points.shape[0], 2))
+            corners[idx] = points
+        return corners
 
     def _orient_corners(self, corners):
         while len(corners) < 4:

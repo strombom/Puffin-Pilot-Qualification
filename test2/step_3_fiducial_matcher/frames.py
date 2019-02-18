@@ -56,18 +56,18 @@ def match_corners(corners, debug = False):
                         point = corner.matching_points[i][j].astype(np.int64)
                         #print("point")
                         #print(tuple(point))
-                        cv2.circle(image, tuple(point), 3, color, -1)
+                        cv2.circle(image, tuple(point), 2, color, -1)
                 elif corner.matching_criterion == MatchingCriterion.LINES:
 
                     for j in range(corner.matching_points_count[i]):
                         point = corner.matching_points[i][j].astype(np.int64)
                         #print("point")
                         #print(tuple(point))
-                        cv2.circle(image, tuple(point), 3, color, -1)
+                        cv2.circle(image, tuple(point), 2, color, -1)
                     line = corner.matching_lines[i].astype(np.int64)
                     #print("line")
                     #print(tuple(line[0]))
-                    cv2.line(image, tuple(line[0]), tuple(line[-1]), color, 2)
+                    cv2.line(image, tuple(line[0]), tuple(line[-1]), color, 1)
 
     print("write frames")
     cv2.imwrite('img_5_frames.png', image)
@@ -110,6 +110,9 @@ def merge_frames(frames):
     best_matches = np.zeros(2, np.int64)
     matches      = np.zeros(2, np.int64)
 
+    print("start")
+    print(frames)
+
     # Merge frames
     idx_i = 0
     while idx_i < len(frames):
@@ -134,12 +137,18 @@ def merge_frames(frames):
             if best_matches[0]:
                 for idx, corner in enumerate(frames[best_fitness_idx]):
                     frames[idx_i].insert(idx, corner)
+                    print("insert")
             else:
                 frames[idx_i].extend(frames[best_fitness_idx])
+                print("extend")
 
             del frames[best_fitness_idx]
             idx_i -= 1
         idx_i += 1
+
+    print("end")
+    print(frames)
+    #quit()
 
 
 def merge_point_corners(frames, point_corners):
@@ -149,9 +158,10 @@ def merge_point_corners(frames, point_corners):
     merge_frames(frames)
 
 
-@njit
+#@njit
 def merging_fitness(frame1, frame2, matches):
     total_corners = len(frame1) + len(frame2)
+    print("total_corners", total_corners)
 
     if total_corners > 4:
         return -1

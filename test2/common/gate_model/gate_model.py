@@ -116,7 +116,7 @@ class GateModel:
         
     def _make_back_frame_corners(self):
         p = self.gate_size / 2 - self.gate_post_width + 0.02
-        return make_corners(p, z = 0.35)
+        return make_corners(p, z = 0.30)
     
     def _make_fiducials_corners(self):
         p = self.gate_size / 2 - self.fiducial_size * 2

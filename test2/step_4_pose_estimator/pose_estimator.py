@@ -31,12 +31,12 @@ class PoseEstimator:
         gate_poses = []
         for n, frame in enumerate(frames):
 
-            for corner in frame.corners:
-                print("Corner")
-                print(corner.points[0][0:corner.points_count[0]])
-                print(corner.points[1][0:corner.points_count[1]])
-                print(corner.lines[0])
-                print(corner.lines[1])
+            #for corner in frame.corners:
+            #    print("Corner")
+            #    print(corner.points[0][0:corner.points_count[0]])
+            #    print(corner.points[1][0:corner.points_count[1]])
+            #    print(corner.lines[0])
+            #    print(corner.lines[1])
 
             # First, try to use the quadrilateral fitter that uses the corners
             #  to estimate a quadrilateral directly on the undistorted image plane.
@@ -52,7 +52,7 @@ class PoseEstimator:
             if result is not None:
                 gate_poses.append({'rvec': result[0], 'tvec': result[1]})
 
-        print(gate_poses)
+        #print(gate_poses)
 
         return gate_poses
 

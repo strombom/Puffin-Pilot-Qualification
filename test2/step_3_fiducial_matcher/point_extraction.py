@@ -7,7 +7,7 @@ from numba import jit, njit
 
 
 fid_size      = 2      # Fiducial max radius extent
-min_area      = 14     # Minimum acceptable fiducial area
+min_area      = 9      # Minimum acceptable fiducial area
 img_threshold = 0.996
 
 def extract_points(image, max_points):
