@@ -3,7 +3,7 @@ import cv2
 import scipy
 import numpy as np
 
-from gate_model_utils import quad_to_poly, make_corners, rotate_points, sort_corners
+from .gate_model_utils import quad_to_poly, make_corners, rotate_points, sort_corners
 
 
 class GateModel:

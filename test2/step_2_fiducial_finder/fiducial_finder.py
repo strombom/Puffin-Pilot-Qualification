@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 
-from gatenet import gatenet
+from step_2_fiducial_finder.gatenet import gatenet
 
 class FiducialFinder:
     def __init__(self):
@@ -22,7 +22,6 @@ class FiducialFinder:
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         image = image.reshape((1, image.shape[0], image.shape[1], 1))
-
         predictions = self.model.predict([image])
 
         #prediction = (predictions[0] * 255).astype(np.uint8)

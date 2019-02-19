@@ -1,2 +1,2 @@
 
-from gate_model import GateModel
+from .gate_model import GateModel

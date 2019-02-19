@@ -1,14 +1,13 @@
 
 import cv2
 
-from point_extraction import extract_points
-from clusters import make_clusters
-from corners import make_corners
-from frames import match_corners
+from .point_extraction import extract_points
+from .clusters import make_clusters
+from .corners import make_corners
+from .frames import match_corners
 
 
 import os
-from seaborn import color_palette
 import numpy as np
 
 
@@ -17,14 +16,14 @@ class FiducialMatcher:
         pass
 
     def process(self, image, img_scale = 2):
+        #from seaborn import color_palette
         #cv2.imwrite('img_1_fiducials.png', (image*255).astype(np.uint8))
-
 
         # Resize image, we lose precision but gain > 4x speed in the point extraction.
         #  cv2.INTER_NEAREST - 0.1 ms
         #  cv2.INTER_LINEAR  - 0.5 ms
         image = cv2.resize(src = image,
-                           dsize = (image.shape[1] / img_scale, image.shape[0] / img_scale),
+                           dsize = (image.shape[1] // img_scale, image.shape[0] // img_scale),
                            interpolation = cv2.INTER_NEAREST)
 
 
@@ -37,6 +36,7 @@ class FiducialMatcher:
         if len(points) < 10:
             return []
         points *= img_scale
+
         """
         cv2.imwrite('img_3_fiducials_small_extracted.png', (image*255).astype(np.uint8))
 
@@ -69,7 +69,6 @@ class FiducialMatcher:
         #print(points)
         #quit()
         """
-
 
         # Corners consists of ideally two perpendicular lines. In worst case a corner can
         #  consist of a single point.

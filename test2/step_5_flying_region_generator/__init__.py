@@ -1,2 +1,2 @@
 
-from flying_region_generator import FlyingRegionGenerator
+from .flying_region_generator import FlyingRegionGenerator

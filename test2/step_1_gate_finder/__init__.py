@@ -1,2 +1,2 @@
 
-from gate_finder import GateFinder
+from .gate_finder import GateFinder

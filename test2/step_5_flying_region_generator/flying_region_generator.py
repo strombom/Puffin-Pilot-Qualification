@@ -12,17 +12,16 @@ from common.gate_model import GateModel
 import random
 
 import cv2
-from seaborn import color_palette
 
 
 class FlyingRegionGenerator:
     def __init__(self):
         source_path = os.path.dirname(os.path.abspath(__file__))
         calibration_path = os.path.join(source_path, "../common/camera_calibration/camera_calibration.pickle")
-        camera_calibration = pickle.load(open(calibration_path, "rb"))
-        self.camera_matrix = camera_calibration['camera_matrix']
-        self.dist_coefs    = camera_calibration['dist_coefs']
-        self.image_size    = camera_calibration['image_size']
+        camera_calibration = pickle.load(open(calibration_path, "rb"), encoding='bytes')
+        self.camera_matrix = camera_calibration[b'camera_matrix']
+        self.dist_coefs    = camera_calibration[b'dist_coefs']
+        self.image_size    = camera_calibration[b'image_size']
 
         self.gate_model = GateModel(self.camera_matrix, self.dist_coefs)
 
@@ -32,8 +31,8 @@ class FlyingRegionGenerator:
             flying_region, points = self.get_flying_region(gate_pose)
             flying_regions.append(flying_region.tolist())
 
-            """
-            if gate_image is not None:
+            if False and gate_image is not None:
+                from seaborn import color_palette
                 palette = color_palette("bright", 5)
                 image = cv2.cvtColor(gate_image, cv2.COLOR_RGB2BGR)
                 color = palette[4]
@@ -48,10 +47,8 @@ class FlyingRegionGenerator:
                 filename = 'img_out_%s.png' % img_key
                 cv2.imwrite(filename, image)
                 break
-            """
 
         return flying_regions
-
 
     def get_flying_region(self, gate_pose):
         corners = self.gate_model.get_distorted_flying_region(gate_pose['rvec'], gate_pose['tvec'])
@@ -67,11 +64,6 @@ class FlyingRegionGenerator:
             cogs[c_idx] = self._get_center_of_gravity(corners[c_idx])
 
         points = []
-
-
-        #palette = color_palette("bright", 5)
-        #image = cv2.imread('dummy_image.jpg')
-
 
         quadrilateral = np.empty((4, 2))
         for c_idx in range(4):
@@ -93,74 +85,14 @@ class FlyingRegionGenerator:
                     l1 = np.array(((x10, y10), (x11, y11)))
                     l2 = np.array(((x20, y20), (x21, y21)))
 
-                    #point = np.array(line_intersection(l1, l2))
-                    #points.append(point)
-
                     intersections[i*3+j] = line_intersection(l1, l2)
 
             i, j = self._get_closest_points(intersections, c1[0])
             k, l = self._get_closest_points(intersections, c2[0])
             idx = k + j * 3
 
-            #point = np.array((c[k][0], c[j][1]))
             quadrilateral[c_idx] = (intersections[idx][0], intersections[idx][1])
-            continue
-
-            #v = point - cog
-            #distance = v[0]*v[0] + v[1] * v[1]
-            #if distance < min_distance:
-            #    min_distance = distance
-            #    min_corner = point
-            
-            #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            color = palette[1]
-            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-
-            point = cogs[c_idx].astype(np.int64)
-            cv2.circle(image, tuple(point), 5, color, -1)
-
-            color = palette[2]
-            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-            for idx in range(9):
-                point = intersections[idx].astype(np.int64)
-                cv2.circle(image, tuple(point), 2, color, -1)
-
-
-
-            print(intersections)
-
-            print(i, j)
-            #print(k, l)
-
-
-            #print(c[i][0], c[k][0])
-            #print(c[j][1], c[l][1])
-
-
-
-            c = corners[c_idx]
-            color = palette[4]
-            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-
-            point = np.array((intersections[idx][0], intersections[idx][1]), dtype=np.int64)
-            cv2.circle(image, tuple(point), 2, color, -1)
-
-
-
-            #print(intersections)
-            #intersections = self._get_closest_points(intersections, cogs[(c_idx+1)%4], 1)
-
-
-            #print(intersections)
-
-            quadrilateral[c_idx] = min_corner
-            
-        #filename = 'img_out.png'
-        #cv2.imwrite(filename, image)
-
-        #quit()
-
-
+    
         return quadrilateral, points
 
     def _get_center_of_gravity(self, corners):
@@ -185,10 +117,6 @@ class FlyingRegionGenerator:
 
         ordered_points = points[0:points.shape[0]][indices][0:count]
         return ordered_points
-
-
-
-
 
 
 @njit

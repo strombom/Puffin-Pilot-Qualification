@@ -10,43 +10,6 @@ MAX_POINTS = 15
 
 line_distance_threshold = 2.7
 
-
-"""
-line_spec = [
-    ('angle',     float64),
-    ('count',     uint64),
-    ('points',   float64[:,:]),
-    ('line',     float64[:,:])
-]
-
-@jitclass(line_spec)
-class Line(object):
-    def __init__(self): #, angle, count, points):
-        #print(type(angle))
-        #print(type(count))
-        #print(type(points))
-        #print("===")
-
-        self.angle = 0.0
-        self.count = 0
-        self.points = np.empty((MAX_POINTS, 2), np.float64)
-        self.line = np.empty((2, 2))
-
-        #self.angle = angle
-        #self.count = int(count)
-        #self._points[0:count] = points[0:count]
-        #self._line_done = False
-        #self._make_line()
-
-    #def get_line(self):
-    #    #self._make_line()
-    #    return self._line
-
-    #def get_points(self):
-    #    #self._make_line()
-    #    return self._points[0:int(self.count)]
-"""
-
 @njit
 def get_line_fitness(line_angle, line_line, ref_line_angle, ref_line_line):
     # Angle diff, higher number is better, max pi/2 (perpendicular)
@@ -119,14 +82,6 @@ def process_line(points, count, line):
 
     return int(count)
 
-#def line_repr(line):
-#    l = line.get_line()
-#    return "Line(%1.2f, % 2d, [[%1.2f %1.2f] [%1.2f %1.2f]])" % (line.angle, line.count, l[0][0], l[0][1], l[1][0], l[1][1])
-
-
-#def find_all_lines(points, points_count, line_pair, line_pair_size):
-##    return jit_find_all_lines(points, points_count, line_pair)
-
 @njit
 def find_all_lines(points, points_count, line_pair, line_pair_size):
     max_lines_count = 50
@@ -184,25 +139,17 @@ def find_all_lines(points, points_count, line_pair, line_pair_size):
         if first_idx < 0:
             return
 
-    #fla = lines_angles[int(first_idx)]
-    #flc = lines_counts[int(first_idx)]
-    #flp = lines_points[int(first_idx)]
-    #first_line = Line()
     first_line_angle = lines_angles[int(first_idx)]
     first_line_count = lines_counts[int(first_idx)]
     first_line_line = np.empty((2, 2), np.float64)    
     first_line_points = np.empty((MAX_POINTS, 2), np.float64)
     first_line_points[:] = lines_points[int(first_idx)]
     first_line_count = process_line(first_line_points, first_line_count, first_line_line)
-    #first_line = Line(angle  = fla,
-    #                  count  = flc,
-    #                  points = flp)
 
     # Store the first line
     line_pair[0][0:int(first_line_count)] = first_line_points[0:int(first_line_count)]
     line_pair_size[0] = first_line_count
     #get_ordered_line_points(points, points_count, first_line, distance_threshold, line_pair[0])
-    #print(line_pair[0][0:line_pair_size[0]])
 
     # Remove all lines with similar angle as the best line
     minimum_angle = math.radians(35)
@@ -261,17 +208,13 @@ def find_all_lines(points, points_count, line_pair, line_pair_size):
                 if angle_diff < minimum_angle:
                     continue
 
-                second_line_angle = angle #np.array([angle], dtype=np.float64)[0]
-                second_line_count = 2 # np.array([2], dtype=np.uint64)[0]
+                second_line_angle = angle
+                second_line_count = 2
                 second_line_points[0:2] = line_ij
                 second_line_line[:] = line_ij
-                #second_line_count = process_line(second_line_points, second_line_count, second_line_line)
-                #test_line = Line(angle  = np.array([angle], dtype=np.float64)[0],
-                #                 count  = np.array([2], dtype=np.uint64)[0],
-                #                 points = line_ij)
+
                 fitness = get_line_fitness(second_line_angle, second_line_line, first_line_angle, first_line_line)
-                # test_line.get_fitness(first_line)
-                #print("fitness", fitness)
+
                 if fitness > best_fitness:
                     best_fitness = fitness
                     line_pair[1][0:second_line_count] = second_line_points[0:second_line_count]

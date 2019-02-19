@@ -4,7 +4,7 @@ import numpy as np
 from numba import jit, njit, jitclass
 from numba import int64, float64, boolean
 
-from common import distance_from_points_to_point
+from .common import distance_from_points_to_point
 
 max_cluster_count = 10
 MAX_POINTS = 15

@@ -67,15 +67,6 @@ class QuadrilateralFitter:
                                               max_nfev  = 20)
         quadrilateral = np.reshape(result.x, (4, 2))
 
-        """
-        for i, corner in enumerate(quadrilateral):
-            color = palette[i]
-            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-            
-            point = corner.astype(np.int64)
-            cv2.circle(image, tuple(point), 5, color, -1)
-        """
-
         # Estimate the camera position
         success, rvec, tvec = self.gate_model.camera_position_from_corners(quadrilateral, use_distortion = False)
 

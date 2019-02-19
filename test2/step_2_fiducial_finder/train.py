@@ -15,9 +15,6 @@ import utils
 from gatenet import gatenet
 
 
-
-
-
 original_path = '../../../data-puffin-pilot/Data_Training'
 masks_path = '../../../data-puffin-pilot/Fiducials_Masks'
 
@@ -38,16 +35,8 @@ def read_images(image_names):
         input_image = cv2.cvtColor(input_image, cv2.COLOR_RGB2GRAY)
         output_image = cv2.cvtColor(output_image, cv2.COLOR_RGB2GRAY)
 
-        #image = image / 256
-        #outline = outline / 256
-        #output_image = output_image[:,:,0]
         input_image = input_image.reshape((input_image.shape[0], input_image.shape[1], 1))
         output_image = output_image.reshape((output_image.shape[0], output_image.shape[1], 1))
-
-        #input_image = input_image.astype(np.float16)
-        #output_image = output_image.astype(np.float16)
-        #input_image /= 255.0
-        #output_image /= 255.0
 
         inputs.append(input_image)
         outputs.append(output_image)
@@ -84,11 +73,8 @@ training_data, validation_data = load_data()
 model = gatenet(debug_print = True)
 
 
-
-
 class ProgressImageSaver(callbacks.Callback):
     def on_train_begin(self, logs={}):
-        #print("ProgressImageSaver begin")
         self.imnm = 0
 
     def on_epoch_end(self, batch, logs={}):
@@ -114,16 +100,10 @@ checkpoint_saver = callbacks.ModelCheckpoint('logdir/checkpoint',
                                              save_weights_only=False,
                                              verbose=0)
 
-
-
-
 try:
     model.load_weights('logdir/checkpoint')
 except:
     pass
-
-#for x in model.layers:
-#    x.trainable = False
 
 def timeit():
     import time
@@ -138,20 +118,15 @@ def timeit():
 
 batch_size = 8
 
-
 model.fit(x = training_data[0], 
           y = training_data[1], 
           epochs = 10000,
           batch_size = batch_size,
-          #steps_per_epoch = 100,
-          #validation_steps = 1,
           validation_data = validation_data,
           callbacks=[tensorboard, progress_image_saver, checkpoint_saver])
 
-quit()
 
-
-
+"""
 data_gen_args = dict(featurewise_center=True,
                      featurewise_std_normalization=True,
                      rotation_range=5,
@@ -188,7 +163,7 @@ model.fit_generator(train_generator,
 
 #datagen.flow(x_train, y_train, batch_size=32),
 #          steps_per_epoch=len(x_train) / 32, epochs=epochs)
-"""
+
 model.fit(x = training_data[0], 
           y = training_data[1], 
           epochs = 500,
@@ -198,5 +173,3 @@ model.fit(x = training_data[0],
           validation_data = validation_data,
           callbacks=[tensorboard, progress_image_saver, cp_callback])
 """
-
-

@@ -1,2 +1,2 @@
 
-from fiducial_finder import FiducialFinder
+from .fiducial_finder import FiducialFinder

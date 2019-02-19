@@ -46,8 +46,6 @@ class PointsFitter:
                         corner_points[4].append(point)
                 continue
 
-        print(corner_points)
-
         corner_points_count = sum([len(i) for i in corner_points])
 
         # Undistort the points
@@ -61,9 +59,7 @@ class PointsFitter:
                                               x0        = initial_guess,
                                               args      = (corner_points, corner_points_count),
                                               ftol      = 1e-2,
-                                              max_nfev  = 40)
-
-        #quadrilateral = self.gate_model.get_undistorted_fiducial_corners(rvec, tvec)
+                                              max_nfev  = 30)
 
         if result.success:
             rvec = result.x[0:3]
@@ -79,43 +75,7 @@ class PointsFitter:
         rvec, tvec = camera_pose[0:3], camera_pose[3:6]
         quadrilateral = self.gate_model.get_undistorted_fiducial_corners(rvec, tvec)
 
-        # Loss for points where there is a known line segment
-        point_idx = 0
-        for quad_i in range(4):
-            for point_j in range(len(points[quad_i])):
-                # Calculate distance from point to side
-                ls1 = quadrilateral[(quad_i) % 4]
-                ls2 = quadrilateral[(quad_i + 1) % 4]
-                point = points[quad_i][point_j]
-                l2 = np.sum(np.square(ls2 - ls1))
-                if l2 == 0:
-                    distance = np.sum(np.square(point - ls1))
-                else:
-                    t = max(0.0, min(1.0, dot(point - ls1, ls2 - ls1) / l2))
-                    proj = ls1 + t * (ls2 - ls1)
-                    distance = np.sum(np.square(point - proj))**0.5
-                residuals[point_idx] = min(residuals[point_idx], distance)
-                point_idx += 1
-
-        #print(points)
-        #quit()
-        # Loss for remaining unknown points that still might help
-        quad_i = 4
-        for point_j in range(len(points[quad_i])):
-            for d in range(4):
-                # Calculate distance from point to side
-                ls1 = quadrilateral[(quad_i + d) % 4]
-                ls2 = quadrilateral[(quad_i + d + 1) % 4]
-                point = points[quad_i][point_j]
-                l2 = np.sum(np.square(ls2 - ls1))
-                if l2 == 0:
-                    distance = np.sum(np.square(point - ls1))
-                else:
-                    t = max(0.0, min(1.0, dot(point - ls1, ls2 - ls1) / l2))
-                    proj = ls1 + t * (ls2 - ls1)
-                    distance = np.sum(np.square(point - proj))**0.5
-                residuals[point_idx] = min(residuals[point_idx], distance)
-            point_idx += 1
+        jit_points_loss(camera_pose, points[0], points[1], points[2], points[3], points[4], residuals, rvec, tvec, quadrilateral)
 
         return residuals
 
@@ -132,7 +92,12 @@ class PointsFitter:
                                                  tvec = np.zeros(3),
                                                  cameraMatrix = self.camera_matrix,
                                                  distCoeffs = None)
-                points = points.reshape((points.shape[0], 2))
+                if points.shape[0] == 0:
+                    points = np.empty((0, 2))
+                else:
+                    points = points.reshape((points.shape[0], 2))
+            else:
+                points = np.empty((0, 2))
             corners[idx] = points
         return corners
 
@@ -167,6 +132,47 @@ class PointsFitter:
             corners = [corners[-1]] + corners[0:3]
         return corners
 
+@njit
+def jit_points_loss(camera_pose, points0, points1, points2, points3, points4, residuals, rvec, tvec, quadrilateral):
+    points = [points0, points1, points2, points3, points4]
+
+    # Loss for points where there is a known line segment
+    point_idx = 0
+    for quad_i in range(4):
+        for point_j in range(points[quad_i].shape[0]):
+            # Calculate distance from point to side
+            ls1 = quadrilateral[(quad_i) % 4]
+            ls2 = quadrilateral[(quad_i + 1) % 4]
+            point = points[quad_i][point_j]
+            l2 = np.sum(np.square(ls2 - ls1))
+            if l2 == 0:
+                v = point - ls1
+                distance = v[0]*v[0] + v[1]*v[1]
+            else:
+                t = max(0.0, min(1.0, dot(point - ls1, ls2 - ls1) / l2))
+                proj = ls1 + t * (ls2 - ls1)
+                distance = np.sum(np.square(point - proj))**0.5
+            residuals[point_idx] = min(residuals[point_idx], distance)
+            point_idx += 1
+
+    # Loss for remaining unknown points that still might help
+    quad_i = 4
+    for point_j in range(points[quad_i].shape[0]):
+        for d in range(4):
+            # Calculate distance from point to side
+            ls1 = quadrilateral[(quad_i + d) % 4]
+            ls2 = quadrilateral[(quad_i + d + 1) % 4]
+            point = points[quad_i][point_j]
+            l2 = np.sum(np.square(ls2 - ls1))
+            if l2 == 0:
+                v = point - ls1
+                distance = v[0]*v[0] + v[1]*v[1]
+            else:
+                t = max(0.0, min(1.0, dot(point - ls1, ls2 - ls1) / l2))
+                proj = ls1 + t * (ls2 - ls1)
+                distance = np.sum(np.square(point - proj))**0.5
+            residuals[point_idx] = min(residuals[point_idx], distance)
+        point_idx += 1
 
 @njit
 def det(a, b):

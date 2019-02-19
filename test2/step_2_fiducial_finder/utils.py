@@ -16,7 +16,6 @@ def save_images(filename, images):
     width = images[0][0].shape[1]
 
     image = np.zeros((height * y_count, width * x_count, 1), dtype = np.uint8)
-    #print("save", images[0][0].dtype, image.dtype)
 
     for row in range(y_count):
         for col in range(x_count):
@@ -24,7 +23,6 @@ def save_images(filename, images):
             image[y:y+height, x:x+width] = images[row][col] * 255
 
     cv2.imwrite(filename, image)
-
 
 
 def get_model_memory_usage(batch_size, model):

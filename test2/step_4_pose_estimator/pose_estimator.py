@@ -10,18 +10,18 @@ from common.gate_model import GateModel
 
 sys.modules['frames'] = frames
 
-from points_fitter import PointsFitter
-from quadrilateral_fitter import QuadrilateralFitter
+from .points_fitter import PointsFitter
+from .quadrilateral_fitter import QuadrilateralFitter
 
 
 class PoseEstimator:
     def __init__(self):
         source_path = os.path.dirname(os.path.abspath(__file__))
         calibration_path = os.path.join(source_path, "../common/camera_calibration/camera_calibration.pickle")
-        camera_calibration = pickle.load(open(calibration_path, "rb"))
-        self.camera_matrix = camera_calibration['camera_matrix']
-        self.dist_coefs    = camera_calibration['dist_coefs']
-        self.image_size    = camera_calibration['image_size']
+        camera_calibration = pickle.load(open(calibration_path, "rb"), encoding='bytes')
+        self.camera_matrix = camera_calibration[b'camera_matrix']
+        self.dist_coefs    = camera_calibration[b'dist_coefs']
+        self.image_size    = camera_calibration[b'image_size']
 
         self.gate_model           = GateModel(self.camera_matrix, self.dist_coefs)
         self.points_fitter        = PointsFitter(self.camera_matrix, self.dist_coefs, self.image_size, self.gate_model)
@@ -33,14 +33,6 @@ class PoseEstimator:
 
         gate_poses = []
         for n, frame in enumerate(frames):
-
-            #for corner in frame.corners:
-            #    print("Corner")
-            #    print(corner.points[0][0:corner.points_count[0]])
-            #    print(corner.points[1][0:corner.points_count[1]])
-            #    print(corner.lines[0])
-            #    print(corner.lines[1])
-
             # First, try to use the quadrilateral fitter that uses the corners
             #  to estimate a quadrilateral directly on the undistorted image plane.
             result = self.quadrilateral_fitter.fit(frame.corners)
@@ -54,8 +46,9 @@ class PoseEstimator:
             # Append the result if a gate pose was found was found
             if result is not None:
                 gate_poses.append({'rvec': result[0], 'tvec': result[1]})
-
-        #print(gate_poses)
+                
+                # Only return the first pose, we know there is only one gate
+                return gate_poses
 
         return gate_poses
 

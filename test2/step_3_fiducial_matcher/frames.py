@@ -7,7 +7,7 @@ from enum import IntEnum
 from numba import jit, njit, jitclass
 from numba import int64, float64, boolean
 
-from corners import MatchingCriterion
+from .corners import MatchingCriterion
 
 
 def match_corners(corners, debug = False):

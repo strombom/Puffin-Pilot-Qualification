@@ -7,28 +7,24 @@ from enum import IntEnum
 from numba import jit, njit, jitclass
 from numba import boolean, int64, float64
 
-from clusters import MAX_POINTS
-from common import norm, line_length, has_common_point, find_all_lines
-from common import get_closest_point, get_points_close_to_line
-from common import get_point_farthest_from_points, get_point_farthest_from_line
-from common import line_to_line_angle, line_to_point_angle, point_to_point_distance
+from .clusters import MAX_POINTS
+from .common import norm, line_length, has_common_point, find_all_lines
+from .common import get_closest_point, get_points_close_to_line
+from .common import get_point_farthest_from_points, get_point_farthest_from_line
+from .common import line_to_line_angle, line_to_point_angle, point_to_point_distance
 
 
 def make_corners(clusters):
     return jit_make_corners(clusters)
 
 
-#@njit
+@njit
 def jit_make_corners(clusters):
     corners = []
     for c_idx in range(len(clusters)):
-        #if c_idx == 3:
         corner = Corner(clusters[c_idx])
         corners.append(corner)
-    #quit()
-
     return corners
-
 
 
 class MatchingCriterion(IntEnum):
@@ -65,7 +61,6 @@ class Corner(object):
 
     def match(self, corner):
         # Test if this corner fits together with another corner
-
 
         # Line - Line
         if self.  matching_criterion == MatchingCriterion.LINES and \
@@ -137,7 +132,6 @@ class Corner(object):
         self.matching_points_count = self.matching_criterion[::-1]
         self.matching_lines        = self.matching_lines[::-1]
 
-    #@jit(nopython=True)
     def test_line_pair_clockwise(self, line_pair):
         v1 = line_pair[0][1] - line_pair[0][0]
         v2 = line_pair[1][1] - line_pair[1][0]
@@ -205,7 +199,6 @@ class Corner(object):
             # Two good lines found
             self.matching_criterion = MatchingCriterion.LINES
             for i in range(2):
-                #print(line_pair_size[i]-1)
                 self.matching_lines[i][0]                    = line_pair[i][0]
                 self.matching_lines[i][1]                    = line_pair[i][int(line_pair_size[i]-1)]
                 self.matching_points[i][0:line_pair_size[i]] = line_pair[i][0:line_pair_size[i]]
@@ -213,8 +206,6 @@ class Corner(object):
 
                 # Set angle tolerance for matching. Long lines have better precisions and therefore lower tolerance.
                 self.matching_angle_tol[i] = max(math.radians(40 - 0.25 * line_length(self.matching_lines[i])), math.radians(5))
-
-            #print("fitlines done")
             return
 
         if line_pair_size[0] > 0:
@@ -230,5 +221,4 @@ class Corner(object):
         self.matching_points_count[0] = cluster.points_count
         self.matching_points[1][0]    = cluster.points[-1]
         self.matching_points_count[1] = 1
-        #print(cluster.points[0:cluster.points_count])
         return
