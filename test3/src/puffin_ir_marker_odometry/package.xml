@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package>
+  <name>puffin_ir_marker_odometry</name>
+  <version>0.0.1</version>
+  <description>publishes ir marker odometry</description>
+  <license>GPLv2</license>
+  <url type="website">http://no.url</url>
+
+  <maintainer email="team_puffin@gmail.com">team_puffin</maintainer>
+  <author email="team_puffin@gmail.com">team_puffin</author>
+
+  <!-- custom dependencies -->
+
+  <!-- standard dependencies -->
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>tf2</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>puffin_pace_notes</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>roscpp</build_depend>
+
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>tf2</run_depend>
+  <run_depend>tf2_ros</run_depend>
+  <run_depend>puffin_pace_notes</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>roscpp</run_depend>
+
+  <buildtool_depend>catkin</buildtool_depend>
+</package>
