@@ -4,6 +4,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/CameraInfo.h>
 #include "boost/multi_array.hpp"
 #include <opencv2/core/core.hpp>
@@ -26,6 +27,8 @@ bool    camera_matrix_valid;
 
 // This is information about the gate we are whizzing towards.
 puffin_pace_notes::PaceNoteConstPtr pace_note;
+ros::Publisher ir_marker_odometry_pose_node;
+ros::Publisher ir_marker_odometry_transform_node;
 
 
 void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_array)
@@ -96,58 +99,97 @@ void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_ar
         return;
     }
 
+    // Calculate camera position and rotation 
     cv::Mat camera_position = cv::Mat::zeros(3, 1, cv::DataType<double>::type);
     cv::Mat rotation_matrix = cv::Mat::zeros(3, 3, cv::DataType<double>::type);
     Rodrigues(rotation_vector, rotation_matrix);
-    rotation_matrix = rotation_matrix.t();
+    rotation_matrix =  rotation_matrix.t();
     camera_position = -rotation_matrix * translation_vector;
+    double camera_roll  = -atan2(-rotation_matrix.at<double>(2,1), rotation_matrix.at<double>(2,2));
+    double camera_pitch = -asin ( rotation_matrix.at<double>(2,0));
+    double camera_yaw   = -atan2(-rotation_matrix.at<double>(1,0), rotation_matrix.at<double>(0,0));
 
-    double roll  = -atan2(-rotation_matrix.at<double>(2,1), rotation_matrix.at<double>(2,2));
-    double pitch = -asin ( rotation_matrix.at<double>(2,0));
-    double yaw   = -atan2(-rotation_matrix.at<double>(1,0), rotation_matrix.at<double>(0,0));
-
+    // Broadcast the estimated camera/odometry location
     static tf2_ros::TransformBroadcaster tf_broadcaster;
-    geometry_msgs::TransformStamped tf_puffin_pose;
     tf2::Quaternion q;
 
-    tf_puffin_pose.header.stamp = ros::Time::now();
-    tf_puffin_pose.header.frame_id = "puffin_nest";
-    tf_puffin_pose.child_frame_id = "ir_camera";
-    tf_puffin_pose.transform.translation.x = camera_position.at<double>(0);
-    tf_puffin_pose.transform.translation.y = camera_position.at<double>(1);
-    tf_puffin_pose.transform.translation.z = camera_position.at<double>(2);
-    q.setRPY(roll, pitch, yaw);
-    tf_puffin_pose.transform.rotation.x = q.x();
-    tf_puffin_pose.transform.rotation.y = q.y();
-    tf_puffin_pose.transform.rotation.z = q.z();
-    tf_puffin_pose.transform.rotation.w = q.w();
-    tf_broadcaster.sendTransform(tf_puffin_pose);
 
-    tf_puffin_pose.header.stamp = ros::Time::now();
-    tf_puffin_pose.header.frame_id = "ir_camera";
-    tf_puffin_pose.child_frame_id = "ir_odometry";
-    tf_puffin_pose.transform.translation.x = 0.0;
-    tf_puffin_pose.transform.translation.y = 0.0;
-    tf_puffin_pose.transform.translation.z = 0.0;
-    q.setRPY(0, -1.57, 1.57);
-    tf_puffin_pose.transform.rotation.x = q.x();
-    tf_puffin_pose.transform.rotation.y = q.y();
-    tf_puffin_pose.transform.rotation.z = q.z();
-    tf_puffin_pose.transform.rotation.w = q.w();
-    tf_broadcaster.sendTransform(tf_puffin_pose);
+    geometry_msgs::TransformStamped tf_camera;
+    tf_camera.header.stamp = ir_beacons_array->header.stamp;
+    tf_camera.header.frame_id = "puffin_nest";
+    tf_camera.child_frame_id  = "ir_camera";
+    tf_camera.transform.translation.x = camera_position.at<double>(0);
+    tf_camera.transform.translation.y = camera_position.at<double>(1);
+    tf_camera.transform.translation.z = camera_position.at<double>(2);
+    q.setRPY(camera_roll, camera_pitch, camera_yaw);
+    tf_camera.transform.rotation.x = q.x();
+    tf_camera.transform.rotation.y = q.y();
+    tf_camera.transform.rotation.z = q.z();
+    tf_camera.transform.rotation.w = q.w();
+    tf_broadcaster.sendTransform(tf_camera);
 
-    tf_puffin_pose.header.stamp = ros::Time::now();
-    tf_puffin_pose.header.frame_id = "world";
-    tf_puffin_pose.child_frame_id = "puffin_nest";
-    tf_puffin_pose.transform.translation.x = 0;
-    tf_puffin_pose.transform.translation.y = 0;
-    tf_puffin_pose.transform.translation.z = 0;
+    geometry_msgs::TransformStamped tf_odom;
+    tf_odom.header.stamp = ir_beacons_array->header.stamp;
+    tf_odom.header.frame_id = "ir_camera";
+    tf_odom.child_frame_id  = "ir_odometry";
+    tf_odom.transform.translation.x = 0.0;
+    tf_odom.transform.translation.y = 0.0;
+    tf_odom.transform.translation.z = 0.0;
+    q.setRPY(0, -1.5708, 1.5708);
+    tf_odom.transform.rotation.x = q.x();
+    tf_odom.transform.rotation.y = q.y();
+    tf_odom.transform.rotation.z = q.z();
+    tf_odom.transform.rotation.w = q.w();
+    tf_broadcaster.sendTransform(tf_odom);
+
+    // REMOVE!!!
+    geometry_msgs::TransformStamped tf_nest;
+    tf_nest.header.stamp = ir_beacons_array->header.stamp;
+    tf_nest.header.frame_id = "world";
+    tf_nest.child_frame_id = "puffin_nest";
+    tf_nest.transform.translation.x = 0;
+    tf_nest.transform.translation.y = 0;
+    tf_nest.transform.translation.z = 0;
     q.setRPY(0, 0, 0);
-    tf_puffin_pose.transform.rotation.x = q.x();
-    tf_puffin_pose.transform.rotation.y = q.y();
-    tf_puffin_pose.transform.rotation.z = q.z();
-    tf_puffin_pose.transform.rotation.w = q.w();
-    tf_broadcaster.sendTransform(tf_puffin_pose);
+    tf_nest.transform.rotation.x = q.x();
+    tf_nest.transform.rotation.y = q.y();
+    tf_nest.transform.rotation.z = q.z();
+    tf_nest.transform.rotation.w = q.w();
+    tf_broadcaster.sendTransform(tf_nest);
+
+    geometry_msgs::TransformStamped tf_irtf;
+    tf_irtf.header.stamp = ir_beacons_array->header.stamp;
+    tf_irtf.header.frame_id = "world";
+    tf_irtf.child_frame_id  = "ir_odom_tf";
+    tf_irtf.transform.translation.x = camera_position.at<double>(0);
+    tf_irtf.transform.translation.y = camera_position.at<double>(1);
+    tf_irtf.transform.translation.z = camera_position.at<double>(2);
+    q.setRPY(camera_roll, camera_pitch, camera_yaw);
+    tf2::Quaternion q_imu;
+    q_imu.setRPY(0, -1.5708, 1.5708);
+    q = q * q_imu;
+    tf_irtf.transform.rotation.x = q.x();
+    tf_irtf.transform.rotation.y = q.y();
+    tf_irtf.transform.rotation.z = q.z();
+    tf_irtf.transform.rotation.w = q.w();
+    //tf_broadcaster.sendTransform(tf_irtf);
+    ir_marker_odometry_transform_node.publish(tf_irtf);
+
+
+    // Publish ir marker odometry transform for use in sensor fusion
+    geometry_msgs::PoseStamped tf_pose;
+    tf_pose.header.stamp = ir_beacons_array->header.stamp;
+    tf_pose.pose.position.x = camera_position.at<double>(0);
+    tf_pose.pose.position.y = camera_position.at<double>(1);
+    tf_pose.pose.position.z = camera_position.at<double>(2);
+    q.setRPY(camera_roll, camera_pitch, camera_yaw);
+    q_imu.setRPY(0,  -1.5708,  1.5708);
+    q = q * q_imu;
+    tf_pose.pose.orientation.x = q.x();
+    tf_pose.pose.orientation.y = q.y();
+    tf_pose.pose.orientation.z = q.z();
+    tf_pose.pose.orientation.w = q.w();
+    //ir_marker_odometry_node.publish(tf_pose);
 }
 
 void paceNotesCallback(const puffin_pace_notes::PaceNoteConstPtr& _pace_note)
@@ -179,11 +221,16 @@ int main(int argc, char** argv)
     camera_info_rate_limiter = new RateLimiter(0.1);
 
     ros::init(argc, argv, "ir_marker_odometry");
+
+    ros::NodeHandle publisher_node("~");
+    ir_marker_odometry_pose_node           =  publisher_node.advertise<geometry_msgs::PoseStamped>     ("pose", 10, false);
+    ir_marker_odometry_transform_node      =  publisher_node.advertise<geometry_msgs::TransformStamped>("transform", 10, false);
+
     ros::NodeHandle subscriber_node;
     ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("/uav/camera/left/ir_beacons",  10, &irBeaconsCallback);
     ros::Subscriber pace_notes_subscriber  = subscriber_node.subscribe("/pace_notes/pace_note",        10, &paceNotesCallback);
     ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("/uav/camera/left/camera_info", 10, &cameraInfoCallback);
-    ros::spin();
 
+    ros::spin();
     return 0;
 }

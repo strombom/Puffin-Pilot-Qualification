@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>puffin_ir_marker_odometry</name>
+  <name>puffin_state_estimation</name>
   <version>0.0.1</version>
-  <description>publishes ir marker odometry</description>
+  <description>publishes puffin IMU</description>
   <license>GPLv2</license>
   <url type="website">http://no.url</url>
 
