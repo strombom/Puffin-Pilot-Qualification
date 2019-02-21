@@ -12,7 +12,6 @@
 #include <iostream>
 #include <math.h>
 
-#include "ir_marker_odometry.h"
 #include "rate_limiter.h"
 
 using namespace std;

@@ -41,7 +41,7 @@ catkin_package(
 
 include_directories(${catkin_INCLUDE_DIRS} ${SDL_INCLUDE_DIR})
 
-add_executable(puffin_ir_marker_odometry src/main.cpp src/ir_marker_odometry.cpp src/rate_limiter.cpp)
+add_executable(puffin_ir_marker_odometry src/main.cpp src/rate_limiter.cpp)
 
 target_link_libraries(puffin_ir_marker_odometry
   ${LIBS}
@@ -50,7 +50,7 @@ target_link_libraries(puffin_ir_marker_odometry
   opencv_calib3d
 )
 
-add_dependencies(puffin_ir_marker_odometry ir_marker_odometry_gencpp rate_limiter_gencpp)
+add_dependencies(puffin_ir_marker_odometry rate_limiter_gencpp)
 
 #############
 ## Install ##
