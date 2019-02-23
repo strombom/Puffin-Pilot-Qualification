@@ -18,18 +18,23 @@ using namespace imu_orientation_filter_valenti_ns;
 ImuOrientationFilterValenti  imu_orientation_filter_valenti;
 ImuOrientationFilterMadgwick imu_orientation_filter_madgwick;
 
-static bool imu_initialized = false;
-static ros::Time imu_last_timestamp;
-
 struct StateEstimate {
-    tf2::Quaternion angular_orientation;
-    tf2::Vector3    linear_position;
-    tf2::Vector3    linear_velocity;
-    tf2::Vector3    linear_acceleration;
+    ros::Time       timestamp;
+    tf2::Vector3    position;
+    tf2::Vector3    velocity;
 };
 
-StateEstimate puffin_state;
+StateEstimate imu_state;
+StateEstimate ir_odometer_state;
+
+static bool imu_filter_initialized = false;
+static bool ir_odometer_initialized = false;
+
 const static tf2::Vector3 gravity(0.0, 0.0, 9.81);
+const static bool use_madgwick = true;
+
+std::vector<double> initial_pose;
+
 
 tf2::Quaternion hamiltonToTFQuaternion(double q0, double q1, double q2, double q3)
 {
@@ -39,28 +44,33 @@ tf2::Quaternion hamiltonToTFQuaternion(double q0, double q1, double q2, double q
 }
 
 void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
-    double delta_time;
-    ros::Time timestamp = msg->header.stamp;
 
-    if (!imu_initialized) {
+    if (!imu_filter_initialized) {
         // First timestamp.
-        imu_last_timestamp = timestamp;
+        imu_state.timestamp = msg->header.stamp;
 
-        // Initialize orientation filter.        
-        imu_orientation_filter_madgwick.setOrientation(puffin_state.angular_orientation.w(), 
-                                                       puffin_state.angular_orientation.x(), 
-                                                       puffin_state.angular_orientation.y(), 
-                                                       puffin_state.angular_orientation.z());
-        imu_orientation_filter_valenti. setOrientation(puffin_state.angular_orientation.w(), 
-                                                       puffin_state.angular_orientation.x(), 
-                                                       puffin_state.angular_orientation.y(), 
-                                                       puffin_state.angular_orientation.z());
-        imu_initialized = true;
+        // Set initial state.
+        tf2::Quaternion initial_orientation = tf2::Quaternion(initial_pose.at(3), initial_pose.at(4), initial_pose.at(5), initial_pose.at(6));
+        imu_state.position                  = tf2::Vector3(initial_pose.at(0), initial_pose.at(1), initial_pose.at(2));
+        imu_state.velocity                  = tf2::Vector3(0.0, 0.0, 0.0);
+
+        // Initialize orientation filter.
+        if (use_madgwick) {
+            imu_orientation_filter_madgwick.setOrientation(initial_orientation.w(), 
+                                                           initial_orientation.x(), 
+                                                           initial_orientation.y(), 
+                                                           initial_orientation.z());
+        } else {
+            imu_orientation_filter_valenti.setOrientation (initial_orientation.w(), 
+                                                           initial_orientation.x(), 
+                                                           initial_orientation.y(), 
+                                                           initial_orientation.z());
+        }
+        imu_filter_initialized = true;
         return;
     }
 
-    delta_time = (timestamp - imu_last_timestamp).toSec();
-    imu_last_timestamp = timestamp;
+    double delta_time = (msg->header.stamp - imu_state.timestamp).toSec();
     if (delta_time <= 0) {
         // IMU callback arrived in wrong order.
         return;
@@ -68,7 +78,7 @@ void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
 
     // Update orientation
     double qx, qy, qz, qw;
-    if (true) {
+    if (use_madgwick) {
         imu_orientation_filter_madgwick.madgwickAHRSupdateIMU(msg->angular_velocity.x,    msg->angular_velocity.y,    msg->angular_velocity.z,
                                                               msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z,
                                                               delta_time);
@@ -80,31 +90,31 @@ void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
         imu_orientation_filter_valenti.getOrientation(qw, qx, qy, qz);
     }
 
+    tf2::Quaternion orientation  = tf2::Quaternion(qx, qy, qz, qw);
+    tf2::Vector3    acceleration = tf2::Transform(orientation) * tf2::Vector3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+
     // Update state
     StateEstimate state_new;
-    tf2::Vector3 world_linear_acceleration;
-    state_new.angular_orientation = tf2::Quaternion(qx, qy, qz, qw);
-    state_new.linear_acceleration = tf2::Vector3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-    world_linear_acceleration     = tf2::Transform(state_new.angular_orientation) * state_new.linear_acceleration;
-    state_new.linear_velocity     = puffin_state.linear_velocity + (world_linear_acceleration - gravity) * delta_time;
-    state_new.linear_position     = puffin_state.linear_position + state_new.linear_velocity * delta_time;
+    state_new.timestamp = msg->header.stamp;
+    state_new.velocity  = imu_state.velocity + delta_time * (acceleration - gravity);
+    state_new.position  = imu_state.position + delta_time * (state_new.velocity);
 
     // Save new state
-    puffin_state = state_new;
+    imu_state = state_new;
 
     geometry_msgs::TransformStamped tf_imu;
     tf_imu.header.stamp = msg->header.stamp;
     tf_imu.header.frame_id = "puffin_nest";
     tf_imu.child_frame_id  = "puffin_imu";
 
-    tf_imu.transform.translation.x = puffin_state.linear_position.x();
-    tf_imu.transform.translation.y = puffin_state.linear_position.y();
-    tf_imu.transform.translation.z = puffin_state.linear_position.z();
+    tf_imu.transform.translation.x = imu_state.position.x();
+    tf_imu.transform.translation.y = imu_state.position.y();
+    tf_imu.transform.translation.z = imu_state.position.z();
 
-    tf_imu.transform.rotation.w = puffin_state.angular_orientation.w();
-    tf_imu.transform.rotation.x = puffin_state.angular_orientation.x();
-    tf_imu.transform.rotation.y = puffin_state.angular_orientation.y();
-    tf_imu.transform.rotation.z = puffin_state.angular_orientation.z();
+    tf_imu.transform.rotation.w = orientation.w();
+    tf_imu.transform.rotation.x = orientation.x();
+    tf_imu.transform.rotation.y = orientation.y();
+    tf_imu.transform.rotation.z = orientation.z();
     
     static tf2_ros::TransformBroadcaster tf_broadcaster;
     tf_broadcaster.sendTransform(tf_imu);
@@ -113,58 +123,94 @@ void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
     static int count = 0;
     count++;
     if (count % 20 == 0) {
-        
+        /*
         printf("ADV: x(% 6.2f) y(% 6.2f) z(% 6.2f) --- x(% 6.2f) y(% 6.2f) z(% 6.2f) --- x(% 6.2f) y(% 6.2f) z(% 6.2f) --- x(% 6.2f) y(% 6.2f) z(% 6.2f) --- %f\n", 
             state_new.linear_acceleration.x(), state_new.linear_acceleration.y(), state_new.linear_acceleration.z(),
             world_linear_acceleration.x(), world_linear_acceleration.y(), world_linear_acceleration.z(),
             state_new.linear_velocity.x(), state_new.linear_velocity.y(), state_new.linear_velocity.z(),
             state_new.linear_position.x(), state_new.linear_position.y(), state_new.linear_position.z(),
             delta_time);
-        
+        */
         count = 0;        
     }
-    
 }
 
-void irMarkerOdometryCallback(const geometry_msgs::PoseStamped& pose_msg)
+void irMarkerOdometryCallback(const geometry_msgs::PoseStamped& msg)
 {
-    puffin_state.linear_position = tf2::Vector3(pose_msg.pose.position.x,
-                                                pose_msg.pose.position.y,
-                                                pose_msg.pose.position.z);
+    static const float max_ir_odom_interval = 0.1;
 
-    puffin_state.angular_orientation = tf2::Quaternion(pose_msg.pose.orientation.x, 
-                                                       pose_msg.pose.orientation.y, 
-                                                       pose_msg.pose.orientation.z, 
-                                                       pose_msg.pose.orientation.w);
+    tf2::Vector3 new_position(msg.pose.position.x,
+                              msg.pose.position.y,
+                              msg.pose.position.z);
 
-    imu_orientation_filter_madgwick.setOrientation(pose_msg.pose.orientation.w, 
-                                                   pose_msg.pose.orientation.x, 
-                                                   pose_msg.pose.orientation.y, 
-                                                   pose_msg.pose.orientation.z);
-    imu_initialized = false;
-    //imu_last_timestamp = pose_msg.header.stamp;
+
+    if (!ir_odometer_initialized) {
+        ir_odometer_state.timestamp = msg.header.stamp;
+        ir_odometer_state.position  = new_position;
+        ir_odometer_state.velocity  = tf2::Vector3(0, 0, 0);
+        ir_odometer_initialized     = true;
+        return;
+    }
+
+    double delta_time = (msg.header.stamp - ir_odometer_state.timestamp).toSec();
+    if (delta_time <= 0) {
+        // Pose callback out of order.
+        return;
+    }
+    if (delta_time > max_ir_odom_interval) {
+        // Too far between pose callbacks.
+        ir_odometer_state.timestamp = msg.header.stamp;
+        ir_odometer_state.position  = new_position;
+        return;
+    }
+
+    tf2::Vector3 old_position = imu_state.position;
+    tf2::Vector3 old_velocity = imu_state.velocity;
+
+    tf2::Vector3 new_velocity = (new_position - ir_odometer_state.position) / delta_time;
+
+    imu_state.position = new_position;
+    imu_state.velocity = new_velocity;
+
+    //puffin_state.timestamp = msg.header.stamp;
+    //puffin_state.linear_velocity = (new_linear_position - puffin_state.linear_position) / delta_time;
+    //puffin_state.linear_position =  new_linear_position;
+
+    printf("ADV: x(% 6.2f) y(% 6.2f) z(% 6.2f) --- x(% 6.2f) y(% 6.2f) z(% 6.2f) --- x(% 6.2f) y(% 6.2f) z(% 6.2f) --- x(% 6.2f) y(% 6.2f) z(% 6.2f) --- %f\n", 
+        old_position.x(), old_position.y(), old_position.z(),
+        new_position.x(), new_position.y(), new_position.z(),
+        old_velocity.x(), old_velocity.y(), old_velocity.z(),
+        new_velocity.x(), new_velocity.y(), new_velocity.z(),
+        delta_time);
+
+    if (use_madgwick) {
+        imu_orientation_filter_madgwick.setOrientation(msg.pose.orientation.w, 
+                                                       msg.pose.orientation.x, 
+                                                       msg.pose.orientation.y, 
+                                                       msg.pose.orientation.z);
+    } else {
+        imu_orientation_filter_valenti.setOrientation( msg.pose.orientation.w, 
+                                                       msg.pose.orientation.x, 
+                                                       msg.pose.orientation.y, 
+                                                       msg.pose.orientation.z);
+    }
 }
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "puffin_state_estimation");
 
-    std::vector<double> initial_pose;
     ros::param::get("/uav/flightgoggles_uav_dynamics/init_pose", initial_pose);
 
     // Orientation filter setup.
-    imu_orientation_filter_valenti.setGainAcc(0.1);
-    imu_orientation_filter_valenti.setDoBiasEstimation(false);
-    imu_orientation_filter_valenti.setDoAdaptiveGain(false);
-
-    imu_orientation_filter_madgwick.setAlgorithmGain(0.0);
-    imu_orientation_filter_madgwick.setWorldFrame(WorldFrame::NWU);
-
-    // Set initial state.
-    puffin_state.angular_orientation = tf2::Quaternion(initial_pose.at(3), initial_pose.at(4), initial_pose.at(5), initial_pose.at(6));
-    puffin_state.linear_position     = tf2::Vector3(initial_pose.at(0), initial_pose.at(1), initial_pose.at(2));
-    puffin_state.linear_velocity     = tf2::Vector3(0.0, 0.0, 0.0);
-    puffin_state.linear_acceleration = gravity;
+    if (use_madgwick) {
+        imu_orientation_filter_madgwick.setAlgorithmGain(0.0);
+        imu_orientation_filter_madgwick.setWorldFrame(WorldFrame::NWU);
+    } else {
+        imu_orientation_filter_valenti.setGainAcc(0.1);
+        imu_orientation_filter_valenti.setDoBiasEstimation(false);
+        imu_orientation_filter_valenti.setDoAdaptiveGain(false);
+    }
 
     ros::NodeHandle subscriber_node;
     ros::Subscriber imu_callback_node    = subscriber_node.subscribe("/uav/sensors/imu", 10, &uavIMUCallback);
