@@ -27,6 +27,10 @@ set(LIBS ${SDL_LIBRARY})
 
 find_package(Boost REQUIRED)
 
+# Find Eigen
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 catkin_package(
   #INCLUDE_DIRS include
   #LIBRARIES mylibrary
@@ -40,7 +44,7 @@ catkin_package(
 
 include_directories(${catkin_INCLUDE_DIRS} ${SDL_INCLUDE_DIR})
 
-add_executable(puffin_state_estimation src/main.cpp src/puffin_dynamics.cpp)
+add_executable(puffin_state_estimation src/main.cpp src/imu_orientation_filter_madgwick.cpp src/imu_orientation_filter_valenti.cpp)
 
 target_link_libraries(puffin_state_estimation
   ${LIBS}
@@ -48,7 +52,7 @@ target_link_libraries(puffin_state_estimation
   ${Boost_LIBRARIES}
 )
 
-add_dependencies(puffin_state_estimation puffin_dynamics_gencpp)
+add_dependencies(puffin_state_estimation imu_orientation_filter_madgwick_gencpp imu_orientation_filter_valenti_gencpp)
 
 #############
 ## Install ##
