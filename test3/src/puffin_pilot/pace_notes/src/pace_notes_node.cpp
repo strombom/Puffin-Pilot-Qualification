@@ -1,7 +1,9 @@
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <iostream>
-#include "pace_notes.h"
+
+#include <pace_notes/PaceNote.h>
+
 using namespace std;
 
 int main(int argc, char** argv)
@@ -9,9 +11,9 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "pace_notes");
     ros::NodeHandle n("~");
 
-    ros::Publisher pub_pace_note = n.advertise<puffin_pace_notes::PaceNote>("pace_note", 10, true);
+    ros::Publisher pub_pace_note = n.advertise<pace_notes::PaceNote>("pace_note", 10, true);
 
-    puffin_pace_notes::PaceNote pace_note;
+    pace_notes::PaceNote pace_note;
 
     std::stringstream ss;
     ss << "Gate10";

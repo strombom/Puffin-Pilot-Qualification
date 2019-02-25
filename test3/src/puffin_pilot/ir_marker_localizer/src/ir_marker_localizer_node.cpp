@@ -6,6 +6,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <nav_msgs/Odometry.h>
 #include "boost/multi_array.hpp"
 #include <opencv2/core/core.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -27,7 +28,6 @@ bool    camera_matrix_valid;
 // This is information about the gate we are whizzing towards.
 puffin_pace_notes::PaceNoteConstPtr pace_note;
 ros::Publisher ir_marker_odometry_pose_node;
-ros::Publisher ir_marker_odometry_transform_node;
 
 
 void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_array)
@@ -148,7 +148,6 @@ void paceNotesCallback(const puffin_pace_notes::PaceNoteConstPtr& _pace_note)
     pace_note = _pace_note;
 }
 
-
 void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& camera_info)
 {
     if (!camera_info_rate_limiter->try_aquire(1)) {
@@ -170,15 +169,15 @@ int main(int argc, char** argv)
     ir_beacons_rate_limiter  = new RateLimiter(10.0);
     camera_info_rate_limiter = new RateLimiter(0.1);
 
-    ros::init(argc, argv, "puffin_ir_marker_odometry");
+    ros::init(argc, argv, "ir_marker_localizer");
 
     ros::NodeHandle publisher_node("~");
-    ir_marker_odometry_pose_node           =  publisher_node.advertise<geometry_msgs::PoseStamped>     ("pose", 10, false);
+    ir_marker_odometry_pose_node = publisher_node.advertise<geometry_msgs::PoseStamped>("pose", 10, false);
 
     ros::NodeHandle subscriber_node;
-    ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("/uav/camera/left/ir_beacons",  10, &irBeaconsCallback);
-    ros::Subscriber pace_notes_subscriber  = subscriber_node.subscribe("/pace_notes/pace_note",        10, &paceNotesCallback);
-    ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("/uav/camera/left/camera_info", 10, &cameraInfoCallback);
+    ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &cameraInfoCallback);
+    ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("ir_beacons",  10, &irBeaconsCallback);
+    ros::Subscriber pace_notes_subscriber  = subscriber_node.subscribe("pace_note",   10, &paceNotesCallback);
 
     ros::spin();
     return 0;

@@ -1,0 +1,78 @@
+
+<launch>
+  <!-- Pace notes -->
+  <!-- Keeps track on which gate to pass next, used by puffin_pilot -->
+  <node name="pace_notes_node" pkg="puffin_pilot" type="pace_notes" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="odometry" to="/puffin_pilot/odometry" />
+
+    <!-- Output -->
+    <remap from="pace_note" to="/puffin_pilot/pace_note"/>
+  </node>
+  
+  <!-- IR marker localizer -->
+  <node name="ir_marker_localizer_node" pkg="puffin_pilot" type="ir_marker_localizer" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="camera_info" to="/uav/camera/left/camera_info" />
+    <remap from="ir_beacons"  to="/uav/camera/left/ir_beacons" />
+    <remap from="pace_note"   to="/puffin_pilot/pace_note"/>
+
+    <!-- Output -->
+    <remap from="pose" to="/puffin_pilot/ir_markers_pose"/>
+  </node>
+
+  <!-- Odometry -->
+  <!-- Fuses IMU + IR marker localizer -->
+  <node name="odometry_node" pkg="puffin_pilot" type="odometry" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="imu" to="/uav/sensors/imu" />
+    <remap from="ir_markers_pose" to="/puffin_pilot/ir_markers_pose" />
+
+    <!-- Output  -->
+    <remap from="odometry" to="/puffin_pilot/odometry"/>
+  </node>
+
+  <!-- Trajectory generation -->
+  <node name="trajectory_generator_node" pkg="puffin_pilot" type="trajectory_generator" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="odometry" to="/puffin_pilot/odometry" />
+    <remap from="pace_note" to="/puffin_pilot/pace_note"/>
+
+    <!-- Output -->
+    <remap from="trajectory" to="/puffin_pilot/trajectory" />
+  </node>
+
+  <!-- Control Angle+Thrust -->
+  <node name="mav_nonlinear_mpc" pkg="mav_nonlinear_mpc" type="nonlinear_mpc_node" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="odometry" to="/puffin_state_estimation/predicted_odometry" />
+
+    <!-- Output (mav_msgs/RollPitchYawrateThrust) -->
+    <remap from="command/roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust"/>
+    
+    <!-- Params -->
+    <rosparam file="$(find puffin_pilot)/config/nonlinear_mpc.yaml"/>    
+    <rosparam file="$(find puffin_pilot)/config/disturbance_observer.yaml"/>
+    <param name="use_rc_teleop" value="false"/>
+    <param name="verbose" value="true" />
+    <param name="reference_frame" value="puffin_nest"/>
+  </node>
+
+  <!-- Rate thrust controller -->
+  <node name="rate_thrust_controller_node" pkg="puffin_pilot" type="rate_thrust_controller" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="odometry" to="/puffin_pilot/odometry" />
+    <remap from="roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust" />
+
+    <!-- Output -->
+    <remap from="rate_thrust" to="/uav/input/rateThrust" />
+
+    <!-- Params -->
+    <rosparam file="$(find puffin_pilot)/config/rate_thrust_controller.yaml"/>
+  </node>
+
+</launch>
+
+<!--
+<include file="$(find package_name)/directory/another.launch"/>
+-->

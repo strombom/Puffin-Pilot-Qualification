@@ -1,0 +1,19 @@
+<package format="2">
+  <name>rate_thrust_controller</name>
+  <version>0.0.1</version>
+  <description>Puffin rate thrust controller.</description>
+  <license>GPLv2</license>
+
+  <maintainer email="drone.team.puffin@gmail.com">team_puffin</maintainer>
+  <author email="drone.team.puffin@gmail.com">team_puffin</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>mav_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>tf2</depend>
+  <depend>roscpp</depend>
+</package>

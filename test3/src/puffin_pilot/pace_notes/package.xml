@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>pace_notes</name>
+  <version>0.0.1</version>
+  <description>Publishes pace notes.</description>
+  <license>DTP</license>
+
+  <maintainer email="drone.team.puffin@gmail.com">team_puffin</maintainer>
+  <author email="drone.team.puffin@gmail.com">team_puffin</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>std_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+</package>

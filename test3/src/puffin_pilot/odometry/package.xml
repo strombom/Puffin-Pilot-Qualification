@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>odometry</name>
+  <version>0.0.1</version>
+  <description>Puffin pilot odometry.</description>
+  <license>DTP</license>
+
+  <maintainer email="drone.team.puffin@gmail.com">team_puffin</maintainer>
+  <author email="drone.team.puffin@gmail.com">team_puffin</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_eigen</depend>
+  <depend>roscpp</depend>
+</package>
