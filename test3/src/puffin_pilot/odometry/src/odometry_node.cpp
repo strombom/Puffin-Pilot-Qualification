@@ -40,6 +40,7 @@ ros::Publisher puffin_odometry_node;
 
 
 void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
+    ROS_INFO_ONCE("Odometry got first IMU message.");
 
     if (!imu_filter_initialized) {
         // First timestamp.
@@ -146,6 +147,8 @@ void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
 
 void irMarkerOdometryCallback(const geometry_msgs::PoseStamped& msg)
 {
+    ROS_INFO_ONCE("Odometry got first IR marker pose message.");
+
     static const float max_ir_odom_interval = 0.1;
 
     tf2::Vector3 new_position(msg.pose.position.x,
@@ -206,8 +209,8 @@ int main(int argc, char** argv)
     }
 
     ros::NodeHandle subscriber_node;
-    ros::Subscriber imu_callback_node    = subscriber_node.subscribe("/uav/sensors/imu",                10, &uavIMUCallback);
-    ros::Subscriber irodom_callback_node = subscriber_node.subscribe("/puffin_ir_marker_odometry/pose", 10, &irMarkerOdometryCallback);
+    ros::Subscriber imu_callback_node    = subscriber_node.subscribe("imu",             10, &uavIMUCallback);
+    ros::Subscriber irodom_callback_node = subscriber_node.subscribe("ir_markers_pose", 10, &irMarkerOdometryCallback);
 
     ros::NodeHandle publisher_node("~");
     puffin_odometry_node = publisher_node.advertise<nav_msgs::Odometry>("odometry", 50);

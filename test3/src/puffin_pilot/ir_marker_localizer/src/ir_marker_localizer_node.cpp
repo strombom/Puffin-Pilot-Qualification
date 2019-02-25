@@ -32,6 +32,8 @@ ros::Publisher ir_marker_odometry_pose_node;
 
 void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_array)
 {
+    ROS_INFO_ONCE("IR marker localizer got first IR marker array message.");
+
     // Limit incoming message frequency to 60 Hz.
     // However, it seems to already be limited to 20 Hz.
     if (!ir_beacons_rate_limiter->try_aquire(1)) {
@@ -144,6 +146,8 @@ void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_ar
 
 void paceNotesCallback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
 {
+    ROS_INFO_ONCE("IR marker localizer got first Pace note message.");
+
     // Store incoming pace notes.
     pace_note = _pace_note;
 }
