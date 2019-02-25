@@ -212,7 +212,7 @@ int main(int argc, char** argv)
     ros::Subscriber imu_callback_node    = subscriber_node.subscribe("imu",             10, &uavIMUCallback);
     ros::Subscriber irodom_callback_node = subscriber_node.subscribe("ir_markers_pose", 10, &irMarkerOdometryCallback);
 
-    ros::NodeHandle publisher_node("~");
+    ros::NodeHandle publisher_node;
     puffin_odometry_node = publisher_node.advertise<nav_msgs::Odometry>("odometry", 50);
 
     // REMOVE!!!

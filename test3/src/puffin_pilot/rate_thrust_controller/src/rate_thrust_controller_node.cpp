@@ -24,6 +24,8 @@ bool got_first_rpyt_command = false;
 mav_msgs::RollPitchYawrateThrust roll_pitch_yawthrust;
 ros::Publisher rate_thrust_node;
 
+ros::Time last_odometry_callback;
+
 void dyn_config_callback(rate_thrust_controller::RateThrustControllerConfig &config, uint32_t level)
 {
     ROS_INFO("Set config: Roll PID(%.2f, %.2f, %.2f) Pitch PID(%.2f, %.2f, %.2f)",
@@ -58,6 +60,8 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
     if (!got_first_rpyt_command) {
         return;
     }
+
+    last_odometry_callback = msg.header.stamp;
 
     mav_msgs::EigenOdometry odometry;
     eigenOdometryFromMsg(msg, &odometry);
@@ -123,17 +127,18 @@ int main(int argc, char** argv)
     rate_thrust_msg.thrust.y = 0;
     rate_thrust_msg.thrust.z = 0;
 
-
-    int count = 0;
+    last_odometry_callback = ros::Time::now();
 
     ros::Rate loop_rate(1);
     while (ros::ok()) {
 
-        if (count < 3) {
-            count += 1;
+        double delta_time = (ros::Time::now() - last_odometry_callback).toSec();
+        if (delta_time > 1.0) {
+            ROS_INFO_ONCE("RateThrustController launching.");
+            last_odometry_callback = ros::Time::now();
+            rate_thrust_msg.thrust.z = 10;
             rate_thrust_msg.header.stamp = ros::Time::now();
             rate_thrust_node.publish(rate_thrust_msg);
-            rate_thrust_msg.thrust.z = 10;
         }
 
         ros::spinOnce();
