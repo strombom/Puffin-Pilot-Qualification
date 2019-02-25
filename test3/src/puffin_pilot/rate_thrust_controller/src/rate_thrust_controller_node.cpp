@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <iostream>
+//#include <RateThrustControllerConfig.h>
 
 using namespace std;
 

@@ -2,7 +2,7 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <iostream>
 
-#include <pace_notes/PaceNote.h>
+#include <puffin_pilot/PaceNote.h>
 
 using namespace std;
 
