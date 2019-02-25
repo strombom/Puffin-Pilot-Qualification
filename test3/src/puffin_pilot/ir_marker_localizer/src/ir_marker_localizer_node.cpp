@@ -175,7 +175,7 @@ int main(int argc, char** argv)
 
     ros::init(argc, argv, "ir_marker_localizer");
 
-    ros::NodeHandle publisher_node("~");
+    ros::NodeHandle publisher_node;
     ir_marker_odometry_pose_node = publisher_node.advertise<geometry_msgs::PoseStamped>("pose", 10, false);
 
     ros::NodeHandle subscriber_node;

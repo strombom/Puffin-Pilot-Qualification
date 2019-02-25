@@ -2,6 +2,8 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <iostream>
 
+#include <geometry_msgs/PoseStamped.h>
+
 #include <mav_trajectory_generation/polynomial_optimization_nonlinear.h>
 #include <mav_trajectory_generation/trajectory.h>
 #include <mav_trajectory_generation/trajectory_sampling.h>
@@ -15,7 +17,7 @@ using namespace mav_trajectory_generation;
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "puffin_pilot");
-    ros::NodeHandle node_handle("~");
+    ros::NodeHandle node_handle;
     ros::start();
 
 
@@ -134,14 +136,32 @@ int main(int argc, char** argv)
 
     ros::Publisher vis_pub = node_handle.advertise<visualization_msgs::MarkerArray>("visualization_marker", 0);
 
-    ros::Rate loop_rate(1);
+    // trajectory_msgs/MultiDOFJointTrajector
+
+    ros::Publisher pose_pub = node_handle.advertise<geometry_msgs::PoseStamped>("pose", 0);
+
+    geometry_msgs::PoseStamped ps;
+    ps.pose.position.x = 16.0;
+    ps.pose.position.y = -1.0;
+    ps.pose.position.z = 6.0;
+    ps.pose.orientation.x = 0;
+    ps.pose.orientation.y = 0;
+    ps.pose.orientation.z = 0.7071067811865476;
+    ps.pose.orientation.w = 0.7071067811865476;
+
+    ros::Rate loop_rate(10);
     while (ros::ok()) {
 
-        vis_pub.publish(markers);
+        ps.header.stamp = ros::Time::now();
+        pose_pub.publish(ps);
+
+        //vis_pub.publish(markers);
+        ros::spinOnce();
+        loop_rate.sleep();
     }
 
-    printf("%d\n", (int) markers.markers.size());
-
+    //printf("%d\n", (int) markers.markers.size());
+/*
     for(int i = 0; i < markers.markers.size(); i++) {
         printf("marker(%d) %f %f %f, %f %f %f\n", i, markers.markers[i].points[0].x,
                                                      markers.markers[i].points[0].y,
@@ -153,6 +173,6 @@ int main(int argc, char** argv)
 
 
     printf("done?\n");
-
+*/
     //ros::spin();
 }

@@ -9,9 +9,9 @@ using namespace std;
 int main(int argc, char** argv)
 {  
     ros::init(argc, argv, "pace_notes");
-    ros::NodeHandle n("~");
+    ros::NodeHandle nh;
 
-    ros::Publisher pub_pace_note = n.advertise<puffin_pilot::PaceNote>("pace_note", 10, true);
+    ros::Publisher pub_pace_note = nh.advertise<puffin_pilot::PaceNote>("pace_note", 10, true);
 
     puffin_pilot::PaceNote pace_note;
 
@@ -55,9 +55,12 @@ int main(int argc, char** argv)
     pace_note.header.stamp = ros::Time::now();
     pace_note.header.frame_id = "1";
 
-    pub_pace_note.publish(pace_note);
 
-    ros::spinOnce();
+    ros::Rate loop_rate(5);
+    while (ros::ok()) {
+        pub_pace_note.publish(pace_note);
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
 
-    ros::waitForShutdown();
 }

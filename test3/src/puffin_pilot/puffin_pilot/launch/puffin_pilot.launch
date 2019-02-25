@@ -40,12 +40,15 @@
 
     <!-- Output -->
     <remap from="trajectory" to="/puffin_pilot/trajectory" />
+    <remap from="pose" to="/puffin_pilot/pose" />
   </node>
 
   <!-- Control Angle+Thrust -->
   <node name="mav_nonlinear_mpc" pkg="mav_nonlinear_mpc" type="nonlinear_mpc_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
-    <remap from="odometry" to="/puffin_state_estimation/predicted_odometry" />
+    <remap from="odometry" to="/puffin_pilot/odometry" />
+    <!--remap from="command/trajectory" to="/puffin_pilot/trajectory" /-->
+    <remap from="command/pose" to="/puffin_pilot/pose" />
 
     <!-- Output (mav_msgs/RollPitchYawrateThrust) -->
     <remap from="command/roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust"/>

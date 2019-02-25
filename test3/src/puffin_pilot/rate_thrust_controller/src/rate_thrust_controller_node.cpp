@@ -89,9 +89,10 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
 
     // Rate thrust command
     mav_msgs::RateThrust rate_thrust_msg;
+    rate_thrust_msg.header.stamp = msg.header.stamp;
     rate_thrust_msg.angular_rates.x = vel_roll;
-    rate_thrust_msg.angular_rates.x = vel_pitch;
-    rate_thrust_msg.angular_rates.x = vel_yaw;
+    rate_thrust_msg.angular_rates.y = vel_pitch;
+    rate_thrust_msg.angular_rates.z = vel_yaw;
     rate_thrust_msg.thrust = roll_pitch_yawthrust.thrust;
 
     rate_thrust_node.publish(rate_thrust_msg);
@@ -100,21 +101,42 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "rate_thrust_controller");
-    ros::NodeHandle node_handle("~");
 
     ros::NodeHandle subscriber_node;
     ros::Subscriber odometry_node = subscriber_node.subscribe("odometry",                  10, &OdometryCallback);
     ros::Subscriber rpyt_node     = subscriber_node.subscribe("roll_pitch_yawrate_thrust", 10, &rollPitchYawrateThrustCallback);
 
-    ros::NodeHandle publisher_node("~");
+    ros::NodeHandle publisher_node;
     rate_thrust_node = publisher_node.advertise<mav_msgs::RateThrust>("rate_thrust", 1);
 
     dynamic_reconfigure::Server<rate_thrust_controller::RateThrustControllerConfig> controller_dyn_config_server_;
     controller_dyn_config_server_.setCallback(&dyn_config_callback);
 
-    ros::Rate loop_rate(10);
-    while (ros::ok()) {
 
         ros::spinOnce();
+    // Rate thrust command
+    mav_msgs::RateThrust rate_thrust_msg;
+    rate_thrust_msg.angular_rates.x = 0;
+    rate_thrust_msg.angular_rates.y = 0;
+    rate_thrust_msg.angular_rates.z = 0;
+    rate_thrust_msg.thrust.x = 0;
+    rate_thrust_msg.thrust.y = 0;
+    rate_thrust_msg.thrust.z = 0;
+
+
+    int count = 0;
+
+    ros::Rate loop_rate(1);
+    while (ros::ok()) {
+
+        if (count < 3) {
+            count += 1;
+            rate_thrust_msg.header.stamp = ros::Time::now();
+            rate_thrust_node.publish(rate_thrust_msg);
+            rate_thrust_msg.thrust.z = 10;
+        }
+
+        ros::spinOnce();
+        loop_rate.sleep();
     }
 }
