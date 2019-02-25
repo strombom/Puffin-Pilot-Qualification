@@ -2,7 +2,7 @@
 <launch>
   <!-- Pace notes -->
   <!-- Keeps track on which gate to pass next, used by puffin_pilot -->
-  <node name="pace_notes_node" pkg="puffin_pilot" type="pace_notes" respawn="false" clear_params="true" output="screen">
+  <node name="pace_notes_node" pkg="pace_notes" type="pace_notes_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
     <remap from="odometry" to="/puffin_pilot/odometry" />
 
@@ -11,7 +11,7 @@
   </node>
   
   <!-- IR marker localizer -->
-  <node name="ir_marker_localizer_node" pkg="puffin_pilot" type="ir_marker_localizer" respawn="false" clear_params="true" output="screen">
+  <node name="ir_marker_localizer_node" pkg="ir_marker_localizer" type="ir_marker_localizer_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
     <remap from="camera_info" to="/uav/camera/left/camera_info" />
     <remap from="ir_beacons"  to="/uav/camera/left/ir_beacons" />
@@ -23,7 +23,7 @@
 
   <!-- Odometry -->
   <!-- Fuses IMU + IR marker localizer -->
-  <node name="odometry_node" pkg="puffin_pilot" type="odometry" respawn="false" clear_params="true" output="screen">
+  <node name="odometry_node" pkg="odometry" type="odometry_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
     <remap from="imu" to="/uav/sensors/imu" />
     <remap from="ir_markers_pose" to="/puffin_pilot/ir_markers_pose" />
@@ -33,7 +33,7 @@
   </node>
 
   <!-- Trajectory generation -->
-  <node name="trajectory_generator_node" pkg="puffin_pilot" type="trajectory_generator" respawn="false" clear_params="true" output="screen">
+  <node name="trajectory_generator_node" pkg="trajectory_generator" type="trajectory_generator_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
     <remap from="odometry" to="/puffin_pilot/odometry" />
     <remap from="pace_note" to="/puffin_pilot/pace_note"/>
@@ -59,7 +59,7 @@
   </node>
 
   <!-- Rate thrust controller -->
-  <node name="rate_thrust_controller_node" pkg="puffin_pilot" type="rate_thrust_controller" respawn="false" clear_params="true" output="screen">
+  <node name="rate_thrust_controller_node" pkg="rate_thrust_controller" type="rate_thrust_controller_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
     <remap from="odometry" to="/puffin_pilot/odometry" />
     <remap from="roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust" />

@@ -2,13 +2,38 @@
 #include <iostream>
 //#include <RateThrustControllerConfig.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <rate_thrust_controller/RateThrustControllerConfig.h>
+
+
 using namespace std;
+
+
+void controller_dyn_config_callback(rate_thrust_controller::RateThrustControllerConfig &config, uint32_t level)
+{
+    ROS_INFO("Reconfigure request : % 7.2f % 7.2f % 7.2f % 7.2f % 7.2f % 7.2f ",
+                config.p_gain_roll,
+                config.p_gain_pitch,
+                config.i_gain_roll,
+                config.i_gain_pitch,
+                config.d_gain_roll,
+                config.d_gain_pitch);
+}
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "puffin_pilot");
+    ros::init(argc, argv, "rate_thrust_controller");
     ros::NodeHandle node_handle("~");
 
+    // Dynamic configuration
+    dynamic_reconfigure::Server<rate_thrust_controller::RateThrustControllerConfig> controller_dyn_config_server_;
+    controller_dyn_config_server_.setCallback(&controller_dyn_config_callback);
+
+    ros::Rate loop_rate(10);
+    while (ros::ok()) {
+
+        ros::spinOnce();
+    }
 }
 
 

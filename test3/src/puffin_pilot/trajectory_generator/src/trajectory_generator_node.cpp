@@ -132,14 +132,12 @@ int main(int argc, char** argv)
     // From mav_msgs::EigenTrajectoryPoint::Vector states:
     //mav_trajectory_generation::drawMavSampledTrajectoryWithMavMarker(states, distance, frame_id, hex, &markers);
 
-    ros::Rate r(1);
-
     ros::Publisher vis_pub = node_handle.advertise<visualization_msgs::MarkerArray>("visualization_marker", 0);
-    while(1)
-    {
-        vis_pub.publish(markers);
 
-        r.sleep();
+    ros::Rate loop_rate(1);
+    while (ros::ok()) {
+
+        vis_pub.publish(markers);
     }
 
     printf("%d\n", (int) markers.markers.size());

@@ -1,0 +1,15 @@
+
+<launch>
+  <!-- Rate thrust controller -->
+  <node name="rate_thrust_controller_node" pkg="rate_thrust_controller" type="rate_thrust_controller_node" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="odometry" to="/puffin_pilot/odometry" />
+    <remap from="roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust" />
+
+    <!-- Output -->
+    <remap from="rate_thrust" to="/uav/input/rateThrust" />
+
+    <!-- Params -->
+    <rosparam file="$(find puffin_pilot)/config/rate_thrust_controller.yaml"/>
+  </node>
+</launch>
