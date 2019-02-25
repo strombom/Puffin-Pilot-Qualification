@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-#include <puffin_pilot/PaceNote.h>
 #include <flightgoggles/IRMarkerArray.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -12,6 +11,7 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <iostream>
 #include <math.h>
+#include <puffin_pilot/PaceNote.h>
 
 #include "rate_limiter.h"
 
@@ -26,7 +26,7 @@ cv::Mat dist_coeffs  (4, 1, cv::DataType<double>::type);
 bool    camera_matrix_valid;
 
 // This is information about the gate we are whizzing towards.
-puffin_pace_notes::PaceNoteConstPtr pace_note;
+puffin_pilot::PaceNoteConstPtr pace_note;
 ros::Publisher ir_marker_odometry_pose_node;
 
 
@@ -142,7 +142,7 @@ void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_ar
     ir_marker_odometry_pose_node.publish(ps_ir_marker_odometry);
 }
 
-void paceNotesCallback(const puffin_pace_notes::PaceNoteConstPtr& _pace_note)
+void paceNotesCallback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
 {
     // Store incoming pace notes.
     pace_note = _pace_note;

@@ -11,9 +11,9 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "pace_notes");
     ros::NodeHandle n("~");
 
-    ros::Publisher pub_pace_note = n.advertise<pace_notes::PaceNote>("pace_note", 10, true);
+    ros::Publisher pub_pace_note = n.advertise<puffin_pilot::PaceNote>("pace_note", 10, true);
 
-    pace_notes::PaceNote pace_note;
+    puffin_pilot::PaceNote pace_note;
 
     std::stringstream ss;
     ss << "Gate10";
