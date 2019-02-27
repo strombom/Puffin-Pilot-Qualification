@@ -1,7 +1,7 @@
 <package format="2">
-  <name>rate_thrust_controller</name>
+  <name>puffin_launcher</name>
   <version>0.0.1</version>
-  <description>Puffin rate thrust controller.</description>
+  <description>Puffin launcher.</description>
   <license>GPLv2</license>
 
   <maintainer email="drone.team.puffin@gmail.com">team_puffin</maintainer>
@@ -13,8 +13,5 @@
   <depend>mav_msgs</depend>
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>dynamic_reconfigure</depend>
-  <depend>tf2</depend>
-  <depend>tf2_ros</depend>
   <depend>roscpp</depend>
 </package>

@@ -149,8 +149,23 @@ int main(int argc, char** argv)
     ps.pose.orientation.z = 0.7071067811865476;
     ps.pose.orientation.w = 0.7071067811865476;
 
+    int count = 0;
+
+
     ros::Rate loop_rate(10);
     while (ros::ok()) {
+        count++;
+
+        if (count == 1) {
+            ps.pose.position.x = 16.5;
+
+        } else if (count == 40) {
+            ps.pose.position.x = 16.5;
+
+
+        } else if (count == 80) {
+            count = 0;
+        } 
 
         ps.header.stamp = ros::Time::now();
         pose_pub.publish(ps);

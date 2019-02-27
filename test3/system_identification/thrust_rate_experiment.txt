@@ -1,0 +1,25 @@
+
+
+======================
+roll 1st order dynamics
+roll_gain: 0.001191
+roll_time_constant: 0.186232
+fit percentage: 31.887464 %
+----------------------
+pitch 1st order dynamics
+pitch_gain: -0.000920
+pitch_time_constant: 0.176196
+fit percentage: 32.920966 %
+----------------------
+roll 2st order dynamics:
+roll_gain: 0.001031
+roll_damping_coef: 1.000000
+roll_natural_freq: 11.854819
+fit percentage: 32.326426
+----------------------
+pitch 2st order dynamics:
+pitch_gain: -0.000823
+pitch_damping_coef: 0.832499
+pitch_natural_freq: 11.039486
+fit percentage: 34.116113
+
