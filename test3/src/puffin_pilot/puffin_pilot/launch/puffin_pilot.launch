@@ -10,16 +10,16 @@
     <remap from="pace_note" to="/puffin_pilot/pace_note"/>
   </node>
   
-  <!-- IR marker localizer -->
-  <node name="ir_marker_localizer_node" pkg="ir_marker_localizer" type="ir_marker_localizer_node" respawn="false" clear_params="true" output="screen">
-    <!-- Input -->
+  <!-- IR marker localizer 
+  <node name="ir_marker_localizer_node" pkg="ir_marker_localizer" type="ir_marker_localizer_node" respawn="false" clear_params="true" output="screen">-->
+    <!-- Input 
     <remap from="camera_info" to="/uav/camera/left/camera_info" />
     <remap from="ir_beacons"  to="/uav/camera/left/ir_beacons" />
-    <remap from="pace_note"   to="/puffin_pilot/pace_note"/>
+    <remap from="pace_note"   to="/puffin_pilot/pace_note"/>-->
 
-    <!-- Output -->
+    <!-- Output 
     <remap from="pose" to="/puffin_pilot/ir_markers_pose"/>
-  </node>
+  </node>-->
 
   <!-- Odometry -->
   <!-- Fuses IMU + IR marker localizer -->
@@ -27,43 +27,44 @@
     <!-- Input -->
     <remap from="imu" to="/uav/sensors/imu" />
     <remap from="ir_markers_pose" to="/puffin_pilot/ir_markers_pose" />
+    <remap from="odometry_gt" to="/uav/sensors/odom"/>
 
     <!-- Output  -->
     <remap from="odometry" to="/puffin_pilot/odometry"/>
+    <remap from="odometry_mpc" to="/puffin_pilot/odometry_mpc"/>
   </node>
 
-  <!-- Trajectory generation 
-  <node name="trajectory_generator_node" pkg="trajectory_generator" type="trajectory_generator_node" respawn="false" clear_params="true" output="screen">-->
-    <!-- Input 
+  <!-- Trajectory generation -->
+  <node name="trajectory_generator_node" pkg="trajectory_generator" type="trajectory_generator_node" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
     <remap from="odometry" to="/puffin_pilot/odometry" />
-    <remap from="pace_note" to="/puffin_pilot/pace_note"/>-->
+    <remap from="pace_note" to="/puffin_pilot/pace_note"/>
 
-    <!-- Output 
+    <!-- Output -->
     <remap from="trajectory" to="/puffin_pilot/trajectory" />
     <remap from="pose" to="/puffin_pilot/pose" />
-  </node>-->
+  </node>
 
-  <!-- Control Angle+Thrust 
-  <node name="mav_nonlinear_mpc" pkg="mav_nonlinear_mpc" type="nonlinear_mpc_node" respawn="false" clear_params="true" output="screen">-->
-    <!-- Input 
-    <remap from="odometry" to="/puffin_pilot/odometry" />-->
-    <!--remap from="command/trajectory" to="/puffin_pilot/trajectory" /
-    <remap from="command/pose" to="/puffin_pilot/pose" />-->
+  <!-- Control Angle+Thrust -->
+  <node name="mav_nonlinear_mpc" pkg="mav_nonlinear_mpc" type="nonlinear_mpc_node" respawn="false" clear_params="true" output="screen">
+    <!-- Input -->
+    <remap from="odometry" to="/puffin_pilot/odometry_mpc" />
+    <remap from="command/trajectory" to="/puffin_pilot/trajectory" />
+    <remap from="command/pose" to="/puffin_pilot/pose" />
 
-    <!-- Output (mav_msgs/RollPitchYawrateThrust) 
-    <remap from="command/roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust_sink"/>-->
+    <!-- Output (mav_msgs/RollPitchYawrateThrust) -->
+    <remap from="command/roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust"/>
     
-    <!-- Params 
+    <!-- Params -->
     <rosparam file="$(find puffin_pilot)/config/nonlinear_mpc.yaml"/>    
     <rosparam file="$(find puffin_pilot)/config/disturbance_observer.yaml"/>
     <param name="use_rc_teleop" value="false"/>
     <param name="verbose" value="false" />
     <param name="reference_frame" value="puffin_nest"/>
-  </node>-->
+  </node>
 
-  <!--
-  <node name="mav_linear_mpc" pkg="mav_linear_mpc" type="mav_linear_mpc_node"  respawn="true" clear_params="true" output="screen">
-    <remap from="odometry" to="/puffin_pilot/odometry" />
+  <!--node name="mav_linear_mpc" pkg="mav_linear_mpc" type="mav_linear_mpc_node"  respawn="true" clear_params="true" output="screen">
+    <remap from="odometry" to="/puffin_pilot/odometry_mpc" />
     <remap from="command/pose" to="/puffin_pilot/pose" />
 
     <remap from="command/roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust"/>
@@ -74,8 +75,7 @@
     <param name="use_rc_teleop" value="false" />
     <param name="verbose" value="true" />
     <param name="reference_frame" value="puffin_nest"/>
-  </node>
-  -->
+  </node-->
 
   <!-- Rate thrust controller -->
   <node name="rate_thrust_controller_node" pkg="rate_thrust_controller" type="rate_thrust_controller_node" respawn="false" clear_params="true" output="screen">

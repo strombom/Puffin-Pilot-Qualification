@@ -1,7 +1,7 @@
 
-p_gain_pitch: 14.0
-p_gain_roll: 14.0
-i_gain_pitch: 0.002
-i_gain_roll: 0.002
-d_gain_pitch: 3000.0
-d_gain_roll: 3000.0
+p_gain_roll: 50.0
+p_gain_pitch: 50.0
+i_gain_roll: 0.000
+i_gain_pitch: 0.000
+d_gain_roll: 5000.0
+d_gain_pitch: 5000.0

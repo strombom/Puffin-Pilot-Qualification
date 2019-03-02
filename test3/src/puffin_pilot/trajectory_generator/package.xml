@@ -11,6 +11,7 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>std_msgs</depend>
+  <depend>trajectory_msgs</depend>
   <depend>mav_trajectory_generation_ros</depend>
   <depend>roscpp</depend>
 </package>

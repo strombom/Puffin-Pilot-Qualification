@@ -3,7 +3,9 @@
 #include <iostream>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <trajectory_msgs/MultiDOFJointTrajectory.h>
 
+#include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation/polynomial_optimization_nonlinear.h>
 #include <mav_trajectory_generation/trajectory.h>
 #include <mav_trajectory_generation/trajectory_sampling.h>
@@ -22,7 +24,7 @@ int main(int argc, char** argv)
 
 
     mav_trajectory_generation::Vertex::Vector vertices;
-    const int dimension = 3;
+    const int dimension = 4;
     const int derivative_to_optimize = mav_trajectory_generation::derivative_order::SNAP;
     
 
@@ -36,26 +38,30 @@ int main(int argc, char** argv)
                                       end(dimension);
 
 
-    start.makeStartOrEnd(Eigen::Vector3d(16.5, -1, 5), derivative_to_optimize);
+    start.makeStartOrEnd(Eigen::Vector4d(16.5, -1, 5, 1.57), derivative_to_optimize);
     vertices.push_back(start);
 
-    middle1.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(17, 2.5, 6));
+    middle1.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector4d(17, 2.5, 6, 1.57));
     vertices.push_back(middle1);
 
-    middle2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(17, 5, 6));
-    vertices.push_back(middle2);
-
-    end.makeStartOrEnd(Eigen::Vector3d(17, 7.5, 6), derivative_to_optimize);
+    end.makeStartOrEnd(Eigen::Vector4d(17, 35.5, 6, 1.57), derivative_to_optimize);
     vertices.push_back(end);
 
+/*
+    middle2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector4d(17, 7.5, 6, 1.57));
+    vertices.push_back(middle2);
+
+    end.makeStartOrEnd(Eigen::Vector4d(13, 10.0, 6, 1.57), derivative_to_optimize);
+    vertices.push_back(end);
+*/
 
 
 
 
 
     std::vector<double> segment_times;
-    const double v_max = 2.0;
-    const double a_max = 2.0;
+    const double v_max = 10.0;
+    const double a_max = 10.0;
     segment_times = estimateSegmentTimes(vertices, v_max, a_max);
 
     NonlinearOptimizationParameters parameters;
@@ -135,10 +141,14 @@ int main(int argc, char** argv)
     //mav_trajectory_generation::drawMavSampledTrajectoryWithMavMarker(states, distance, frame_id, hex, &markers);
 
     ros::Publisher vis_pub = node_handle.advertise<visualization_msgs::MarkerArray>("visualization_marker", 0);
-
-    // trajectory_msgs/MultiDOFJointTrajector
-
+    ros::Publisher trajectory_pub = node_handle.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, true);
     ros::Publisher pose_pub = node_handle.advertise<geometry_msgs::PoseStamped>("pose", 0);
+
+
+
+    trajectory_msgs::MultiDOFJointTrajectory trajectory_msg;
+    mav_msgs::msgMultiDofJointTrajectoryFromEigen(states, &trajectory_msg);
+    
 
     geometry_msgs::PoseStamped ps;
     ps.pose.position.x = 16.0;
@@ -146,24 +156,132 @@ int main(int argc, char** argv)
     ps.pose.position.z = 6.0;
     ps.pose.orientation.x = 0;
     ps.pose.orientation.y = 0;
-    ps.pose.orientation.z = 0.7071067811865476;
-    ps.pose.orientation.w = 0.7071067811865476;
+    ps.pose.orientation.z = 0.70710678;
+    ps.pose.orientation.w = 0.70710678;
+    //ps.pose.orientation.z = 0.0;
+    //ps.pose.orientation.w = 1.0;
+    //ps.pose.orientation.z = 1.0;
+    //ps.pose.orientation.w = 0.0;
+
+    ps.pose.orientation.x = 0;
+    ps.pose.orientation.y = 0;
+    ps.pose.orientation.z = 0.383;
+    ps.pose.orientation.w = 0.924;
+
+    ps.pose.orientation.x = 0;
+    ps.pose.orientation.y = 0;
+    ps.pose.orientation.z = 0.70710678;
+    ps.pose.orientation.w = 0.70710678;
+/*
+    ps.pose.orientation.x = 0;
+    ps.pose.orientation.y = 0;
+    ps.pose.orientation.z = 0.0;
+    ps.pose.orientation.w = 1.0;
+*/
 
     int count = 0;
 
 
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(1000);
+    while (ros::ok()) {
+
+/*
+        if (count == 10) {
+            ps.header.stamp = ros::Time::now();
+            ps.pose.position.x = 16.0;
+            ps.pose.position.y = -1.0;
+            ps.pose.orientation.x = 0;
+            ps.pose.orientation.y = 0;
+            ps.pose.orientation.z = 0.0;
+            ps.pose.orientation.w = 1.0;
+            pose_pub.publish(ps);
+
+        } else if (count == 5000) {
+            ps.header.stamp = ros::Time::now();
+            ps.pose.position.x = 14.0;
+            ps.pose.position.y = -1.0;
+            ps.pose.orientation.x = 0;
+            ps.pose.orientation.y = 0;
+            ps.pose.orientation.z = 0.70710678;
+            ps.pose.orientation.w = 0.70710678;
+            pose_pub.publish(ps);
+
+        } else if (count == 10000) {
+            ps.header.stamp = ros::Time::now();
+            ps.pose.position.x = 14.0;
+            ps.pose.position.y = 1.0;
+            ps.pose.orientation.x = 0;
+            ps.pose.orientation.y = 0;
+            ps.pose.orientation.z = 0.0;
+            ps.pose.orientation.w = 1.0;
+            pose_pub.publish(ps);
+
+        } else if (count == 15000) {
+            ps.header.stamp = ros::Time::now();
+            ps.pose.position.x = 16.0;
+            ps.pose.position.y = 1.0;
+            ps.pose.orientation.x = 0;
+            ps.pose.orientation.y = 0;
+            ps.pose.orientation.z = 0.70710678;
+            ps.pose.orientation.w = 0.70710678;
+            pose_pub.publish(ps);
+
+        } else if (count == 20000) {
+            count = 0;
+        }*/
+        count++;
+
+
+        if (count == 1000) { //} || count == 2000 || count == 5000 || count == 10000) {
+            trajectory_msg.header.stamp = ros::Time::now();
+            trajectory_pub.publish(trajectory_msg);
+            vis_pub.publish(markers);
+
+        } else if (count == 10000) {
+            //count = 0;
+        }
+
+
+
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
+
+
+
+
+/*
+
+
+
+    geometry_msgs::PoseStamped ps;
+    ps.pose.position.x = 16.0;
+    ps.pose.position.y = -1.0;
+    ps.pose.position.z = 6.0;
+    ps.pose.orientation.x = 0;
+    ps.pose.orientation.y = 0;
+    ps.pose.orientation.z = 0;
+    ps.pose.orientation.w = 1;
+
+    int count = 0;
+
+
+    ros::Rate loop_rate(1000);
     while (ros::ok()) {
         count++;
 
         if (count == 1) {
+            ps.pose.orientation.z = 0;
+            ps.pose.orientation.w = 1;
             ps.pose.position.x = 16.5;
 
-        } else if (count == 40) {
+        } else if (count == 2000) {
+            ps.pose.orientation.z = 0.7071067811865476;
+            ps.pose.orientation.w = 0.7071067811865476;
             ps.pose.position.x = 16.5;
 
 
-        } else if (count == 80) {
+        } else if (count == 4000) {
             count = 0;
         } 
 
@@ -174,6 +292,8 @@ int main(int argc, char** argv)
         ros::spinOnce();
         loop_rate.sleep();
     }
+*/
+
 
     //printf("%d\n", (int) markers.markers.size());
 /*

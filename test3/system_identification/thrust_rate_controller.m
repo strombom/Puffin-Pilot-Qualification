@@ -12,22 +12,15 @@
 % Tested platform: Mac EI Capitan 10.11.6 with MATLAB R2016a
 %
 
-
 path(path, '/home/jst/Documents/MATLAB/read_bags');
-
 path(path, '/home/jst/Documents/MATLAB/helper_functions');
 
 % two experiments are needed to validate the identification
-bagfile_exp1 =  '/home/jst/development/puffin-pilot/test3/system_identification/2019-02-26-15-05-12.bag';
-bagfile_exp2 =  '/home/jst/development/puffin-pilot/test3/system_identification/2019-02-26-15-01-56.bag';
+bagfile_exp1 = '/home/jst/development/puffin-pilot/test3/system_identification/ratethrust_3.bag';
+bagfile_exp2 = '/home/jst/development/puffin-pilot/test3/system_identification/ratethrust_4.bag';
 
-topic_imu = '/uav/sensors/imu';
-topic_rcdata = '/uav/input/rateThrust';
-topic_pos = '/tf';
-
-%bagfile_exp1 =  '/home/jst/development/external/eth/mav_system_identification/Example/Experiment1/2014-11-27-15-03-25.bag';
-%topic_rcdata = '/fcu/rcdata';
-
+topic_pos    = '/puffin_pilot/odometry_mpc';
+topic_rcdata = '/puffin_pilot/roll_pitch_yawrate_thrust';
 
 bag1 = ros.Bag(bagfile_exp1);
 bag2 = ros.Bag(bagfile_exp2);
@@ -42,23 +35,17 @@ bag2.info
 
 %% 
 clearvars Experiment1 Experiment2
-Experiment1.IMU = readImu(bag1, topic_imu);
-Experiment2.IMU = readImu(bag2, topic_imu);
-Experiment1.Pose = readTF(bag1, topic_pos);
-Experiment2.Pose = readTF(bag2, topic_pos);
+Experiment1.Pose = readOdometry(bag1, topic_pos);
+Experiment2.Pose = readOdometry(bag2, topic_pos);
 Experiment1.RateThrust = readCommandRateThrust(bag1, topic_rcdata);
 Experiment2.RateThrust = readCommandRateThrust(bag2, topic_rcdata);
 
 % Write the quaternions properly
 Experiment1.Pose.q = [Experiment1.Pose.q(4,:); Experiment1.Pose.q(1,:);Experiment1.Pose.q(2,:); Experiment1.Pose.q(3,:)];
-Experiment1.IMU.q  = [Experiment1.IMU.q(4,:);  Experiment1.IMU.q(1,:); Experiment1.IMU.q(2,:);  Experiment1.IMU.q(3,:)];
 Experiment2.Pose.q = [Experiment2.Pose.q(4,:); Experiment2.Pose.q(1,:);Experiment2.Pose.q(2,:); Experiment2.Pose.q(3,:)];
-Experiment2.IMU.q  = [Experiment2.IMU.q(4,:);  Experiment2.IMU.q(1,:); Experiment2.IMU.q(2,:);  Experiment2.IMU.q(3,:)];
 
 Experiment1.rpy      = quat2rpy(Experiment1.Pose.q);
-Experiment1.rpy_imu  = quat2rpy(Experiment1.IMU.q);
 Experiment2.rpy      = quat2rpy(Experiment2.Pose.q);
-Experiment2.rpy_imu  = quat2rpy(Experiment2.IMU.q);
 Experiment1.rpy(2,:) = -Experiment1.rpy(2,:);
 Experiment2.rpy(2,:) = -Experiment2.rpy(2,:);
 
@@ -90,6 +77,23 @@ exp1_roll_data  = iddata(exp1_pose_roll_rate',  exp1_ctrl_roll_rate.Data(1,:)', 
 exp1_pitch_data = iddata(exp1_pose_pitch_rate', exp1_ctrl_pitch_rate.Data(1,:)', dt);
 exp2_roll_data  = iddata(exp2_pose_roll_rate',  exp2_ctrl_roll_rate.Data(1,:)',  dt);
 exp2_pitch_data = iddata(exp2_pose_pitch_rate', exp2_ctrl_pitch_rate.Data(1,:)', dt);
+
+
+% Plot
+close all;
+figure(1);
+title('Experiment 1 Data');
+subplot(2,1,1);
+plot(exp1_pose_rp, 'linewidth', 2);
+xlabel('time');
+%ylabel('x [m]');
+title('Pose RP');
+
+subplot(2,1,2);
+plot(exp1_ctrl_rp, 'linewidth', 2);
+xlabel('time');
+%ylabel('y [m]');
+title('Ctrl RP');
 
 
 

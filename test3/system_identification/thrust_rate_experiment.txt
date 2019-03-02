@@ -2,24 +2,74 @@
 
 ======================
 roll 1st order dynamics
-roll_gain: 0.001191
-roll_time_constant: 0.186232
-fit percentage: 31.887464 %
+roll_gain: 1.076245
+roll_time_constant: 0.157300
+fit percentage: 88.060477 %
 ----------------------
 pitch 1st order dynamics
-pitch_gain: -0.000920
-pitch_time_constant: 0.176196
-fit percentage: 32.920966 %
+pitch_gain: 1.056831
+pitch_time_constant: 0.158087
+fit percentage: 89.833220 %
 ----------------------
 roll 2st order dynamics:
-roll_gain: 0.001031
-roll_damping_coef: 1.000000
-roll_natural_freq: 11.854819
-fit percentage: 32.326426
+roll_gain: 1.002389
+roll_damping_coef: 0.897588
+roll_natural_freq: 12.638161
+fit percentage: 93.996922
 ----------------------
 pitch 2st order dynamics:
-pitch_gain: -0.000823
-pitch_damping_coef: 0.832499
-pitch_natural_freq: 11.039486
-fit percentage: 34.116113
+pitch_gain: 1.001876
+pitch_damping_coef: 0.897288
+pitch_natural_freq: 12.295371
+fit percentage: 94.922444
+
+
+
+----------------------
+yaw 1st order dynamics
+yaw_gain: 0.001143
+yaw_time_constant: 0.180509
+fit percentage: 91.571297 %
+----------------------
+yaw 2st order dynamics:
+pitch_gain: 0.001143
+pitch_damping_coef: 1.000000
+pitch_natural_freq: 5.539892
+fit percentage: 91.571297
+----------------------
+yaw 2st order dynamics:
+yaw_gain: 0.001052
+yaw_damping_coef: 1.000000
+yaw_natural_freq: 9.119729
+fit percentage: 97.383947
+
+
+
+
+
+======================
+roll 1st order dynamics
+roll_gain: 1.120401
+roll_time_constant: 0.163553
+fit percentage: 67.749119 %
+----------------------
+pitch 1st order dynamics
+pitch_gain: 1.113793
+pitch_time_constant: 0.159947
+fit percentage: 75.591339 %
+----------------------
+roll 2st order dynamics:
+roll_gain: 0.982257
+roll_damping_coef: 0.531433
+roll_natural_freq: 8.415217
+fit percentage: 74.003421
+----------------------
+pitch 2st order dynamics:
+pitch_gain: 1.017413
+pitch_damping_coef: 0.556286
+pitch_natural_freq: 8.684044
+fit percentage: 83.884333
+
+
+
 

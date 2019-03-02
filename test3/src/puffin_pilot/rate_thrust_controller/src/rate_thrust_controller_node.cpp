@@ -25,8 +25,7 @@ double d_gain_pitch;
 
 bool got_first_rpyt_command = false;
 
-//mav_msgs::RollPitchYawrateThrust roll_pitch_yawthrust;
-mav_msgs::RateThrust rate_thrust;
+mav_msgs::RollPitchYawrateThrust roll_pitch_yawthrust;
 ros::Publisher rate_thrust_node;
 ros::Publisher rtc_pose_pub;
 
@@ -35,7 +34,7 @@ ros::Time last_odometry_callback;
 
 void dyn_config_callback(rate_thrust_controller::RateThrustControllerConfig &config, uint32_t level)
 {
-    ROS_INFO("Set config: Roll PID(%.2f, %.2f, %.2f) Pitch PID(%.2f, %.2f, %.2f)",
+    ROS_INFO("RateThrustController set config: Roll PID(%.2f, %.2f, %.2f) Pitch PID(%.2f, %.2f, %.2f)",
                 config.p_gain_roll,
                 config.p_gain_pitch,
                 config.i_gain_roll,
@@ -51,15 +50,6 @@ void dyn_config_callback(rate_thrust_controller::RateThrustControllerConfig &con
     d_gain_pitch = config.d_gain_pitch;
 }
 
-void rollPitchYawrateThrustCallback(const mav_msgs::RateThrust& msg)
-{
-    ROS_INFO_ONCE("RateThrustController got first roll-pitch-yawrate-thrust message.");
-
-    rate_thrust = msg;
-
-    got_first_rpyt_command = true;
-}
-/*
 void rollPitchYawrateThrustCallback(const mav_msgs::RollPitchYawrateThrust& msg)
 {
     ROS_INFO_ONCE("RateThrustController got first roll-pitch-yawrate-thrust message.");
@@ -68,7 +58,7 @@ void rollPitchYawrateThrustCallback(const mav_msgs::RollPitchYawrateThrust& msg)
 
     got_first_rpyt_command = true;
 }
-*/
+
 
 void OdometryCallback(const nav_msgs::Odometry& msg)
 {
@@ -87,17 +77,8 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
     odometry.getEulerAngles(&current_rpy);
 
     // Proportional
-    //double p_error_roll  = +(roll_pitch_yawthrust.roll  - current_rpy(0));
-    //double p_error_pitch = +(roll_pitch_yawthrust.pitch - current_rpy(1));
-    double error_roll  = rate_thrust.angular_rates.x - current_rpy(0);
-    double error_pitch = rate_thrust.angular_rates.y - current_rpy(1);
-
-    /*
-    if (p_error_roll > 0)
-        p_error_roll = pow(p_error_roll, 2.0);
-    if (p_error_roll < 0)
-        p_error_roll = -pow(p_error_roll, 2.0);
-    */
+    double error_roll  = roll_pitch_yawthrust.roll - current_rpy(0);
+    double error_pitch = roll_pitch_yawthrust.pitch - current_rpy(1);
 
     // Integral
     static double i_error_roll = 0;
@@ -122,21 +103,19 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
     static double add = 0.95;
     static double error_roll_avg_previous = error_roll;
     static double error_pitch_avg_previous = error_pitch;
-    //static double d_error_roll_previous = 0;
-    //static double d_error_pitch_previous = 0;
     static double error_roll_avg  = error_roll;
     static double error_pitch_avg = error_pitch;
     error_roll_avg =  error_roll  * add + (1 - add) * error_roll_avg;
     error_pitch_avg = error_pitch * add + (1 - add) * error_pitch_avg;
 
-    double d_error_roll  = error_roll_avg - error_roll_avg_previous;  // d_error_roll_previous - error_roll;
-    double d_error_pitch = error_pitch_avg - error_pitch_avg_previous; // d_error_pitch_previous - error_pitch;
+    double d_error_roll  = error_roll_avg - error_roll_avg_previous;
+    double d_error_pitch = error_pitch_avg - error_pitch_avg_previous; 
     error_roll_avg_previous  = error_roll_avg;
     error_pitch_avg_previous = error_pitch_avg;
 
     // Derivative ceiling
-    double max_d_error_roll  = 3.0 / d_gain_roll;
-    double max_d_error_pitch = 3.0 / d_gain_pitch;
+    double max_d_error_roll  = 50.0 / d_gain_roll;
+    double max_d_error_pitch = 50.0 / d_gain_pitch;
     if (abs(d_error_roll) > max_d_error_roll) {
         d_error_roll = max_d_error_roll * d_error_roll / abs(d_error_roll);
     }
@@ -144,24 +123,11 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
         d_error_pitch = max_d_error_pitch * d_error_pitch / abs(d_error_pitch);
     }
 
-    //xdk_roll  = add * xdk_roll  + (1 - add) * current_rpy(0);
-    //xdk_pitch = add * xdk_pitch + (1 - add) * current_rpy(1);
-    //d_error_roll_previous  += d_error_roll;
-    //d_error_pitch_previous += d_error_pitch;
-
     // Calculate desired velocities
     double vel_roll, vel_pitch, vel_yaw;
     vel_roll  = error_roll  * p_gain_roll  + i_error_roll  * i_gain_roll  + d_error_roll  * d_gain_roll;
     vel_pitch = error_pitch * p_gain_pitch + i_error_pitch * i_gain_pitch + d_error_pitch * d_gain_pitch;
-    vel_yaw = rate_thrust.angular_rates.z;
-
-
-    /*
-    double vel_roll, vel_pitch, vel_yaw;
-    vel_roll = roll_pitch_yawthrust.roll;
-    vel_pitch = roll_pitch_yawthrust.pitch;
     vel_yaw = roll_pitch_yawthrust.yaw_rate;
-    */
 
     // Rate thrust command
     static mav_msgs::RateThrust rate_thrust_msg;
@@ -169,23 +135,10 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
     rate_thrust_msg.angular_rates.x = vel_roll;
     rate_thrust_msg.angular_rates.y = vel_pitch;
     rate_thrust_msg.angular_rates.z = vel_yaw;
-    rate_thrust_msg.thrust = rate_thrust.thrust;
+    rate_thrust_msg.thrust = roll_pitch_yawthrust.thrust;
 
     rate_thrust_node.publish(rate_thrust_msg);
 
-/*
-    static int counter = 0;
-    if (counter > 100) {
-        ROS_INFO_STREAM(
-            "RTC: R(" << vel_roll << ") (" << vel_pitch << ") (" << vel_yaw << ") "
-                    << " z(" << rate_thrust.thrust.z << ") ");
-      counter = 0;
-    }
-    counter++;
-*/
-
-
-/*
     static tf2_ros::Buffer tfBuffer;
     static tf2_ros::TransformListener rtc_pose_transform_listener(tfBuffer);
     
@@ -209,11 +162,10 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
         ts.twist.angular.y = pitch;
         ts.twist.angular.z = yaw;
         rtc_pose_pub.publish(ts);
-    }
-    catch(tf2::TransformException &ex) {
+
+    } catch(tf2::TransformException &ex) {
 
     }
-*/
 }
 
 int main(int argc, char** argv)
@@ -221,9 +173,8 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "rate_thrust_controller");
 
     ros::NodeHandle subscriber_node;
-    ros::Subscriber odometry_node = subscriber_node.subscribe("odometry",                  50, &OdometryCallback);
-    //ros::Subscriber rpyt_node     = subscriber_node.subscribe("roll_pitch_yawrate_thrust", 10, &rollPitchYawrateThrustCallback);
-    ros::Subscriber rpyt_node     = subscriber_node.subscribe("roll_pitch_yawrate_thrust", 50, &rollPitchYawrateThrustCallback);
+    ros::Subscriber odometry_node = subscriber_node.subscribe("odometry",                  1, &OdometryCallback, ros::TransportHints().tcpNoDelay());
+    ros::Subscriber rpyt_node     = subscriber_node.subscribe("roll_pitch_yawrate_thrust", 1, &rollPitchYawrateThrustCallback, ros::TransportHints().tcpNoDelay());
 
     ros::NodeHandle publisher_node;
     rate_thrust_node = publisher_node.advertise<mav_msgs::RateThrust>("rate_thrust", 500);
@@ -231,7 +182,6 @@ int main(int argc, char** argv)
 
     dynamic_reconfigure::Server<rate_thrust_controller::RateThrustControllerConfig> controller_dyn_config_server_;
     controller_dyn_config_server_.setCallback(&dyn_config_callback);
-
 
     // Rate thrust command
     mav_msgs::RateThrust rate_thrust_msg;
@@ -245,7 +195,6 @@ int main(int argc, char** argv)
     last_odometry_callback = ros::Time::now();
 
     ros::spin();
-
 
     ros::Rate loop_rate(1000);
     while (ros::ok()) {

@@ -179,8 +179,8 @@ int main(int argc, char** argv)
     ir_marker_odometry_pose_node = publisher_node.advertise<geometry_msgs::PoseStamped>("pose", 10, false);
 
     ros::NodeHandle subscriber_node;
-    ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &cameraInfoCallback);
-    ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("ir_beacons",  10, &irBeaconsCallback);
+    ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &cameraInfoCallback, ros::TransportHints().tcpNoDelay());
+    ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("ir_beacons",  10, &irBeaconsCallback,  ros::TransportHints().tcpNoDelay());
     ros::Subscriber pace_notes_subscriber  = subscriber_node.subscribe("pace_note",   10, &paceNotesCallback);
 
     ros::spin();
