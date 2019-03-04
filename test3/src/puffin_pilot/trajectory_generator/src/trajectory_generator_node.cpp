@@ -41,10 +41,10 @@ int main(int argc, char** argv)
     start.makeStartOrEnd(Eigen::Vector4d(16.5, -1, 5, 1.57), derivative_to_optimize);
     vertices.push_back(start);
 
-    middle1.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector4d(17, 2.5, 6, 1.57));
+    middle1.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector4d(17, 2.5, 7, 1.57));
     vertices.push_back(middle1);
 
-    end.makeStartOrEnd(Eigen::Vector4d(17, 35.5, 6, 1.57), derivative_to_optimize);
+    end.makeStartOrEnd(Eigen::Vector4d(16, 35.5, 6, 1.57), derivative_to_optimize);
     vertices.push_back(end);
 
 /*
@@ -185,6 +185,20 @@ int main(int argc, char** argv)
     ros::Rate loop_rate(1000);
     while (ros::ok()) {
 
+/*
+        if (count == 100) {
+            ps.header.stamp = ros::Time::now();
+            ps.pose.position.x = 16.0;
+            ps.pose.position.y = -1.0;
+            ps.pose.position.z = 6.0;
+            ps.pose.orientation.x =  0.125;
+            ps.pose.orientation.y = -0.083;
+            ps.pose.orientation.z =  0.628;
+            ps.pose.orientation.w =  0.764;
+            pose_pub.publish(ps);
+            count = 0;
+        }
+*/
 /*
         if (count == 10) {
             ps.header.stamp = ros::Time::now();

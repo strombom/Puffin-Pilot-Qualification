@@ -15,6 +15,7 @@
   <depend>sensor_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
+  <depend>tf2_eigen</depend>
   <depend>cv_bridge</depend>
   <depend>roscpp</depend>
   
