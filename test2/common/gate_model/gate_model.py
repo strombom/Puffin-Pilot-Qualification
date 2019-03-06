@@ -111,12 +111,12 @@ class GateModel:
         return make_corners(p)
 
     def _make_light_corners(self):
-        p = self.gate_size / 2 - self.gate_post_width - 0.04
+        p = self.gate_size / 2 - self.gate_post_width - 0.045
         return make_corners(p, z = 0.15) + np.array((0, 0.01, 0))
         
     def _make_back_frame_corners(self):
         p = self.gate_size / 2 - self.gate_post_width + 0.02
-        return make_corners(p, z = 0.30)
+        return make_corners(p, z = 0.31)
     
     def _make_fiducials_corners(self):
         p = self.gate_size / 2 - self.fiducial_size * 2

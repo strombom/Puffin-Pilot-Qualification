@@ -16,7 +16,7 @@ class QuadrilateralFitter:
         self.dist_coeffs = dist_coeffs
         self.gate_model = gate_model
 
-    def fit(self, corners):
+    def fit(self, corners, img_key = ""):
         points = []
         initial_guess = np.empty((4, 2), np.float64)
 
@@ -71,7 +71,7 @@ class QuadrilateralFitter:
         success, rvec, tvec = self.gate_model.camera_position_from_corners(quadrilateral, use_distortion = False)
 
         if success:
-            return rvec, tvec
+            return rvec, tvec, result.optimality
         else:
             return None
 

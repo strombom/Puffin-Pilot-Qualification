@@ -4,8 +4,6 @@ import numpy as np
 from numba import jit, njit, jitclass
 from numba import int64, float64, boolean
 
-from .common import distance_from_points_to_point
-
 max_cluster_count = 10
 MAX_POINTS = 15
 max_point_dist = 34.0
@@ -14,10 +12,12 @@ max_point_dist = 34.0
 def make_clusters(points):
     clusters = jit_make_clusters(points)
 
+    #print("make_clusters", clusters)
+
     # Return the clusters
     return clusters # [cluster.points for cluster in clusters]
 
-@njit
+#@njit
 def jit_make_clusters(points):
     # The points are collected form top to bottom, we compare
     #  new points only with newly formed clusters to reduce
@@ -30,7 +30,7 @@ def jit_make_clusters(points):
         # Check if point belongs to an existing cluster
         found_a_friendly_cluster = False
         for cluster in clusters:
-            if cluster.try_to_append(points[pidx]):
+            if try_to_append(cluster, points[pidx]):
                 found_a_friendly_cluster = True
                 break
 
@@ -45,17 +45,60 @@ def jit_make_clusters(points):
         merging = False
         for idx_i in range(len(clusters)):
             for idx_j in range(idx_i + 1, len(clusters)):
-                if clusters[idx_i].try_to_merge(clusters[idx_j]):
+                if try_to_merge(clusters[idx_i], clusters[idx_j]):
                     del clusters[idx_j]
                     merging = True
                     break
             if merging:
                 break
 
-    for cluster in clusters:
-        cluster.shrink()
+    split_clusters(clusters)
+
+    #for cluster in clusters:
+    #    cluster.shrink()
 
     return clusters
+
+
+#@njit
+def split_clusters(clusters):
+    if len(clusters) != 2:
+        return
+
+    for i in range(2):
+        if clusters[i].points_count < 7:
+            return
+
+    points_left = np.empty((MAX_POINTS, 2))
+    points_right = np.empty((MAX_POINTS, 2))
+    cog = np.empty((2))
+
+    for i in range(2):
+        points_left_count, points_right_count = 0, 0
+
+        cog[:] = np.sum(clusters[i].points[0:clusters[i].points_count], axis=0)
+        cog /= clusters[i].points_count
+
+        split_x = cog[0]
+        for idx in range(clusters[i].points_count):
+            point = clusters[i].points[idx]
+            if abs(point[0] - split_x) < 8:
+                continue
+            if point[0] < split_x:
+                points_left[points_left_count] = point
+                points_left_count += 1
+            else:
+                points_right[points_right_count] = point
+                points_right_count += 1
+
+        clusters[i].points[:] = points_left
+        clusters[i].points_count = points_left_count
+        
+        new_cluster = Cluster(points_right[0])
+        new_cluster.points[:] = points_right
+        new_cluster.points_count = points_right_count
+        clusters.append(new_cluster)
+
 
 cluster_spec = [
     ('points',       float64[:,:]),
@@ -68,7 +111,7 @@ cluster_spec = [
     ('box_ymax',     float64)
 ]
 
-@jitclass(cluster_spec)
+#@jitclass(cluster_spec)
 class Cluster(object):
     # A cluster is a collection of centroids with close proximity,
     #  clusters are later turned into corners.
@@ -85,66 +128,75 @@ class Cluster(object):
         self.box_ymin = point[1] - max_point_dist / 2
         self.box_ymax = point[1] + max_point_dist / 2
 
-    def try_to_append(self, point):
-        if not self.active:
-            return False
 
-        if point[1] - self.max_y > max_point_dist:
-            # This cluster is too far away from where we are looking, 
-            #  disable it.
-            self.active = False
-            return False
+#@njit
+def try_to_append(cluster, point):
+    if not cluster.active:
+        return False
 
-        distance = distance_from_points_to_point(self.points, self.points_count, point)
-        if distance > max_point_dist:
-            # Point is too far away from this cluster.
-            return False
+    if point[1] - cluster.max_y > max_point_dist:
+        # This cluster is too far away from where we are looking, 
+        #  disable it.
+        cluster.active = False
+        return False
 
-        if self.points_count == MAX_POINTS:
-            # We silently ignore if too many points are appended
-            #  to a cluster. The cluster is malformed and we can
-            #  only hope that subsequent steps will be able to
-            #  fit one or two lines to the cluster points.
-            return True
+    distance = distance_from_points_to_point(cluster.points, cluster.points_count, point)
+    if distance > max_point_dist:
+        # Point is too far away from this cluster.
+        return False
 
-        self.points[self.points_count] = point
-        self.points_count += 1
-        self.max_y = point[1]
-
-        self.box_xmin = min(self.box_xmin, point[0] - max_point_dist / 2)
-        self.box_xmax = max(self.box_xmax, point[0] + max_point_dist / 2)
-        self.box_ymin = min(self.box_ymin, point[1] - max_point_dist / 2)
-        self.box_ymax = max(self.box_ymax, point[1] + max_point_dist / 2)
+    if cluster.points_count == MAX_POINTS:
+        # We silently ignore if too many points are appended
+        #  to a cluster. The cluster is malformed and we can
+        #  only hope that subsequent steps will be able to
+        #  fit one or two lines to the cluster points.
         return True
 
-    def try_to_merge(self, cluster):
-        if self.box_xmin > cluster.box_xmax or cluster.box_xmin > self.box_xmax or \
-           self.box_ymin > cluster.box_ymax or cluster.box_ymin > self.box_ymax:
-            # No overlap, don't try to merge
-            return False
-        
-        merge = False
-        for pidx in range(cluster.points_count):
-            if distance_from_points_to_point(self.points, self.points_count, cluster.points[pidx]) <= max_point_dist:
-                merge = True
+    cluster.points[cluster.points_count] = point
+    cluster.points_count += 1
+    cluster.max_y = point[1]
+
+    cluster.box_xmin = min(cluster.box_xmin, point[0] - max_point_dist / 2)
+    cluster.box_xmax = max(cluster.box_xmax, point[0] + max_point_dist / 2)
+    cluster.box_ymin = min(cluster.box_ymin, point[1] - max_point_dist / 2)
+    cluster.box_ymax = max(cluster.box_ymax, point[1] + max_point_dist / 2)
+    return True
+
+#@njit
+def try_to_merge(cluster1, cluster2):
+    if cluster1.box_xmin > cluster2.box_xmax or cluster2.box_xmin > cluster1.box_xmax or \
+       cluster1.box_ymin > cluster2.box_ymax or cluster2.box_ymin > cluster1.box_ymax:
+        # No overlap, don't try to merge
+        return False
+    
+    merge = False
+    for pidx in range(cluster2.points_count):
+        if distance_from_points_to_point(cluster1.points, cluster1.points_count, cluster2.points[pidx]) <= max_point_dist:
+            merge = True
+            break
+    if merge:
+        for idx in range(cluster2.points_count):
+            if cluster1.points_count == MAX_POINTS:
                 break
-        if merge:
-            for idx in range(cluster.points_count):
-                if self.points_count == MAX_POINTS:
-                    break
-                self.points[self.points_count] = cluster.points[idx]
-                self.points_count += 1
-            self.box_xmin = min(self.box_xmin, cluster.box_xmin)
-            self.box_xmax = max(self.box_xmax, cluster.box_xmax)
-            self.box_ymin = min(self.box_ymin, cluster.box_ymin)
-            self.box_ymax = max(self.box_ymax, cluster.box_ymax)
-            return True
-        else:
-            return False
+            cluster1.points[cluster1.points_count] = cluster2.points[idx]
+            cluster1.points_count += 1
+        cluster1.box_xmin = min(cluster1.box_xmin, cluster2.box_xmin)
+        cluster1.box_xmax = max(cluster1.box_xmax, cluster2.box_xmax)
+        cluster1.box_ymin = min(cluster1.box_ymin, cluster2.box_ymin)
+        cluster1.box_ymax = max(cluster1.box_ymax, cluster2.box_ymax)
+        return True
+    else:
+        return False
 
-    def get_center_of_gravity(self):
-        return np.sum(self.points, axis=0) / self.points_count
+@njit
+def distance_from_points_to_point(points, points_count, point):
+    if points_count == 0:
+        return float(0.0)
 
-    def shrink(self):
-        self.points = self.points[0:self.points_count]
+    min_distance = 1.0e9
+    for pidx in range(points_count):
+        v = point - points[pidx]
+        v_norm = math.sqrt(v[0]*v[0] + v[1]*v[1])
+        min_distance = min(min_distance, v_norm)
 
+    return float(min_distance)

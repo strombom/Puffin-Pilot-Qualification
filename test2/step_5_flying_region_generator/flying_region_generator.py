@@ -27,11 +27,18 @@ class FlyingRegionGenerator:
 
     def process(self, gate_poses, gate_image = None, img_key = ""):
         flying_regions = []
-        for n, gate_pose in enumerate(gate_poses):
-            flying_region, points = self.get_flying_region(gate_pose)
-            flying_regions.append(flying_region.tolist())
+        for n, gate_pose in enumerate(gate_poses):   
 
-            if False and gate_image is not None:
+            #if 'frames' in gate_pose:
+            #    print("has frames", img_key)
+            #    with open("gate_pose_" + img_key + ".pickle", 'wb') as f:
+            #        pickle.dump(gate_pose, f)
+            #    continue
+            
+            flying_region, points = self.get_flying_region(gate_pose)
+
+            
+            if gate_image is not None:
                 from seaborn import color_palette
                 palette = color_palette("bright", 5)
                 image = cv2.cvtColor(gate_image, cv2.COLOR_RGB2BGR)
@@ -46,7 +53,11 @@ class FlyingRegionGenerator:
                     cv2.circle(image, tuple(point), 2, color, -1)
                 filename = 'img_out_%s.png' % img_key
                 cv2.imwrite(filename, image)
-                break
+                #break
+            
+            flying_region = [item for sublist in flying_region.tolist() for item in sublist]
+            flying_region.append(1.0)
+            flying_regions.append(flying_region)
 
         return flying_regions
 

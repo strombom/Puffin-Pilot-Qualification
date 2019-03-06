@@ -15,7 +15,7 @@ class FiducialMatcher:
     def __init__(self):
         pass
 
-    def process(self, image, img_scale = 2):
+    def process(self, image, img_scale = 2, gate_image = None,  img_key = ""):
         #from seaborn import color_palette
         #cv2.imwrite('img_1_fiducials.png', (image*255).astype(np.uint8))
 
@@ -28,7 +28,6 @@ class FiducialMatcher:
 
 
         #cv2.imwrite('img_2_fiducials_small.png', (image*255).astype(np.uint8))
-
 
         # Extract ideally 40 centroids from the raw image. If there are more than 100 points 
         #  there is something wrong and we don't want to waste time processing a bad image.
@@ -56,18 +55,17 @@ class FiducialMatcher:
         clusters = make_clusters(points)
 
         """
-        palette = color_palette("bright", len(clusters))
-        source_path = os.path.dirname(os.path.abspath(__file__))
-        image_filepath = os.path.join(source_path, '../step_1_gate_finder/dummy_image.jpg')
-        image = cv2.imread(image_filepath)
-        for idx, cluster in enumerate(clusters):
-            color = palette[idx]
-            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-            for point in cluster.points:
-                cv2.circle(image, tuple(point.astype(np.int64)), 3, color, -1)
-        cv2.imwrite('img_4_clusters.png', image)
-        #print(points)
-        #quit()
+        if gate_image is not None:
+            from seaborn import color_palette
+            palette = color_palette("bright", len(clusters))
+            im2 = np.copy(gate_image)
+            #image = cv2.imread(image_filepath)
+            for idx, cluster in enumerate(clusters):
+                color = palette[idx]
+                color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+                for point in cluster.points:
+                    cv2.circle(im2, tuple(point.astype(np.int64)), 3, color, -1)
+            cv2.imwrite('clusters_%s.png' % img_key, im2)
         """
 
         # Corners consists of ideally two perpendicular lines. In worst case a corner can

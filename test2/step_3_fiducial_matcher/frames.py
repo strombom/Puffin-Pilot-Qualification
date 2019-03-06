@@ -25,6 +25,8 @@ def match_corners(corners, debug = False):
     merge_frames(frames)
     merge_point_corners(frames, point_corners)
 
+    pick_points(frames)
+
     # Remove frames with only points and frames with only one corner
     for i in range(len(frames)-1, -1, -1):
         frame = frames[i]
@@ -38,6 +40,10 @@ def match_corners(corners, debug = False):
                 break
         if not has_lines:
             del frames[i]
+
+    merge_large_corners(frames)
+
+
 
     """   
     import os
@@ -104,10 +110,11 @@ class FrameCorner:
 def merge_point_corners(frames, point_corners):
     # Make sure that frames with many corners have highest merging priority
 
-    ##print("========= Merge points corners =======")
+    #print("========= Merge points corners =======")
     frames.sort(key=len, reverse=True)
     frames.extend(point_corners)
     merge_frames(frames)
+
 
 
 def merge_frames(frames):
@@ -150,18 +157,133 @@ def merge_frames(frames):
             idx_i -= 1
         idx_i += 1
 
+
     #print("end")
     #print(frames)
     #quit()
 
-def merge_point_corners(frames, point_corners):
-    # Make sure that frames with many corners have highest merging priority
+def merge_large_corners(frames):
+    #print("XXXXXXXXXXXXXXXXXXXXX")
+    #print("merge_large_corners", frames)
+    #for frame in frames:
+    #    for corner in frame:
+    #        print(corner.matching_criterion)
+    #        for side in range(2):
+    #            print(corner.matching_points[side][0:corner.matching_points_count[side]])
+    #        print("...")
 
-    #print("========= Merge points corners =======")
-    frames.sort(key=len, reverse=True)
-    frames.extend(point_corners)
-    merge_frames(frames)
+    large_corner_count = []
+    corner_counts = []
 
+    for frame in frames:
+        count = 0
+        for corner in frame:
+            if corner.matching_points_count[0] + corner.matching_points_count[1] > 4:
+                count += 1
+        large_corner_count.append(count)
+
+    #print("large_corner_count", large_corner_count)
+    #print("corner_counts", corner_counts)
+
+    if len(large_corner_count) > 1 and large_corner_count[0] == 3 and large_corner_count[1] > 0:
+
+        if len(frames[0]) == 3:
+            frames[0].append(None)
+            small_idx = 3
+        else:
+            small_idx = 0
+            small_size = 1e9
+            for idx, corner in enumerate(frames[0]):
+                size = corner.matching_points_count[0] + corner.matching_points_count[1]
+                if size < small_size:
+                    small_size = size
+                    small_idx = idx
+
+        big_idx = 0
+        big_size = 0
+        for idx, corner in enumerate(frames[1]):
+            size = corner.matching_points_count[0] + corner.matching_points_count[1]
+            if size > big_size:
+                big_size = size
+                big_idx = idx
+
+        frames[0][small_idx] = frames[1][big_idx]
+        del frames[1]
+
+        # Merge
+        #print("merge3+1", small_idx, big_idx)
+
+    elif len(large_corner_count) > 1 and large_corner_count[0] == 2 and large_corner_count[1] > 0:
+
+        while large_corner_count[1] > 0:
+            large_corner_count[1] -= 1
+            if len(frames[0]) < 4:
+                frames[0].append(None)
+                small_idx = len(frames[0]) - 1
+            else:
+                small_idx = 0
+                small_size = 1e9
+                for idx, corner in enumerate(frames[0]):
+                    size = corner.matching_points_count[0] + corner.matching_points_count[1]
+                    if size < small_size:
+                        small_size = size
+                        small_idx = idx
+
+            big_idx = 0
+            big_size = 0
+            for idx, corner in enumerate(frames[1]):
+                size = corner.matching_points_count[0] + corner.matching_points_count[1]
+                if size > big_size:
+                    big_size = size
+                    big_idx = idx
+
+            frames[0][small_idx] = frames[1][big_idx]
+            del frames[1][big_idx]
+
+        # Merge
+        #print("merge2+2", small_idx, big_idx)
+
+
+def pick_points(frames):
+    if len(frames) < 2:
+        return
+
+    if len(frames[0]) != 3:
+        return
+
+    min_x, max_x = 1e9, 0
+    #print("pick points")
+    for corner_i in range(len(frames[0])):
+        corner = frames[0][corner_i]
+        for side_j in range(2):
+            for point_k in range(corner.matching_points_count[side_j]):
+                point = corner.matching_points[side_j][point_k]
+                min_x, max_x = min(min_x, point[0]), max(max_x, point[0])
+    tolerance = (max_x - min_x) * 0.1
+
+    left_x, right_x = min_x + tolerance, max_x - tolerance
+
+
+
+    # Find picky points
+    best_corner_idx = -1
+    best_corner_distance = 1e9
+    for corner_i in range(len(frames[1])):
+        corner = frames[1][corner_i]
+        for side_j in range(2):
+            for point_k in range(corner.matching_points_count[side_j]):
+                point = corner.matching_points[side_j][point_k]
+                distance = min(abs(left_x - point[0]), abs(right_x - point[0]))
+                if distance < best_corner_distance:
+                    best_corner_distance = distance
+                    best_corner_idx = corner_i
+
+    if best_corner_idx != -1:
+        frames[0].append(frames[1][best_corner_idx])
+        if len(frames[1]) == 1:
+            del frames[1]
+        else:
+            del frames[1][best_corner_idx]
 
 
 #@njit
