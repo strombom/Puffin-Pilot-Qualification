@@ -12,12 +12,14 @@ line_distance_threshold = 2.7
 max_lines_count = 50
 
 @njit
-def get_line_fitness(line_angle, line_line, ref_line_angle, ref_line_line):
+def get_line_fitness(line_angle, line_line, line_pcount, ref_line_angle, ref_line_line):
+    print(" get_line_fitness", line_line[0], line_line[1])
     # Angle diff, higher number is better, max pi/2 (perpendicular)
     angle_diff = abs(line_angle - ref_line_angle)
     if angle_diff > math.pi / 2.0:
         angle_diff = math.pi - angle_diff
-    angle_fitness = angle_diff / 2.0
+    angle_fitness = angle_diff / 4.0
+
     # Distance between end points, smaller is better
     #  Normally between 5 and 30
     min_d = 1e9
@@ -26,8 +28,23 @@ def get_line_fitness(line_angle, line_line, ref_line_angle, ref_line_line):
             d = (line_line[i][0]-ref_line_line[j][0])**2 + (line_line[i][1]-ref_line_line[j][1])**2
             min_d = min(min_d, d)
     min_d = min_d ** 0.5
-    distance_fitness = 1 / (1 + min(30, min_d) / 30.0)
+    min_distance_fitness = 1 / (1 + min(30, min_d) / 30.0)
+
+    # Furthest distance, larger is better
+    #  Normally between 5 and 100
+    max_d = 0
+    for i in range(2):
+        d = line_to_point_distance(ref_line_line, line_line[i])
+        max_d = max(max_d, d)
+    max_distance_fitness = min(30, max_d) / 15.0
+    if min_d / max_d < 0.3:
+        min_distance_fitness = 1.0
+
+    # Point count fitness
+    pcount_fitness = line_pcount / 10.0
+
     # Line overlap
+    """
     p0 = np.zeros(2, np.float64)
     line_intersection(line_line, ref_line_line, p0)
     v0 = line_line[0] - p0
@@ -41,7 +58,33 @@ def get_line_fitness(line_angle, line_line, ref_line_angle, ref_line_line):
         p2 = pc - (v0 / v0_len) * (length / 2)
         distance = norm(p2)
         overlap_fitness = 1 / (1 + distance / 15.0)
-    return float(angle_fitness + distance_fitness + overlap_fitness)
+    """
+    overlap_fitness = 1.0
+
+    # Line side penalty
+    d1 =  (line_line[0][0] - ref_line_line[0][0]) * (ref_line_line[1][1] - ref_line_line[0][1])
+    d1 -= (line_line[0][1] - ref_line_line[0][1]) * (ref_line_line[1][0] - ref_line_line[0][0])
+    d2 =  (line_line[1][0] - ref_line_line[0][0]) * (ref_line_line[1][1] - ref_line_line[0][1])
+    d2 -= (line_line[1][1] - ref_line_line[0][1]) * (ref_line_line[1][0] - ref_line_line[0][0])
+    if (d1 > 50 and d2 < -50) or (d1 < -50 and d2 > 50):
+        line_side_penalty = 0.1
+    else:
+        line_side_penalty = 1.0
+
+    print("  line side penalty", d1, d2, line_side_penalty)
+
+    # Line length penalty
+    d1 = line_to_point_distance(ref_line_line, line_line[0])
+    d2 = line_to_point_distance(ref_line_line, line_line[1])
+    lenmin = line_length(ref_line_line) / 5.0
+    if d1 < lenmin and d2 < lenmin:
+        length_penalty = 0.5
+    else:
+        length_penalty = 1.0
+
+    fitness = float((angle_fitness + min_distance_fitness + max_distance_fitness + overlap_fitness + pcount_fitness) * line_side_penalty * length_penalty)
+    print("  fitness", angle_fitness, min_distance_fitness, max_distance_fitness, overlap_fitness, pcount_fitness, fitness)
+    return fitness
 
 @njit
 def process_line(points, count, line):
@@ -178,58 +221,61 @@ def find_all_lines(points, points_count, line_pair, line_pair_size):
     second_line_line = np.empty((2, 2), np.float64)    
     second_line_points = np.empty((MAX_POINTS, 2), np.float64)
 
-    if lines_counts[0] == 0:
-        # No second line found
 
-        # Check if one point can be used as line
-        best_fitness = 0
-        
-        #first_line_points = first_line.get_points()
-        for k in range(points_count):
-            inside = False
-            for m in range(int(first_line_count)):
-                if first_line_points[m][0] == points[k][0] and \
-                   first_line_points[m][1] == points[k][1]:
-                    inside = True
-                    break
-            if inside:
+    # Check if one point can be used as line
+    best_fitness = 0
+    
+    #if lines_counts[0] == 0:
+    print("no second line")
+    # No second line found
+    #first_line_points = first_line.get_points()
+    for k in range(points_count):
+        inside = False
+        for m in range(int(first_line_count)):
+            if first_line_points[m][0] == points[k][0] and \
+               first_line_points[m][1] == points[k][1]:
+                inside = True
+                break
+        if inside:
+            continue
+
+        for l in range(2):
+            line_ij[0] = points[k]
+            if l == 0:
+                line_ij[1] = first_line_points[0]
+            else:
+                line_ij[1] = first_line_points[int(first_line_count-1)]
+
+            p = line_ij[1] - line_ij[0]
+            if norm(p) < 4:
                 continue
 
-            for l in range(2):
-                line_ij[0] = points[k]
-                if l == 0:
-                    line_ij[1] = first_line_points[0]
-                else:
-                    line_ij[1] = first_line_points[int(first_line_count-1)]
+            angle = math.atan2(p[1], p[0])
+            if angle < 0:
+                angle = math.pi + angle
+            angle_diff = abs(first_line_angle - angle)
+            if angle_diff > math.pi / 2.0:
+                angle_diff = math.pi - angle_diff
+            if angle_diff < minimum_angle:
+                continue
 
-                p = line_ij[1] - line_ij[0]
-                if norm(p) < 4:
-                    continue
+            second_line_angle = angle
+            second_line_count = 2
+            second_line_points[0:2] = line_ij
+            second_line_line[:] = line_ij
 
-                angle = math.atan2(p[1], p[0])
-                if angle < 0:
-                    angle = math.pi + angle
-                angle_diff = abs(first_line_angle - angle)
-                if angle_diff > math.pi / 2.0:
-                    angle_diff = math.pi - angle_diff
-                if angle_diff < minimum_angle:
-                    continue
+            fitness = get_line_fitness(second_line_angle, second_line_line, second_line_count, first_line_angle, first_line_line)
 
-                second_line_angle = angle
-                second_line_count = 2
-                second_line_points[0:2] = line_ij
-                second_line_line[:] = line_ij
+            if fitness > best_fitness:
+                best_fitness = fitness
+                line_pair[1][0:second_line_count] = second_line_points[0:second_line_count]
+                line_pair_size[1] = second_line_count
 
-                fitness = get_line_fitness(second_line_angle, second_line_line, first_line_angle, first_line_line)
-
-                if fitness > best_fitness:
-                    best_fitness = fitness
-                    line_pair[1][0:second_line_count] = second_line_points[0:second_line_count]
-                    line_pair_size[1] = second_line_count
-
-    else:
-        best_fitness = 0
-        best_idx = -1
+    #else:
+    if lines_counts[0] > 0:
+        print("has second lines")
+        #best_fitness = 0
+        #best_idx = -1
         idx = 0
         while lines_counts[idx] == lines_counts[0]:
             second_line_angle     = lines_angles[idx]
@@ -237,12 +283,12 @@ def find_all_lines(points, points_count, line_pair, line_pair_size):
             second_line_points[:] = lines_points[idx]
             second_line_count = process_line(second_line_points, second_line_count, second_line_line)
 
-            fitness = get_line_fitness(second_line_angle, second_line_line, first_line_angle, first_line_line)
+            fitness = get_line_fitness(second_line_angle, second_line_line, second_line_count, first_line_angle, first_line_line)
             if fitness > best_fitness:
                 best_fitness = fitness
                 line_pair[1][0:int(second_line_count)] = second_line_points[0:int(second_line_count)]
                 line_pair_size[1] = second_line_count
-                best_idx = idx
+                #best_idx = idx
             idx += 1
 
 

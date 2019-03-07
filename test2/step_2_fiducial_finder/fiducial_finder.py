@@ -15,7 +15,7 @@ class FiducialFinder:
         self.model.load_weights(weights_path)
 
 
-    def process(self, image):
+    def process(self, image, img_key = ""):
         #source_path = os.path.dirname(os.path.abspath(__file__))
         #filepath = os.path.join(source_path, "o" + '_mask.png')
         #cv2.imwrite(filepath, image)
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     fiducial_finder = FiducialFinder()
 
     image_path = os.path.join(source_path, '../step_1_gate_finder/dummy_image.jpg')
-    #image_path = os.path.join(source_path, '../step_1_gate_finder/IMG_2984.JPG')
+    image_path = os.path.join(source_path, '/home/jst/development/data-puffin-pilot/Data_LeaderboardTesting/IMG_7567 (1).JPG')
     image = cv2.imread(image_path)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 

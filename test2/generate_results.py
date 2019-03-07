@@ -39,19 +39,20 @@ class GenerateFinalDetections():
 
     def _predict_flying_regions(self, image, img_key):
         gate_image     = self.gate_finder.process(image)
-        fiducials      = self.fiducial_finder.process(gate_image)
-        frames         = self.fiducial_matcher.process(fiducials)
-        gate_poses     = self.pose_estimator.process(frames)
-        flying_regions = self.flying_region.process(gate_poses)
+        fiducials      = self.fiducial_finder.process(gate_image, img_key = img_key)
+        frames         = self.fiducial_matcher.process(fiducials, gate_image = image, img_key = img_key)
+        gate_poses     = self.pose_estimator.process(frames, gate_image = image, img_key = img_key)
+        flying_regions = self.flying_region.process(gate_poses, gate_image = image, img_key = img_key)
 
         return flying_regions
         
     def predict(self, image, img_key = ""):
-        try:
-            return self._predict_flying_regions(image, img_key)
-        except:
-            self.error_count += 1
-            if self.error_count == 5:
-                # Something is seriously wrong, reload everything.
-                self.__init__(predict_dummy = False)
-            return []
+        print("predicting the new one", img_key)
+        #try:
+        return self._predict_flying_regions(image, img_key)
+        #except:
+        #    self.error_count += 1
+        #    if self.error_count == 5:
+        #        # Something is seriously wrong, reload everything.
+        #        self.__init__(predict_dummy = False)
+        #    return []

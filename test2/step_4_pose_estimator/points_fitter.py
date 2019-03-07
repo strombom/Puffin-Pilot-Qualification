@@ -79,6 +79,8 @@ class PointsFitter:
         corner_points = self._order_corners(corner_points)
         corner_points_count = sum([len(i) for i in corner_points])
 
+        print(corner_points[0:corner_points_count])
+
         # Undistort the points
         points = self._undistorted_points(corner_points)
 
@@ -292,8 +294,8 @@ def jit_points_loss_3(camera_pose, points0, points1, points2, points3, residuals
 
         ls1 = quadrilateral[corner_i]
         ls4 = quadrilateral[(corner_i + 1) % 4]
-        ls2 = (ls1 * 7 + ls4) / 8
-        ls3 = (ls1 + ls4 * 7) / 8
+        ls2 = (ls1 * 104 + ls4 *  24) / 128
+        ls3 = (ls1 *  24 + ls4 * 104) / 128
         half_lines[corner_i][1][0] = ls1
         half_lines[corner_i][1][1] = ls2
         half_lines[(corner_i + 1) % 4][0][0] = ls4

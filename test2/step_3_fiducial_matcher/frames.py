@@ -7,7 +7,9 @@ from enum import IntEnum
 from numba import jit, njit, jitclass
 from numba import int64, float64, boolean
 
+from .common import point_to_point_distance
 from .corners import MatchingCriterion
+from .corners import corners_test_match, get_corner_distance
 
 
 def match_corners(corners, debug = False):
@@ -24,7 +26,6 @@ def match_corners(corners, debug = False):
 
     merge_frames(frames)
     merge_point_corners(frames, point_corners)
-
     pick_points(frames)
 
     # Remove frames with only points and frames with only one corner
@@ -42,44 +43,9 @@ def match_corners(corners, debug = False):
             del frames[i]
 
     merge_large_corners(frames)
-
-
-
-    """   
-    import os
-    import cv2
-    from seaborn import color_palette
-    palette = color_palette("bright", 4)
-    source_path = os.path.dirname(os.path.abspath(__file__))
-    image_filepath = os.path.join(source_path, '../step_1_gate_finder/dummy_image.jpg')
-    image = cv2.imread(image_filepath)
-    for frame_idx, frame in enumerate(frames):
-        for corner_idx, corner in enumerate(frame):
-            color = palette[frame_idx]
-            color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-            for i in range(2):
-                if corner.matching_criterion == MatchingCriterion.POINTS:
-                    for j in range(corner.matching_points_count[i]):
-                        point = corner.matching_points[i][j].astype(np.int64)
-                        #print("point")
-                        #print(tuple(point))
-                        cv2.circle(image, tuple(point), 2, color, -1)
-                elif corner.matching_criterion == MatchingCriterion.LINES:
-
-                    for j in range(corner.matching_points_count[i]):
-                        point = corner.matching_points[i][j].astype(np.int64)
-                        #print("point")
-                        #print(tuple(point))
-                        cv2.circle(image, tuple(point), 2, color, -1)
-                    line = corner.matching_lines[i].astype(np.int64)
-                    #print("line")
-                    #print(tuple(line[0]))
-                    cv2.line(image, tuple(line[0]), tuple(line[-1]), color, 1)
-
-    #print("write frames")
-    cv2.imwrite('img_5_frames.png', image)
-    """
-    
+    order_corners(frames)
+    keep_furthest_point(frames)
+    points_sanity_check(frames)
 
     # Make frames
     for idx, frame in enumerate(frames):
@@ -106,23 +72,16 @@ class FrameCorner:
         self.lines = corner.matching_lines
 
 
-
 def merge_point_corners(frames, point_corners):
     # Make sure that frames with many corners have highest merging priority
-
-    #print("========= Merge points corners =======")
     frames.sort(key=len, reverse=True)
     frames.extend(point_corners)
     merge_frames(frames)
 
 
-
 def merge_frames(frames):
     best_matches = np.zeros(2, np.int64)
     matches      = np.zeros(2, np.int64)
-
-    #print("start")
-    #print(frames)
 
     # Merge frames
     idx_i = 0
@@ -148,30 +107,15 @@ def merge_frames(frames):
             if best_matches[0]:
                 for idx, corner in enumerate(frames[best_fitness_idx]):
                     frames[idx_i].insert(idx, corner)
-                    #print("insert")
             else:
                 frames[idx_i].extend(frames[best_fitness_idx])
-                #print("extend")
 
             del frames[best_fitness_idx]
             idx_i -= 1
         idx_i += 1
 
 
-    #print("end")
-    #print(frames)
-    #quit()
-
 def merge_large_corners(frames):
-    #print("XXXXXXXXXXXXXXXXXXXXX")
-    #print("merge_large_corners", frames)
-    #for frame in frames:
-    #    for corner in frame:
-    #        print(corner.matching_criterion)
-    #        for side in range(2):
-    #            print(corner.matching_points[side][0:corner.matching_points_count[side]])
-    #        print("...")
-
     large_corner_count = []
     corner_counts = []
 
@@ -181,9 +125,6 @@ def merge_large_corners(frames):
             if corner.matching_points_count[0] + corner.matching_points_count[1] > 4:
                 count += 1
         large_corner_count.append(count)
-
-    #print("large_corner_count", large_corner_count)
-    #print("corner_counts", corner_counts)
 
     if len(large_corner_count) > 1 and large_corner_count[0] == 3 and large_corner_count[1] > 0:
 
@@ -210,11 +151,7 @@ def merge_large_corners(frames):
         frames[0][small_idx] = frames[1][big_idx]
         del frames[1]
 
-        # Merge
-        #print("merge3+1", small_idx, big_idx)
-
     elif len(large_corner_count) > 1 and large_corner_count[0] == 2 and large_corner_count[1] > 0:
-
         while large_corner_count[1] > 0:
             large_corner_count[1] -= 1
             if len(frames[0]) < 4:
@@ -240,10 +177,98 @@ def merge_large_corners(frames):
             frames[0][small_idx] = frames[1][big_idx]
             del frames[1][big_idx]
 
-        # Merge
-        #print("merge2+2", small_idx, big_idx)
+def order_corners(frames):
+    for frame in frames:
+        cpx = []
+        cpy = []
+        corners = []
+        fmin_x, fmax_x, fmin_y, fmax_y = 1e9, 0, 1e9, 0
+        for corner in frame:
+            if corner is None:
+                continue
+            cx, cy = 0, 0
+            for side in range(2):
+                for pidx in range(corner.matching_points_count[side]):
+                    cx = cx + corner.matching_points[side][pidx][0]
+                    cy = cy + corner.matching_points[side][pidx][1]
+            cx = cx / (corner.matching_points_count[0] + corner.matching_points_count[1])
+            cy = cy / (corner.matching_points_count[0] + corner.matching_points_count[1])
+            fmin_x, fmax_x = min(fmin_x, cx), max(fmax_x, cx)
+            fmin_y, fmax_y = min(fmin_y, cy), max(fmax_y, cy)
+            cpx.append(cx)
+            cpy.append(cy)
+            corners.append(corner)
+
+        new_frame = [None, None, None, None]
+        cx, cy = (fmin_x + fmax_x) / 2, (fmin_y + fmax_y) / 2    
+        for idx in range(len(cpx)):
+            if   cpx[idx] < cx and cpy[idx] < cy:
+                new_frame[0] = corners[idx]
+            elif cpx[idx] > cx and cpy[idx] < cy:
+                new_frame[1] = corners[idx]
+            elif cpx[idx] > cx and cpy[idx] > cy:
+                new_frame[2] = corners[idx]
+            elif cpx[idx] < cx and cpy[idx] > cy:
+                new_frame[3] = corners[idx]
+
+        frame.clear()
+        for corner in new_frame:
+            if corner is not None:
+                frame.append(corner)
 
 
+def keep_furthest_point(frames):
+    for frame in frames:
+        if len(frame) < 4:
+            continue
+
+        for corner_idx, corner in enumerate(frame):
+            if corner is None:
+                continue
+
+            if corner.matching_criterion != MatchingCriterion.POINTS:
+                continue
+
+            ci, cj = (corner_idx - 1) % 4, (corner_idx + 1) % 4
+            if frame[ci] is None or frame[cj] is None:
+                continue
+
+            point = np.zeros(2, np.float64)
+            max_distance = 0
+
+            p1, p2 = frame[ci].matching_points[0][0], frame[cj].matching_points[0][0]
+            for side_this in range(2):
+                for point_k in range(corner.matching_points_count[side_this]):
+                    p0 = corner.matching_points[side_this][point_k]
+                    d = point_to_point_distance(p0, p1) + point_to_point_distance(p0, p2)
+                    if d > max_distance:
+                        max_distance = d
+                        point = p0
+
+            corner.matching_points[0] = point
+            corner.matching_points[1] = point
+            corner.matching_points_count[0] = 1
+            corner.matching_points_count[1] = 1
+
+def points_sanity_check(frames):
+    for frame in frames:
+        if len(frame) < 4:
+            continue
+
+        if None in frame:
+            continue
+
+        cgs = np.zeros((4, 2), np.float64)
+        for ci, corner in enumerate(frame):
+            cgs[ci] =  np.sum(corner.matching_points[0][0:corner.matching_points_count[0]])
+            cgs[ci] += np.sum(corner.matching_points[1][0:corner.matching_points_count[1]])
+            cgs[ci] = cgs[ci] / (corner.matching_points_count[0] + corner.matching_points_count[1])
+
+        for ci, corner in enumerate(frame):
+            print("psc")
+
+
+#@njit
 def pick_points(frames):
     if len(frames) < 2:
         return
@@ -252,24 +277,22 @@ def pick_points(frames):
         return
 
     min_x, max_x = 1e9, 0
-    #print("pick points")
     for corner_i in range(len(frames[0])):
         corner = frames[0][corner_i]
+        #print("corner", corner)
         for side_j in range(2):
             for point_k in range(corner.matching_points_count[side_j]):
                 point = corner.matching_points[side_j][point_k]
                 min_x, max_x = min(min_x, point[0]), max(max_x, point[0])
     tolerance = (max_x - min_x) * 0.1
-
     left_x, right_x = min_x + tolerance, max_x - tolerance
-
-
 
     # Find picky points
     best_corner_idx = -1
     best_corner_distance = 1e9
     for corner_i in range(len(frames[1])):
         corner = frames[1][corner_i]
+        #print("corner", corner)
         for side_j in range(2):
             for point_k in range(corner.matching_points_count[side_j]):
                 point = corner.matching_points[side_j][point_k]
@@ -286,20 +309,19 @@ def pick_points(frames):
             del frames[1][best_corner_idx]
 
 
-#@njit
+@njit
 def merging_fitness(frame1, frame2, matches):
     total_corners = len(frame1) + len(frame2)
-    #print("total_corners", total_corners)
 
     if total_corners > 4:
         return -1
 
-    if frame1[-1].match(frame2[0]):
+    if corners_test_match(frame1[-1], frame2[0]):
         matches[1] = 1
     else:
         matches[1] = 0
 
-    if frame2[-1].match(frame1[0]):
+    if corners_test_match(frame2[-1], frame1[0]):
         matches[0] = 1
     else:
         matches[0] = 0
@@ -314,126 +336,7 @@ def merging_fitness(frame1, frame2, matches):
             return -1
 
     if matches[0]:
-        return frame1[0].get_distance(frame2[-1])
+        return get_corner_distance(frame1[0], frame2[-1])
     else:
-        return frame2[0].get_distance(frame1[-1])
+        return get_corner_distance(frame2[0], frame1[-1])
 
-
-
-
-
-
-"""
-
-
-    import cv2
-    from seaborn import color_palette
-    palette = color_palette("bright", len(frames))
-    image_filepath = 'img_in.png'
-    image = cv2.imread(image_filepath)
-    for frame_idx, frame in enumerate(frames):
-        color = palette[frame_idx]
-        color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-
-        for corner in frame:
-            for i in range(2):
-                if corner.matching_criterion == MatchingCriterion.POINTS:
-                    for j in range(corner.matching_points_count[i]):
-                        point = corner.matching_points[i][j].astype(np.int64)
-                        #print("point")
-                        #print(tuple(point))
-                        cv2.circle(image, tuple(point), 3, color, -1)
-                elif corner.matching_criterion == MatchingCriterion.LINES:
-
-                    for j in range(corner.matching_points_count[i]):
-                        point = corner.matching_points[i][j].astype(np.int64)
-                        #print("point")
-                        #print(tuple(point))
-                        cv2.circle(image, tuple(point), 3, color, -1)
-                    line = corner.matching_lines[i].astype(np.int64)
-                    #print("line")
-                    #print(tuple(line[0]))
-                    cv2.line(image, tuple(line[0]), tuple(line[1]), color, 2)
-
-    cv2.imwrite('img_frames.png', image)
-    quit()
-
-"""
-
-#print(frames)
-
-
-
-#for corner in corners:
-#    print("---", corner.matching_score)
-
-#for corner in cluster:
-#    print(point)
-
-
-"""
-import cv2
-image_filepath = 'img_in.png'
-image = cv2.imread(image_filepath)
-colors = ((255,0,0), (0,255,0))
-for corner in corners:
-    print("---")
-    for i in range(2):
-        if corner.matching_criterion[i] == MatchingCriterion.POINTS:
-            for j in range(corner.matching_points_count[i]):
-                point = corner.matching_points[i][j].astype(np.int64)
-                print("point")
-                print(tuple(point))
-                cv2.circle(image, tuple(point), 3, colors[i], -1)
-        elif corner.matching_criterion[i] == MatchingCriterion.LINE:
-
-            for j in range(corner.matching_points_count[i]):
-                point = corner.matching_points[i][j].astype(np.int64)
-                print("point")
-                print(tuple(point))
-                cv2.circle(image, tuple(point), 3, colors[i], -1)
-            line = corner.matching_lines[i].astype(np.int64)
-            print("line")
-            print(tuple(line[0]))
-            cv2.line(image, tuple(line[0]), tuple(line[1]), colors[i], 2)
-cv2.imwrite('img_out.png', image)
-"""
-
-"""
-import cv2
-from seaborn import color_palette
-palette = color_palette("bright", 2)
-image_filepath = 'img_in.png'
-image = cv2.imread(image_filepath)
-
-colors = []
-for i in range(2):
-    color = palette[i]
-    color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
-    colors.append(color)
-
-for corner in corners:
-    for i in range(2):
-        if corner.matching_criterion == MatchingCriterion.POINTS:
-            for j in range(corner.matching_points_count[i]):
-                point = corner.matching_points[i][j].astype(np.int64)
-                #print("point")
-                #print(tuple(point))
-                cv2.circle(image, tuple(point), 3, colors[i], -1)
-
-        elif corner.matching_criterion == MatchingCriterion.LINE:
-            for j in range(corner.matching_points_count[i]):
-                point = corner.matching_points[i][j].astype(np.int64)
-                #print("point")
-                #print(tuple(point))
-                cv2.circle(image, tuple(point), 3, colors[i], -1)
-            line = corner.matching_lines[i].astype(np.int64)
-            #print("line")
-            #print(tuple(line[0]))
-            cv2.line(image, tuple(line[0]), tuple(line[1]), colors[i], 2)
-
-            cv2.circle(image, tuple(line[0]), 5, colors[i], -1)
-
-cv2.imwrite('img_corners.png', image)
-quit()
-"""

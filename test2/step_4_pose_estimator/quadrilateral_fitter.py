@@ -44,6 +44,7 @@ class QuadrilateralFitter:
             points.append(intersection)
 
         for idx, corner in enumerate(corners):
+            print("corner", idx)
             if corner.has_lines:
                 initial_guess[idx] = corner.lines[0][0]
                 points.append(corner.lines[0][0])
@@ -53,6 +54,7 @@ class QuadrilateralFitter:
                 initial_guess[idx] = corner.points[0][0]
                 for i in range(2):
                     for j in range(corner.points_count[i]):
+                        print(" add point", corner.points[i][j])
                         points.append(corner.points[i][j])
         points = np.array(points)
 

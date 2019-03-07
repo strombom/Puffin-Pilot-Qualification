@@ -55,9 +55,13 @@ class FlyingRegionGenerator:
                 cv2.imwrite(filename, image)
                 #break
             
+            
             flying_region = [item for sublist in flying_region.tolist() for item in sublist]
             flying_region.append(1.0)
             flying_regions.append(flying_region)
+
+        if len(flying_regions) == 0:
+            flying_regions.append([])
 
         return flying_regions
 
