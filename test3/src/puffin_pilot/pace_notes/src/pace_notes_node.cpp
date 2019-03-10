@@ -1,7 +1,10 @@
 #include <ros/ros.h>
+#include <cmath>
 #include <iostream>
 #include <Eigen/Geometry>
 #include <visualization_msgs/Marker.h>
+#include <nav_msgs/Odometry.h>
+#include <mav_msgs/conversions.h>
 #include <std_msgs/Float64MultiArray.h>
 
 #include <puffin_pilot/PaceNote.h>
@@ -16,81 +19,20 @@ struct Gate {
   Eigen::Vector3d normal;
   Eigen::Vector3d corners[4];
   Eigen::Vector3d ir_markers[4];
-  Eigen::Vector3d waypoints[3];
-  double waypoints_yaw[3];
+  Eigen::Vector3d waypoints[4];
+  double waypoints_yaw[4];
 };
 
 vector<Gate> gates;
-int current_gate = 0;
+int current_gate = -1;
 
 ros::Publisher vis_pub_gates;
 ros::Publisher vis_pub_gate_centers;
 ros::Publisher pub_pace_note;
 
-void init_gates(void)
-{
-    static const int corner_map[11][4] = {{1, 0, 2, 3},
-                                          {0, 1, 2, 3},
-                                          {1, 0, 3, 2},
-                                          {1, 0, 3, 2},
-                                          {0, 1, 3, 2},
-                                          {1, 0, 3, 2},
-                                          {0, 1, 2, 3},
-                                          {0, 1, 2, 3},
-                                          {0, 1, 2, 3},
-                                          {1, 0, 2, 3},
-                                          {1, 0, 2, 3}};
 
-    XmlRpc::XmlRpcValue gate_names;
-    ros::param::get("/uav/gate_names", gate_names);
-    gate_count = gate_names.size();
-
-    for (int gate_idx = 0; gate_idx < gate_count; gate_idx++) {
-
-        const char *gate_name = static_cast<std::string>(gate_names[gate_idx]).c_str();
-        char param_name[40];
-        sprintf(param_name, "/uav/%s/nominal_location", gate_name);
-
-        XmlRpc::XmlRpcValue nominal_location;
-        ros::param::get(param_name, nominal_location);
-
-        Eigen::Vector3d center = Eigen::Vector3d::Zero();
-        Eigen::Vector3d normal;
-        
-        Gate gate;
-        gate.name = static_cast<std::string>(gate_names[gate_idx]);
-        for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
-            gate.corners[corner_idx].x()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][0];
-            gate.corners[corner_idx].y()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][1];
-            gate.corners[corner_idx].z()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][2];
-            gate.ir_markers[corner_idx].x() = (double)nominal_location[corner_idx][0];
-            gate.ir_markers[corner_idx].y() = (double)nominal_location[corner_idx][1];
-            gate.ir_markers[corner_idx].z() = (double)nominal_location[corner_idx][2];
-            center += gate.corners[corner_idx];
-        }
-
-        center /= 4;
-        normal = (gate.corners[1] - gate.corners[0]).cross(gate.corners[2] - gate.corners[0]).normalized();
-        gate.waypoints[0] = center - normal * 2;
-        //gate.waypoints[1] = center;
-        gate.waypoints[1] = center + normal * 1;
-        gate.normal = normal;
-
-        printf("gate %d c(% 7.4f % 7.4f % 7.4f) n(% 7.4f % 7.4f % 7.4f)\n", 
-                   gate_idx, 
-                   center.x(), center.y(), center.z(),
-                   normal.x(), normal.y(), normal.z());
-        gates.push_back(gate);
-    }
-
-    for (int gate_idx = 0; gate_idx < gates.size() - 1; gate_idx++) {
-        gates[gate_idx].waypoints[2] = (gates[gate_idx].waypoints[1] + gates[gate_idx+1].waypoints[0]) / 2.0;
-    }
-
-    gates[gates.size()-1].waypoints[2] = gates[gates.size()-1].waypoints[1] + 20.0 * gates[gates.size()-1].normal;
-}
-
-void marker_publisher(const ros::TimerEvent&)
+//void marker_publisher(const ros::TimerEvent&)
+void publish_pace_note(void)
 {
     visualization_msgs::Marker gates_marker;
     gates_marker.header.frame_id = "world";
@@ -173,55 +115,61 @@ void marker_publisher(const ros::TimerEvent&)
     }
 
 
-    std_msgs::Float64MultiArray ir_markers;
-    ir_markers.layout.dim.push_back(std_msgs::MultiArrayDimension());
-    ir_markers.layout.dim.push_back(std_msgs::MultiArrayDimension());
-    ir_markers.layout.dim[0].label = "ir_markers";
-    ir_markers.layout.dim[0].size = 4;
-    ir_markers.layout.dim[0].stride = 4 * 3;
-    ir_markers.layout.dim[1].label = "coordinates";
-    ir_markers.layout.dim[1].size = 3;
-    ir_markers.layout.dim[1].stride = 3;
-    ir_markers.layout.data_offset = 0;
-    std::vector<double> gate_corners_data(4 * 3, 0);
-    for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
-        gate_corners_data[corner_idx * 3 + 0] = gates[current_gate].ir_markers[corner_idx].x();
-        gate_corners_data[corner_idx * 3 + 1] = gates[current_gate].ir_markers[corner_idx].y();
-        gate_corners_data[corner_idx * 3 + 2] = gates[current_gate].ir_markers[corner_idx].z();
+
+    //for (int gate_idx = 0; gate_idx < gates.size(); gate_idx++)
+    {
+        std_msgs::Float64MultiArray ir_markers;
+        ir_markers.layout.dim.push_back(std_msgs::MultiArrayDimension());
+        ir_markers.layout.dim.push_back(std_msgs::MultiArrayDimension());
+        ir_markers.layout.dim[0].label = "ir_markers";
+        ir_markers.layout.dim[0].size = 4;
+        ir_markers.layout.dim[0].stride = 4 * 3;
+        ir_markers.layout.dim[1].label = "coordinates";
+        ir_markers.layout.dim[1].size = 3;
+        ir_markers.layout.dim[1].stride = 3;
+        ir_markers.layout.data_offset = 0;
+        std::vector<double> gate_corners_data(4 * 3, 0);
+        for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
+            gate_corners_data[corner_idx * 3 + 0] = gates[current_gate].ir_markers[corner_idx].x();
+            gate_corners_data[corner_idx * 3 + 1] = gates[current_gate].ir_markers[corner_idx].y();
+            gate_corners_data[corner_idx * 3 + 2] = gates[current_gate].ir_markers[corner_idx].z();
+        }
+        ir_markers.data = gate_corners_data;
+
+
+        std_msgs::Float64MultiArray waypoints;
+        waypoints.layout.dim.push_back(std_msgs::MultiArrayDimension());
+        waypoints.layout.dim.push_back(std_msgs::MultiArrayDimension());
+        waypoints.layout.dim[0].label = "waypoints";
+        waypoints.layout.dim[0].size = 4;
+        waypoints.layout.dim[0].stride = 4 * 4;
+        waypoints.layout.dim[1].label = "coordinates";
+        waypoints.layout.dim[1].size = 4;
+        waypoints.layout.dim[1].stride = 4;
+        waypoints.layout.data_offset = 0;
+        std::vector<double> waypoints_data(4 * 4, 0);
+        for (int waypoint_idx = 0; waypoint_idx < 4; waypoint_idx++) {
+            waypoints_data[waypoint_idx * 4 + 0] = gates[current_gate].waypoints[waypoint_idx].x();
+            waypoints_data[waypoint_idx * 4 + 1] = gates[current_gate].waypoints[waypoint_idx].y();
+            waypoints_data[waypoint_idx * 4 + 2] = gates[current_gate].waypoints[waypoint_idx].z();
+            waypoints_data[waypoint_idx * 4 + 3] = gates[current_gate].waypoints_yaw[waypoint_idx];
+        }
+        waypoints.data = waypoints_data;
+
+
+
+        puffin_pilot::PaceNote pace_note;
+        pace_note.gate_name.data = gates[current_gate].name.c_str();
+        pace_note.waypoints = waypoints;
+        pace_note.ir_markers = ir_markers;
+        pace_note.header.stamp = ros::Time::now();
+        pace_note.header.frame_id = "1";
+        pub_pace_note.publish(pace_note);
+
+        int gate_idx = 0;
+        ROS_INFO("Pace notes sent %d.", gate_idx);
     }
-    ir_markers.data = gate_corners_data;
 
-
-    std_msgs::Float64MultiArray waypoints;
-    waypoints.layout.dim.push_back(std_msgs::MultiArrayDimension());
-    waypoints.layout.dim.push_back(std_msgs::MultiArrayDimension());
-    waypoints.layout.dim[0].label = "waypoints";
-    waypoints.layout.dim[0].size = 3;
-    waypoints.layout.dim[0].stride = 3 * 3;
-    waypoints.layout.dim[1].label = "coordinates";
-    waypoints.layout.dim[1].size = 3;
-    waypoints.layout.dim[1].stride = 3;
-    waypoints.layout.data_offset = 0;
-    std::vector<double> waypoints_data(3 * 3, 0);
-    for (int waypoint_idx = 0; waypoint_idx < 3; waypoint_idx++) {
-        waypoints_data[waypoint_idx * 3 + 0] = gates[current_gate].waypoints[waypoint_idx].x();
-        waypoints_data[waypoint_idx * 3 + 1] = gates[current_gate].waypoints[waypoint_idx].y();
-        waypoints_data[waypoint_idx * 3 + 2] = gates[current_gate].waypoints[waypoint_idx].z();
-    }
-    waypoints.data = waypoints_data;
-
-
-
-
-
-    puffin_pilot::PaceNote pace_note;
-    pace_note.gate_name.data = gates[current_gate].name.c_str();
-    pace_note.waypoints = waypoints;
-    pace_note.ir_markers = ir_markers;
-    pace_note.header.stamp = ros::Time::now();
-    pace_note.header.frame_id = "1";
-    pub_pace_note.publish(pace_note);
-    ROS_INFO("Pace notes sent new.");
 
 
 
@@ -286,6 +234,130 @@ void marker_publisher(const ros::TimerEvent&)
 
 }
 
+void init_gates(void)
+{
+    static const int corner_map[11][4] = {{1, 0, 2, 3},
+                                          {0, 1, 2, 3},
+                                          {1, 0, 3, 2},
+                                          {1, 0, 3, 2},
+                                          {0, 1, 3, 2},
+                                          {1, 0, 3, 2},
+                                          {0, 1, 2, 3},
+                                          {0, 1, 2, 3},
+                                          {0, 1, 2, 3},
+                                          {1, 0, 2, 3},
+                                          {1, 0, 2, 3}};
+
+    XmlRpc::XmlRpcValue gate_names;
+    ros::param::get("/uav/gate_names", gate_names);
+    gate_count = gate_names.size();
+
+    for (int gate_idx = 0; gate_idx < gate_count; gate_idx++) {
+
+        const char *gate_name = static_cast<std::string>(gate_names[gate_idx]).c_str();
+        char param_name[40];
+        sprintf(param_name, "/uav/%s/nominal_location", gate_name);
+
+        XmlRpc::XmlRpcValue nominal_location;
+        ros::param::get(param_name, nominal_location);
+
+        Eigen::Vector3d center = Eigen::Vector3d::Zero();
+        Eigen::Vector3d normal;
+        
+        Gate gate;
+        gate.name = static_cast<std::string>(gate_names[gate_idx]);
+        for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
+            gate.corners[corner_idx].x()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][0];
+            gate.corners[corner_idx].y()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][1];
+            gate.corners[corner_idx].z()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][2];
+            gate.ir_markers[corner_idx].x() = (double)nominal_location[corner_idx][0];
+            gate.ir_markers[corner_idx].y() = (double)nominal_location[corner_idx][1];
+            gate.ir_markers[corner_idx].z() = (double)nominal_location[corner_idx][2];
+            center += gate.corners[corner_idx];
+        }
+
+        center /= 4;
+        normal = (gate.corners[1] - gate.corners[0]).cross(gate.corners[2] - gate.corners[0]).normalized();
+        gate.waypoints[1] = center - normal * 2;
+        //gate.waypoints[1] = center;
+        gate.waypoints[2] = center + normal * 1;
+        gate.normal = normal;
+
+        printf("gate %d c(% 7.4f % 7.4f % 7.4f) n(% 7.4f % 7.4f % 7.4f)\n", 
+                   gate_idx, 
+                   center.x(), center.y(), center.z(),
+                   normal.x(), normal.y(), normal.z());
+        gates.push_back(gate);
+    }
+
+    gates[0].waypoints[0] = Eigen::Vector3d(18.0, -23.0, 5.3);
+
+    for (int gate_idx = 0; gate_idx < gates.size()-1; gate_idx++) {
+        Eigen::Vector3d middle = (gates[gate_idx].waypoints[2] + gates[gate_idx+1].waypoints[1]) / 2.0;
+        gates[gate_idx+0].waypoints[3] = middle;
+        gates[gate_idx+1].waypoints[0] = middle;
+    }
+
+    gates[gates.size()-1].waypoints[3] = gates[gates.size()-1].waypoints[2] + 20.0 * gates[gates.size()-1].normal;
+
+    bool is_first_waypoint = true;
+    Eigen::Vector3d previous_waypoint;
+    double previous_yaw = 1.57;
+    for (int gate_idx = 0; gate_idx < gates.size() - 1; gate_idx++) {
+        for (int waypoint_idx = 0; waypoint_idx < 4; waypoint_idx++) {
+            if (waypoint_idx == 0) {
+                gates[gate_idx].waypoints_yaw[waypoint_idx] = previous_yaw;
+
+            } else {
+                Eigen::Vector3d diff = gates[gate_idx].waypoints[waypoint_idx] - previous_waypoint;
+                gates[gate_idx].waypoints_yaw[waypoint_idx] = atan2(diff.y(), diff.x());
+
+            }
+
+            previous_yaw = gates[gate_idx].waypoints_yaw[waypoint_idx];
+            previous_waypoint = gates[gate_idx].waypoints[waypoint_idx];
+
+
+            printf("waypoint %d,%d (% 7.2f % 7.2f % 7.2f) yaw=% 7.2f\n",
+                   gate_idx, waypoint_idx,
+                   gates[gate_idx].waypoints[waypoint_idx].x(),
+                   gates[gate_idx].waypoints[waypoint_idx].y(),
+                   gates[gate_idx].waypoints[waypoint_idx].z(),
+                   //diff.x(),
+                   //diff.y(),
+                   //diff.z(),
+                   gates[gate_idx].waypoints_yaw[waypoint_idx]);
+        }
+    }
+
+    current_gate = 0;
+    publish_pace_note();
+}
+
+void odometry_callback(const nav_msgs::Odometry& msg)
+{
+    ROS_INFO_ONCE("Pace notes received first odometry message.");
+
+    if (current_gate < 0) {
+        return;
+    }
+
+    mav_msgs::EigenOdometry odometry;
+    eigenOdometryFromMsg(msg, &odometry);
+
+    double distance = (odometry.position_W - gates[current_gate].waypoints[1]).norm();
+
+    if (distance < 1.0) {
+        if (current_gate == gates.size()-1) {
+            ROS_INFO("Pace notes finished!");
+        } else {
+            ROS_INFO("Pace notes next gate please (%f) %d.", distance, current_gate);
+            current_gate += 1;
+            publish_pace_note();
+        }
+    }
+}
+
 int main(int argc, char** argv)
 {  
     ros::init(argc, argv, "pace_notes");
@@ -294,7 +366,8 @@ int main(int argc, char** argv)
     pub_pace_note = nh.advertise<puffin_pilot::PaceNote>("pace_note", 10, true);
     vis_pub_gates = nh.advertise<visualization_msgs::Marker>("pace_notes/markers/gates", 0);
     vis_pub_gate_centers = nh.advertise<visualization_msgs::Marker>("pace_notes/markers/gate_centers", 0);
-    ros::Timer marker_publisher_timer = nh.createTimer(ros::Duration(2.0), marker_publisher);
+    //ros::Timer marker_publisher_timer = nh.createTimer(ros::Duration(2.0), marker_publisher);
+    ros::Subscriber odometry_node = nh.subscribe("odometry", 1,  &odometry_callback, ros::TransportHints().tcpNoDelay());
 
     /*vis_pub_1 = nh.advertise<visualization_msgs::Marker>("pace_notes_markers1", 0);
     vis_pub_2 = nh.advertise<visualization_msgs::Marker>("pace_notes_markers2", 0);

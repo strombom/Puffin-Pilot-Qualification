@@ -36,9 +36,9 @@ bool last_odometry_valid = false;
 nav_msgs::Odometry last_odometry;
 
 
-void OdometryCallback(const nav_msgs::Odometry& msg)
+void odometry_callback(const nav_msgs::Odometry& msg)
 {
-    ROS_INFO_ONCE("IR marker localizer got first odometry message.");
+    ROS_INFO_ONCE("IR marker localizer received first odometry message.");
 
     last_odometry = msg;
     last_odometry_valid = true;
@@ -71,9 +71,9 @@ Eigen::Quaterniond euler2Quaternion( const double roll, const double pitch, cons
     return q;
 }
 
-void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_array)
+void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_array)
 {
-    ROS_INFO_ONCE("IR marker localizer got first IR marker array message.");
+    ROS_INFO_ONCE("IR marker localizer received first IR marker array message.");
 
     // Limit incoming message frequency to 60 Hz.
     // However, it seems to already be limited to 20 Hz.
@@ -424,7 +424,7 @@ void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_ar
     //printf("ir marker %f\n", tt);
 }
 
-void paceNotesCallback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
+void pace_notes_callback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
 {
     ROS_INFO_ONCE("IR marker localizer got first Pace note message.");
 
@@ -432,7 +432,7 @@ void paceNotesCallback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
     pace_note = _pace_note;
 }
 
-void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& camera_info)
+void camera_info_callback(const sensor_msgs::CameraInfoConstPtr& camera_info)
 {
     if (!camera_info_rate_limiter->try_aquire(1)) {
         return;
@@ -459,10 +459,10 @@ int main(int argc, char** argv)
     ir_marker_odometry_pose_node = publisher_node.advertise<geometry_msgs::PoseStamped>("pose", 1, false);
 
     ros::NodeHandle subscriber_node;
-    ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &cameraInfoCallback, ros::TransportHints().tcpNoDelay());
-    ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("ir_beacons",  10, &irBeaconsCallback,  ros::TransportHints().tcpNoDelay());
-    ros::Subscriber pace_notes_subscriber  = subscriber_node.subscribe("pace_note",   10, &paceNotesCallback,  ros::TransportHints().tcpNoDelay());
-    ros::Subscriber odometry_node          = subscriber_node.subscribe("odometry",    1,  &OdometryCallback,   ros::TransportHints().tcpNoDelay());
+    ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &camera_info_callback, ros::TransportHints().tcpNoDelay());
+    ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("ir_beacons",  10, &ir_beacons_callback,  ros::TransportHints().tcpNoDelay());
+    ros::Subscriber pace_notes_subscriber  = subscriber_node.subscribe("pace_note",   10, &pace_notes_callback,  ros::TransportHints().tcpNoDelay());
+    ros::Subscriber odometry_node          = subscriber_node.subscribe("odometry",    1,  &odometry_callback,    ros::TransportHints().tcpNoDelay());
 
     ros::spin();
     return 0;

@@ -229,8 +229,8 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     if (ir_delta_time < max_ir_odom_interval && ir_odometer_state.valid) {
         // Has IR marker odometry.
 
-        static const int kv = 1000;
-        static const int kp = 600;
+        static const int kv = 800;
+        static const int kp = 500;
 
 
         imu_state.velocity = (ir_odometer_state.velocity + (kv - 1) * imu_state.velocity) / kv;

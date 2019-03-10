@@ -30,7 +30,11 @@ bool last_odometry_valid = false;
 nav_msgs::Odometry last_odometry;
 
 
-void calculate_trajectory(void)
+//Eigen::Vector4d previous_orientation;
+Eigen::Vector4d previous_velocity;
+
+
+bool calculate_trajectory(void)
 {
     ROS_INFO_ONCE("Trajectory generator calculated first trajectory.");
 
@@ -50,31 +54,48 @@ void calculate_trajectory(void)
 
     Eigen::Vector4d waypoints[5];
 
-    mav_msgs::EigenOdometry odometry;
-    eigenOdometryFromMsg(last_odometry, &odometry);
+    //mav_msgs::EigenOdometry odometry;
+    //eigenOdometryFromMsg(last_odometry, &odometry);
 
-    waypoints[0].x() = odometry.position_W.x();
-    waypoints[0].y() = odometry.position_W.y();
-    waypoints[0].z() = odometry.position_W.z();
-    waypoints[0].w() = 1.57;
+    //waypoints[0].x() = odometry.position_W.x();
+    //waypoints[0].y() = odometry.position_W.y();
+    //waypoints[0].z() = odometry.position_W.z();
+    //waypoints[0].w() = 1.57;
 
     printf("Calculate trajectory\n");
-    for (int waypoint_idx = 0; waypoint_idx < 3; waypoint_idx++) {
-        waypoints[waypoint_idx + 1].x() = pace_note->waypoints.data[waypoint_idx * 3 + 0];
-        waypoints[waypoint_idx + 1].y() = pace_note->waypoints.data[waypoint_idx * 3 + 1];
-        waypoints[waypoint_idx + 1].z() = pace_note->waypoints.data[waypoint_idx * 3 + 2];
-        waypoints[waypoint_idx + 1].w() = 1.57;
+    for (int waypoint_idx = 0; waypoint_idx < 4; waypoint_idx++) {
+        waypoints[waypoint_idx].x() = pace_note->waypoints.data[waypoint_idx * 4 + 0];
+        waypoints[waypoint_idx].y() = pace_note->waypoints.data[waypoint_idx * 4 + 1];
+        waypoints[waypoint_idx].z() = pace_note->waypoints.data[waypoint_idx * 4 + 2];
+        waypoints[waypoint_idx].w() = pace_note->waypoints.data[waypoint_idx * 4 + 3];
     }
 
     for (int waypoint_idx = 0; waypoint_idx < 4; waypoint_idx++) {
-        printf(" waypoint[%d] (%f, %f, %f)\n", waypoint_idx, waypoints[waypoint_idx].x(), waypoints[waypoint_idx].y(), waypoints[waypoint_idx].z());
+        printf(" waypoint[%d] (%f, %f, %f, %f)\n", waypoint_idx, waypoints[waypoint_idx].x(), waypoints[waypoint_idx].y(), waypoints[waypoint_idx].z(), waypoints[waypoint_idx].w());
     }
 
-    start.makeStartOrEnd(waypoints[0], derivative_to_optimize);
-    vertices.push_back(start);
+    //start.makeStartOrEnd(waypoints[0], derivative_to_optimize);
+    //vertices.push_back(start);
 
-    middle1.addConstraint(mav_trajectory_generation::derivative_order::POSITION, waypoints[1]);
+    static bool first = true;
+    if (first) {
+        first = false;
+    } else {
+        //middle1.addConstraint(mav_trajectory_generation::derivative_order::ORIENTATION, previous_orientation);
+        waypoints[0].y() += 0.1;
+        //printf(" previous_orientation (%f, %f, %f, %f)\n", previous_orientation.x(), previous_orientation.y(), previous_orientation.z(), previous_orientation.w());
+
+        printf(" previous_velocity (%f, %f, %f)\n", previous_velocity.x(), previous_velocity.y(), previous_velocity.z());
+        middle1.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY, previous_velocity);
+    }
+    middle1.addConstraint(mav_trajectory_generation::derivative_order::POSITION, waypoints[0]);
     vertices.push_back(middle1);
+    middle2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, waypoints[1]);
+    vertices.push_back(middle2);
+    middle3.addConstraint(mav_trajectory_generation::derivative_order::POSITION, waypoints[2]);
+    vertices.push_back(middle3);
+    middle4.addConstraint(mav_trajectory_generation::derivative_order::POSITION, waypoints[3]);
+    vertices.push_back(middle4);
 
     //middle2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, waypoints[2]);
     //vertices.push_back(middle2);
@@ -82,29 +103,21 @@ void calculate_trajectory(void)
     //middle3.addConstraint(mav_trajectory_generation::derivative_order::POSITION, waypoints[3]);
     //vertices.push_back(middle3);
 
-    end.makeStartOrEnd(waypoints[3], derivative_to_optimize);
-    vertices.push_back(end);
-
-
-
-/*
-    start.makeStartOrEnd(Eigen::Vector4d(16.5, -1, 5, 1.57), derivative_to_optimize);
-    vertices.push_back(start);
-
-    middle1.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector4d(17, 2.5, 7, 1.57));
-    vertices.push_back(middle1);
-
-    end.makeStartOrEnd(Eigen::Vector4d(16, 35.5, 6, 1.57), derivative_to_optimize);
-    vertices.push_back(end);
-*/
-
+    //end.makeStartOrEnd(waypoints[3], derivative_to_optimize);
+    //vertices.push_back(end);
 
 
 
     std::vector<double> segment_times;
-    const double v_max = 5.0;
+    const double v_max = 10.0;
     const double a_max = 10.0;
     segment_times = estimateSegmentTimes(vertices, v_max, a_max);
+
+    //double this_end_time = segment_times[segment_times.size()-1];
+    //for (int i = 0; i < segment_times.size(); i++) {
+    //    segment_times[i] += previous_end_time;
+    //}
+
 
     NonlinearOptimizationParameters parameters;
     parameters.max_iterations = 1000;
@@ -114,7 +127,6 @@ void calculate_trajectory(void)
     parameters.initial_stepsize_rel = 0.1;
     parameters.inequality_constraint_tolerance = 0.1;
 
-
     const int N = 10;
     PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
     opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
@@ -122,12 +134,12 @@ void calculate_trajectory(void)
     opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::ACCELERATION, a_max);
     opt.optimize();
 
-
-    mav_trajectory_generation::Segment::Vector segments;
-    opt.getPolynomialOptimizationRef().getSegments(&segments);
-
+    //mav_trajectory_generation::Segment::Vector segments;
+    //opt.getPolynomialOptimizationRef().getSegments(&segments);
 
     opt.getTrajectory(&trajectory);
+
+    return true;
 
 
 /*
@@ -149,32 +161,34 @@ void calculate_trajectory(void)
     
 }
 
-void pace_notes_callback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
-{
-    ROS_INFO_ONCE("Trajectory generator got first Pace note message.");
-
-    // Store incoming pace notes.
-    pace_note = _pace_note;
-    has_valid_pace_note = true;
-}
-
-void trajectory_publisher(const ros::TimerEvent&)
+//void trajectory_publisher(const ros::TimerEvent&)
+void publish_trajectory(void)
 {
     ROS_INFO_ONCE("Trajectory generator published first trajectory.");
-    if (!has_valid_pace_note or !last_odometry_valid) {
+    if (!has_valid_pace_note) { // or !last_odometry_valid) {
         return;
     }
 
-    if (!has_valid_trajectory) {
-        has_valid_trajectory = true;
-        calculate_trajectory();
-    }
 
-    static bool sent = false;
-    if (sent) {
+    //if (!has_valid_trajectory) {
+    //    has_valid_trajectory = true;
+    calculate_trajectory();
+    //}
+
+    //static bool sent = false;
+    //if (sent) {
+    //    return;
+    //}
+    //sent = true;
+    
+
+/*
+    if (!calculate_trajectory())
+    {
         return;
     }
-    sent = true;
+*/
+
 
     mav_msgs::EigenTrajectoryPoint state;
     mav_msgs::EigenTrajectoryPoint::Vector states;
@@ -191,8 +205,27 @@ void trajectory_publisher(const ros::TimerEvent&)
     //success = mav_trajectory_generation::sampleTrajectoryInRange(trajectory, t_start, duration, dt, &states);
 
     // Whole trajectory:
-    double sampling_interval = 0.5;
+    double sampling_interval = 0.25;
     success = mav_trajectory_generation::sampleWholeTrajectory(trajectory, sampling_interval, &states);
+
+
+    static double previous_end_time = 0;
+
+    for (int i = 0; i < states.size(); i++) {
+        states[i].time_from_start_ns += previous_end_time;
+    }
+    
+    previous_end_time = previous_end_time + states[states.size()-1].time_from_start_ns + sampling_interval; //  trajectory.getMaxTime();
+
+/*
+    previous_orientation.x() = states[states.size()-1].orientation_W_B.x();
+    previous_orientation.y() = states[states.size()-1].orientation_W_B.y();
+    previous_orientation.z() = states[states.size()-1].orientation_W_B.z();
+    previous_orientation.w() = states[states.size()-1].orientation_W_B.w();
+*/
+    previous_velocity.x() = states[states.size()-1].velocity_W.x();
+    previous_velocity.y() = states[states.size()-1].velocity_W.y();
+    previous_velocity.z() = states[states.size()-1].velocity_W.z();
 
 
     visualization_msgs::MarkerArray markers;
@@ -219,9 +252,19 @@ void trajectory_publisher(const ros::TimerEvent&)
     trajectory_marker_pub.publish(markers);
 }
 
+void pace_notes_callback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
+{
+    ROS_INFO_ONCE("Trajectory generator received first Pace note message.");
+
+    // Store incoming pace notes.
+    pace_note = _pace_note;
+    has_valid_pace_note = true;
+    publish_trajectory();
+}
+
 void odometry_callback(const nav_msgs::Odometry& msg)
 {
-    ROS_INFO_ONCE("IR marker localizer got first odometry message.");
+    ROS_INFO_ONCE("Trajectory generator received first odometry message.");
 
     last_odometry = msg;
     last_odometry_valid = true;
@@ -237,7 +280,7 @@ int main(int argc, char** argv)
     trajectory_pub        = node_handle.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, true);
     //pose_pub              = node_handle.advertise<geometry_msgs::PoseStamped>("pose", 0);
     
-    ros::Timer trajectory_publisher_timer  = node_handle.createTimer(ros::Duration(2.0), trajectory_publisher);
+    //ros::Timer trajectory_publisher_timer  = node_handle.createTimer(ros::Duration(0.1), trajectory_publisher);
     ros::Subscriber pace_notes_subscriber  = node_handle.subscribe("pace_note", 10,  &pace_notes_callback, ros::TransportHints().tcpNoDelay());
     ros::Subscriber odometry_node          = node_handle.subscribe("odometry",    1, &odometry_callback,   ros::TransportHints().tcpNoDelay());
 
