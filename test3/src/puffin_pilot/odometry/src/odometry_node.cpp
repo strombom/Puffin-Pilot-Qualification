@@ -43,9 +43,6 @@ ros::Publisher puffin_odometry_mpc_node;
 ros::Publisher puffin_odometry_mpc_vel_node;
 
 
-//template <class MsgT>
-//void uavIMUCallback(constboost::shared_ptr<MsgT const> &msg, const std::string& sensor_id){
-
 
 tf2::Quaternion look_at_quaternion(tf2::Vector3 direction)
 {
@@ -57,7 +54,7 @@ tf2::Quaternion look_at_quaternion(tf2::Vector3 direction)
 }
 
 
-void odometryGtCallback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
+void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     ROS_INFO_ONCE("Odometry got first OdometryGT message.");
     
     /*
@@ -136,7 +133,7 @@ void odometryGtCallback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
 */
 }
 
-void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
+void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     ROS_INFO_ONCE("Odometry got first IMU message.");
 
 
@@ -294,9 +291,10 @@ void uavIMUCallback(const sensor_msgs::ImuConstPtr &msg) {
     odom.twist.twist.angular.z   = msg->angular_velocity.z;
 
     puffin_odometry_node.publish(odom);
+    ROS_INFO_ONCE("Odometry sent first odometry message.");
 }
 
-void irMarkerOdometryCallback(const geometry_msgs::PoseStamped& msg)
+void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
 {
     ROS_INFO_ONCE("Odometry got first IR marker pose message.");
 
@@ -376,8 +374,8 @@ int main(int argc, char** argv)
     }
 
     ros::NodeHandle subscriber_node;
-    ros::Subscriber imu_callback_node         = subscriber_node.subscribe("imu",             1, &uavIMUCallback,           ros::TransportHints().tcpNoDelay());
-    ros::Subscriber irodom_callback_node      = subscriber_node.subscribe("ir_markers_pose", 1, &irMarkerOdometryCallback, ros::TransportHints().tcpNoDelay());
+    ros::Subscriber imu_callback_node         = subscriber_node.subscribe("imu",             1, &uav_imu_callback,            ros::TransportHints().tcpNoDelay());
+    ros::Subscriber irodom_callback_node      = subscriber_node.subscribe("ir_markers_pose", 1, &ir_marker_odometry_callback, ros::TransportHints().tcpNoDelay());
     //ros::Subscriber odometry_gt_callback_node = subscriber_node.subscribe("odometry_gt",     1,  &odometryGtCallback,       ros::TransportHints().tcpNoDelay());
     
     ros::NodeHandle publisher_node;

@@ -122,7 +122,11 @@ def split_clusters(clusters):
                 if xmax < xmin or ymax < ymin:
                     continue
 
-                if xmax - xmin > 40 and xmax - xmin < 76 and \
+                maxwidth = 77
+                if cluster.points_count > 11:
+                    maxwidth = 95
+
+                if xmax - xmin > 40 and xmax - xmin < maxwidth and \
                    ymax - ymin > 30 and ymax - ymin < 65:
                     split_x = (xmax + xmin) / 2
                     print("split_x", split_x)
@@ -202,7 +206,7 @@ def merge_singles(clusters):
     for cluster in clusters:
         if cluster.points_count < 2:
             continue
-        
+
 
 
 

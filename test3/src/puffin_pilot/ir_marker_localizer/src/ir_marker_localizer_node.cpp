@@ -262,9 +262,9 @@ void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_ar
         double camera_y = ir_beacons_px[beacon_id][1];
         camera_points.push_back(cv::Point2d(camera_x, camera_y));
 
-        double gate_x = pace_note->gate_corners.data[beacon_id * 3 + 0];
-        double gate_y = pace_note->gate_corners.data[beacon_id * 3 + 1];
-        double gate_z = pace_note->gate_corners.data[beacon_id * 3 + 2];
+        double gate_x = pace_note->ir_markers.data[beacon_id * 3 + 0];
+        double gate_y = pace_note->ir_markers.data[beacon_id * 3 + 1];
+        double gate_z = pace_note->ir_markers.data[beacon_id * 3 + 2];
         pace_note_points.push_back(cv::Point3d(gate_x, gate_y, gate_z));
 
 
@@ -299,6 +299,7 @@ void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_ar
             error += pow(tvec.at<double>(j) - translation_vector.at<double>(j), 2);
             // E = ||Q1*Q2−1 - 1||2 
         }
+        /*
         if (error > 10) {
             printf(" e %f\n", error);
             printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -307,6 +308,7 @@ void irBeaconsCallback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_ar
             printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
             //return;
         }
+        */
 
         rotation_vector = rvec.clone();
         translation_vector = tvec.clone();

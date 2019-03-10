@@ -13,7 +13,7 @@ max_lines_count = 50
 
 @njit
 def get_line_fitness(line_angle, line_line, line_pcount, ref_line_angle, ref_line_line):
-    print(" get_line_fitness", line_line[0], line_line[1])
+    print(" get_line_fitness", line_line[0], line_line[1], ref_line_line[0], ref_line_line[1])
     # Angle diff, higher number is better, max pi/2 (perpendicular)
     angle_diff = abs(line_angle - ref_line_angle)
     if angle_diff > math.pi / 2.0:
@@ -28,7 +28,9 @@ def get_line_fitness(line_angle, line_line, line_pcount, ref_line_angle, ref_lin
             d = (line_line[i][0]-ref_line_line[j][0])**2 + (line_line[i][1]-ref_line_line[j][1])**2
             min_d = min(min_d, d)
     min_d = min_d ** 0.5
-    min_distance_fitness = 1 / (1 + min(30, min_d) / 30.0)
+    min_distance_fitness = 1.0 / (1.0 + min(30, min_d) / 30.0)
+    if min_d < 5:
+        min_distance_fitness = 1.0
 
     # Furthest distance, larger is better
     #  Normally between 5 and 100
@@ -66,7 +68,8 @@ def get_line_fitness(line_angle, line_line, line_pcount, ref_line_angle, ref_lin
     d1 -= (line_line[0][1] - ref_line_line[0][1]) * (ref_line_line[1][0] - ref_line_line[0][0])
     d2 =  (line_line[1][0] - ref_line_line[0][0]) * (ref_line_line[1][1] - ref_line_line[0][1])
     d2 -= (line_line[1][1] - ref_line_line[0][1]) * (ref_line_line[1][0] - ref_line_line[0][0])
-    if (d1 > 50 and d2 < -50) or (d1 < -50 and d2 > 50):
+    ls_limit = (line_length(line_line) / (line_pcount - 1))**2
+    if (d1 > ls_limit and d2 < -ls_limit) or (d1 < -ls_limit and d2 > ls_limit):
         line_side_penalty = 0.1
     else:
         line_side_penalty = 1.0
@@ -178,16 +181,14 @@ def find_all_lines(points, points_count, line_pair, line_pair_size):
     # Find best line
     first_idx = -1
     best_residual = 1e9
-    #for idx in range(lines_count):
-    #    if lines_counts[idx] > 3:
-    #        if lines_residuals[idx] < best_residual:
-    #            best_residual = lines_residuals[idx]
-    #            first_idx = idx
-    if first_idx == -1:
-        # Use longest line
-        first_idx = np.argmax(lines_counts[0:lines_count])
-        if first_idx < 0:
-            return
+    best_line_count = np.max(lines_counts[0:lines_count])
+    for idx in range(lines_count):
+        if lines_counts[idx] >= min(5, best_line_count):
+            if lines_residuals[idx] < best_residual:
+                best_residual = lines_residuals[idx]
+                first_idx = idx
+    if first_idx < 0:
+        return
 
     first_line_angle = lines_angles[int(first_idx)]
     first_line_count = lines_counts[int(first_idx)]
