@@ -109,7 +109,7 @@ bool calculate_trajectory(void)
 
 
     std::vector<double> segment_times;
-    const double v_max = 10.0;
+    const double v_max = 8.0;
     const double a_max = 10.0;
     segment_times = estimateSegmentTimes(vertices, v_max, a_max);
 

@@ -166,8 +166,7 @@ void publish_pace_note(void)
         pace_note.header.frame_id = "1";
         pub_pace_note.publish(pace_note);
 
-        int gate_idx = 0;
-        ROS_INFO("Pace notes sent %d.", gate_idx);
+        ROS_INFO("Pace notes sent %d.", current_gate);
     }
 
 
@@ -280,7 +279,7 @@ void init_gates(void)
         normal = (gate.corners[1] - gate.corners[0]).cross(gate.corners[2] - gate.corners[0]).normalized();
         gate.waypoints[1] = center - normal * 2;
         //gate.waypoints[1] = center;
-        gate.waypoints[2] = center + normal * 1;
+        gate.waypoints[2] = center + normal * 0;
         gate.normal = normal;
 
         printf("gate %d c(% 7.4f % 7.4f % 7.4f) n(% 7.4f % 7.4f % 7.4f)\n", 
@@ -298,20 +297,33 @@ void init_gates(void)
         gates[gate_idx+1].waypoints[0] = middle;
     }
 
-    gates[gates.size()-1].waypoints[3] = gates[gates.size()-1].waypoints[2] + 20.0 * gates[gates.size()-1].normal;
+    gates[gates.size()-1].waypoints[3] = gates[gates.size()-1].waypoints[2] + 8.0 * gates[gates.size()-1].normal;
+
+
+    gates[0].waypoints[3].x() -= 1.0;
+    gates[1].waypoints[0].x() -= 1.0;
+
 
     bool is_first_waypoint = true;
     Eigen::Vector3d previous_waypoint;
     double previous_yaw = 1.57;
-    for (int gate_idx = 0; gate_idx < gates.size() - 1; gate_idx++) {
+    for (int gate_idx = 0; gate_idx < gates.size(); gate_idx++) {
         for (int waypoint_idx = 0; waypoint_idx < 4; waypoint_idx++) {
             if (waypoint_idx == 0) {
                 gates[gate_idx].waypoints_yaw[waypoint_idx] = previous_yaw;
 
             } else {
                 Eigen::Vector3d diff = gates[gate_idx].waypoints[waypoint_idx] - previous_waypoint;
-                gates[gate_idx].waypoints_yaw[waypoint_idx] = atan2(diff.y(), diff.x());
+                double next_yaw = atan2(diff.y(), diff.x());
 
+                while (next_yaw + M_PI < previous_yaw) {
+                    next_yaw += 2 * M_PI;
+                }
+                while (next_yaw - M_PI > previous_yaw) {
+                    next_yaw -= 2 * M_PI;
+                }
+
+                gates[gate_idx].waypoints_yaw[waypoint_idx] = next_yaw;
             }
 
             previous_yaw = gates[gate_idx].waypoints_yaw[waypoint_idx];
@@ -330,6 +342,8 @@ void init_gates(void)
         }
     }
 
+    gates[10].waypoints_yaw[3] = 4.71;
+
     current_gate = 0;
     publish_pace_note();
 }
@@ -345,11 +359,11 @@ void odometry_callback(const nav_msgs::Odometry& msg)
     mav_msgs::EigenOdometry odometry;
     eigenOdometryFromMsg(msg, &odometry);
 
-    double distance = (odometry.position_W - gates[current_gate].waypoints[1]).norm();
+    double distance = (odometry.position_W - gates[current_gate].waypoints[2]).norm();
 
     if (distance < 1.0) {
         if (current_gate == gates.size()-1) {
-            ROS_INFO("Pace notes finished!");
+            ROS_INFO_ONCE("Pace notes finished!");
         } else {
             ROS_INFO("Pace notes next gate please (%f) %d.", distance, current_gate);
             current_gate += 1;
