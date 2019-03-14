@@ -15,7 +15,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 
 #include <flightgoggles/IRMarkerArray.h>
-#include <puffin_pilot/PaceNote.h>
+#include <puffin_pilot/GateInfo.h>
 #include "rate_limiter.h"
 
 using namespace std;
@@ -29,7 +29,7 @@ cv::Mat dist_coeffs  (4, 1, cv::DataType<double>::type);
 bool    camera_matrix_valid;
 
 // This is information about the gate we are whizzing towards.
-puffin_pilot::PaceNoteConstPtr pace_note;
+puffin_pilot::GateInfoConstPtr gate_info;
 ros::Publisher ir_marker_odometry_pose_node;
 
 bool last_odometry_valid = false;
@@ -81,8 +81,8 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
         //return;
     }
 
-    // Check that there is an active pace_note.
-    if (!pace_note) {
+    // Check that there is an active gate_info.
+    if (!gate_info) {
         return;
     }
 
@@ -96,7 +96,7 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
     bool   ir_beacons_visible[4] = {false, false, false, false};
     int    ir_beacons_count = 0;
     for (flightgoggles::IRMarker ir_marker : ir_beacons_array->markers) {
-        if (ir_marker.landmarkID.data.compare(pace_note->gate_name.data) != 0) {
+        if (ir_marker.landmarkID.data.compare(gate_info->gate_name.data) != 0) {
             continue;
         }
         try {
@@ -185,7 +185,7 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
         for (int mask_idx = 0; mask_idx < 5; mask_idx++) {
 
             std::vector<cv::Point2d> camera_points;
-            std::vector<cv::Point3d> pace_note_points;
+            std::vector<cv::Point3d> gate_info_points;
             for (int beacon_id = 0; beacon_id < 4; beacon_id++) {
                 if (mask_idx == beacon_id) {
                     continue;
@@ -195,17 +195,17 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
                 double camera_y = ir_beacons_px[beacon_id][1];
                 camera_points.push_back(cv::Point2d(camera_x, camera_y));
 
-                double gate_x = pace_note->gate_corners.data[beacon_id * 3 + 0];
-                double gate_y = pace_note->gate_corners.data[beacon_id * 3 + 1];
-                double gate_z = pace_note->gate_corners.data[beacon_id * 3 + 2];
-                pace_note_points.push_back(cv::Point3d(gate_x, gate_y, gate_z));
+                double gate_x = gate_info->gate_corners.data[beacon_id * 3 + 0];
+                double gate_y = gate_info->gate_corners.data[beacon_id * 3 + 1];
+                double gate_z = gate_info->gate_corners.data[beacon_id * 3 + 2];
+                gate_info_points.push_back(cv::Point3d(gate_x, gate_y, gate_z));
             }
 
             cv::Mat rvec = rotation_vector.clone();
             cv::Mat tvec = translation_vector.clone();
 
 
-            bool solved = cv::solvePnP(pace_note_points, camera_points, camera_matrix, dist_coeffs, rvec, tvec, has_extrinsic_guess);
+            bool solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rvec, tvec, has_extrinsic_guess);
             if (!solved) {
                 // Something went wrong, could not estimate pose!
                 continue;
@@ -252,7 +252,7 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
     // Store all camera and gate points.
     //printf("======== camera points =========\n");
     std::vector<cv::Point2d> camera_points;
-    std::vector<cv::Point3d> pace_note_points;
+    std::vector<cv::Point3d> gate_info_points;
     for (int beacon_id = 0; beacon_id < 4; beacon_id++) {
         if (!ir_beacons_visible[beacon_id]) {
             continue;
@@ -262,10 +262,10 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
         double camera_y = ir_beacons_px[beacon_id][1];
         camera_points.push_back(cv::Point2d(camera_x, camera_y));
 
-        double gate_x = pace_note->ir_markers.data[beacon_id * 3 + 0];
-        double gate_y = pace_note->ir_markers.data[beacon_id * 3 + 1];
-        double gate_z = pace_note->ir_markers.data[beacon_id * 3 + 2];
-        pace_note_points.push_back(cv::Point3d(gate_x, gate_y, gate_z));
+        double gate_x = gate_info->ir_markers.data[beacon_id * 3 + 0];
+        double gate_y = gate_info->ir_markers.data[beacon_id * 3 + 1];
+        double gate_z = gate_info->ir_markers.data[beacon_id * 3 + 2];
+        gate_info_points.push_back(cv::Point3d(gate_x, gate_y, gate_z));
 
 
         //printf(" % 7.2f % 7.2f - % 7.2f % 7.2f % 7.2f\n", camera_x, camera_y, gate_x, gate_y, gate_z);
@@ -287,7 +287,7 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
 
         cv::Mat rvec = rotation_vector.clone();
         cv::Mat tvec = translation_vector.clone();
-        solved = cv::solvePnP(pace_note_points, camera_points, camera_matrix, dist_coeffs, rvec, tvec, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
+        solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rvec, tvec, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
 
 
 
@@ -313,7 +313,7 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
         rotation_vector = rvec.clone();
         translation_vector = tvec.clone();
 
-        //solved = cv::solveP3P(pace_note_points, camera_points, camera_matrix, dist_coeffs, rvecvec, tvecvec, cv::SOLVEPNP_AP3P);        
+        //solved = cv::solveP3P(gate_info_points, camera_points, camera_matrix, dist_coeffs, rvecvec, tvecvec, cv::SOLVEPNP_AP3P);        
         
         /*
         if (!solved) {
@@ -352,12 +352,12 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
         */
 
 
-        //solved = cv::solvePnP(pace_note_points, camera_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
+        //solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
         //return;
 
     } else {
         //printf("SolvePnP\n");
-        solved = cv::solvePnP(pace_note_points, camera_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
+        solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
     }
     if (!solved) {
         // Something went wrong, could not estimate pose!
@@ -424,12 +424,12 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
     //printf("ir marker %f\n", tt);
 }
 
-void pace_notes_callback(const puffin_pilot::PaceNoteConstPtr& _pace_note)
+void gate_info_callback(const puffin_pilot::GateInfoConstPtr& _gate_info)
 {
-    ROS_INFO_ONCE("IR marker localizer got first Pace note message.");
+    ROS_INFO_ONCE("IR marker localizer got first gate info message.");
 
-    // Store incoming pace notes.
-    pace_note = _pace_note;
+    // Store incoming gate info.
+    gate_info = _gate_info;
 }
 
 void camera_info_callback(const sensor_msgs::CameraInfoConstPtr& camera_info)
@@ -461,7 +461,7 @@ int main(int argc, char** argv)
     ros::NodeHandle subscriber_node;
     ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &camera_info_callback, ros::TransportHints().tcpNoDelay());
     ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("ir_beacons",  10, &ir_beacons_callback,  ros::TransportHints().tcpNoDelay());
-    ros::Subscriber pace_notes_subscriber  = subscriber_node.subscribe("pace_note",   10, &pace_notes_callback,  ros::TransportHints().tcpNoDelay());
+    ros::Subscriber gate_info_subscriber   = subscriber_node.subscribe("gate_info",   10, &gate_info_callback,  ros::TransportHints().tcpNoDelay());
     ros::Subscriber odometry_node          = subscriber_node.subscribe("odometry",    1,  &odometry_callback,    ros::TransportHints().tcpNoDelay());
 
     ros::spin();

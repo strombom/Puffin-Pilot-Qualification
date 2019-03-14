@@ -3,4 +3,3 @@ project(puffin_pilot)
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
-

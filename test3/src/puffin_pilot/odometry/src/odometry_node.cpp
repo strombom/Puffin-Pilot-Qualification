@@ -57,7 +57,7 @@ tf2::Quaternion look_at_quaternion(tf2::Vector3 direction)
 void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     ROS_INFO_ONCE("Odometry got first OdometryGT message.");
     
-    /*
+    
     tf2::Vector3    position    = tf2::Vector3(odom_gt_msg->pose.pose.position.x, odom_gt_msg->pose.pose.position.y, odom_gt_msg->pose.pose.position.z);
     tf2::Vector3    linear      = tf2::Vector3(odom_gt_msg->twist.twist.linear.x, odom_gt_msg->twist.twist.linear.y, odom_gt_msg->twist.twist.linear.z);
     tf2::Vector3    angular     = tf2::Vector3(odom_gt_msg->twist.twist.angular.x, odom_gt_msg->twist.twist.angular.y, odom_gt_msg->twist.twist.angular.z);
@@ -130,7 +130,7 @@ void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     odom.pose.pose.orientation.y = orientation.y();
     odom.pose.pose.orientation.z = orientation.z();
     puffin_odometry_mpc_vel_node.publish(odom);
-*/
+
 }
 
 void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
@@ -376,12 +376,12 @@ int main(int argc, char** argv)
     ros::NodeHandle subscriber_node;
     ros::Subscriber imu_callback_node         = subscriber_node.subscribe("imu",             1, &uav_imu_callback,            ros::TransportHints().tcpNoDelay());
     ros::Subscriber irodom_callback_node      = subscriber_node.subscribe("ir_markers_pose", 1, &ir_marker_odometry_callback, ros::TransportHints().tcpNoDelay());
-    //ros::Subscriber odometry_gt_callback_node = subscriber_node.subscribe("odometry_gt",     1,  &odometryGtCallback,       ros::TransportHints().tcpNoDelay());
+    ros::Subscriber odometry_gt_callback_node = subscriber_node.subscribe("odometry_gt_in",  1, &odometry_gt_callback,        ros::TransportHints().tcpNoDelay());
     
     ros::NodeHandle publisher_node;
-    puffin_odometry_node         = publisher_node.advertise<nav_msgs::Odometry>("odometry",     1);
-    puffin_odometry_mpc_node     = publisher_node.advertise<nav_msgs::Odometry>("odometry_mpc", 1);
-    puffin_odometry_mpc_vel_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_mpc_vel", 1);
+    puffin_odometry_node         = publisher_node.advertise<nav_msgs::Odometry>("odometry",        1);
+    puffin_odometry_mpc_node     = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
+    //puffin_odometry_mpc_vel_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_mpc_vel", 1);
 
     // REMOVE!!!
     geometry_msgs::TransformStamped tf_nest;

@@ -1,0 +1,4 @@
+Header header
+std_msgs/Float64MultiArray positions
+std_msgs/Float64MultiArray velocities
+std_msgs/Float64MultiArray yaws
