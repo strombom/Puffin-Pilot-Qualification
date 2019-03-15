@@ -214,7 +214,7 @@ void init_gates(void)
 
     //append_waypoint(Eigen::Vector3d(18.0, -23.0, 5.3), 0.0);
     //append_waypoint(Eigen::Vector3d(18.0, -16.0, 5.8), 0.0);
-    append_waypoint(Eigen::Vector3d(18.0, -23.0, 6.3), 0.0);
+    append_waypoint(Eigen::Vector3d(18.0, -23.0, 5.3), 0.0);
     //append_waypoint(Eigen::Vector3d(18.0, -16.0, 6.3), 0.0);
 
     for (int gate_idx = 0; gate_idx < gate_count; gate_idx++) {
@@ -259,33 +259,37 @@ void init_gates(void)
     Eigen::Vector3d normal = (waypoints_pos[waypoints_pos.size()-1] - waypoints_pos[waypoints_pos.size()-2]).normalized();
     //waypoints_pos[waypoints_pos.size()-1] = waypoints_pos[waypoints_pos.size()-2] + normal * 10.0;
     append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 10.0, waypoints_yaw[waypoints_pos.size()-1]);
+    append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 10.0, waypoints_yaw[waypoints_pos.size()-1]);
+    append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 10.0, waypoints_yaw[waypoints_pos.size()-1]);
 
     for (int i = 0; i < 4; i++) {
         //append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 1.0, waypoints_yaw[waypoints_pos.size()-1]);
     }
 
-    static const double waypoints_adjustment[24][3] = {{  0.0,   0.0,   0.0},
+    static const double waypoints_adjustment[26][3] = {{  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   1.5},
+                                                       {  0.0,   0.0,   0.0}, // gate 1
+                                                       {  0.0,   0.0,   0.5},
+                                                       { -2.0,   2.0,   0.2}, // gate 2
+                                                       { -6.5,   0.0,  -0.5},
+                                                       {  0.0,   0.0,   0.7}, // gate 3
+                                                       {  0.0,   0.0,   0.5},
+                                                       {  0.0,   0.0,   0.2}, // gate 4
+                                                       { -3.0,  -3.0,   2.2},
+                                                       {  0.0,   0.0,   0.0}, // gate 5
+                                                       { -1.0,   0.0,   1.2},
+                                                       {  0.0,   0.0,   1.0}, // gate 6
+                                                       {  0.0,  -1.5,   0.5},
+                                                       {  0.0,   0.0,   0.0}, // gate 7
+                                                       {  0.0,  -1.5,   0.5},
+                                                       {  0.0,   0.0,   1.0}, // gate 8
+                                                       {  1.0,   0.0,   2.0},
+                                                       {  0.0,   0.0,   0.2}, // gate 9
+                                                       {  0.0,   0.0,   1.5},
+                                                       {  0.0,  -1.5,   0.0}, // gate 10
+                                                       {  0.0,  -5.0,   1.0},
+                                                       {  0.0,   0.0,   0.0}, // gate 11
                                                        {  0.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       { -2.0,   2.0,   0.0},
-                                                       { -6.5,   0.0,  -1.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       { -3.0,  -3.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       { -1.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  0.0,  -1.5,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  0.0,  -1.5,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  1.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.0},
-                                                       {  0.5,  -1.5,   0.0},
-                                                       {  0.0,  -5.0,   0.0},
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0}};
 
