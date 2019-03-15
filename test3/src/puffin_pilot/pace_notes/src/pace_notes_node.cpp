@@ -30,6 +30,8 @@ vector<Gate> gates;
 int current_gate = -1;
 
 ros::Publisher vis_pub_gates;
+ros::Publisher vis_pub_wp;
+
 ros::Publisher pub_gate_info;
 ros::Publisher pub_waypoints;
 
@@ -70,6 +72,37 @@ void publish_gate_markers(void)
         }
     }
     vis_pub_gates.publish(gates_marker);
+
+
+    visualization_msgs::Marker waypoints_marker;
+    waypoints_marker.header.frame_id = "world";
+    waypoints_marker.header.stamp = ros::Time();
+    waypoints_marker.ns = "pace_notes";
+    waypoints_marker.id = 0;
+    waypoints_marker.type = visualization_msgs::Marker::SPHERE_LIST;
+    waypoints_marker.action = visualization_msgs::Marker::ADD;
+    waypoints_marker.pose.position.x = 0;
+    waypoints_marker.pose.position.y = 0;
+    waypoints_marker.pose.position.z = 0;
+    waypoints_marker.pose.orientation.x = 0.0;
+    waypoints_marker.pose.orientation.y = 0.0;
+    waypoints_marker.pose.orientation.z = 0.0;
+    waypoints_marker.pose.orientation.w = 1.0;
+    waypoints_marker.scale.x = 0.2;
+    waypoints_marker.scale.y = 0.2;
+    waypoints_marker.scale.z = 0.2;
+    waypoints_marker.color.a = 1.0;
+    waypoints_marker.color.r = 1.0;
+    waypoints_marker.color.g = 0.0;
+    waypoints_marker.color.b = 0.0;
+    for (int wp_idx = 0; wp_idx < waypoints_pos.size(); wp_idx++) {
+        geometry_msgs::Point p;
+        p.x = waypoints_pos[wp_idx].x();
+        p.y = waypoints_pos[wp_idx].y();
+        p.z = waypoints_pos[wp_idx].z();
+        waypoints_marker.points.push_back(p);
+    }
+    vis_pub_wp.publish(waypoints_marker);
 }
 
 void publish_gate_info(void)
@@ -179,8 +212,10 @@ void init_gates(void)
     ros::param::get("/uav/gate_names", gate_names);
     gate_count = gate_names.size();
 
-    append_waypoint(Eigen::Vector3d(18.0, -23.0, 5.3), 0.0);
-    append_waypoint(Eigen::Vector3d(18.0, -15.0, 7.0), 0.0);
+    //append_waypoint(Eigen::Vector3d(18.0, -23.0, 5.3), 0.0);
+    //append_waypoint(Eigen::Vector3d(18.0, -16.0, 5.8), 0.0);
+    append_waypoint(Eigen::Vector3d(18.0, -23.0, 6.3), 0.0);
+    //append_waypoint(Eigen::Vector3d(18.0, -16.0, 6.3), 0.0);
 
     for (int gate_idx = 0; gate_idx < gate_count; gate_idx++) {
         const char *gate_name = static_cast<std::string>(gate_names[gate_idx]).c_str();
@@ -207,9 +242,8 @@ void init_gates(void)
 
         center /= 4;
         normal = (gate.corners[1] - gate.corners[0]).cross(gate.corners[2] - gate.corners[0]).normalized();
-        append_waypoint(center - normal * 2, 0.0);
-        append_waypoint(center + normal * 1, 0.0);
         append_waypoint(Eigen::Vector3d(0.0, 0.0, 0.0), 0.0); // Emtpy waypoint, modify later
+        append_waypoint(center + normal * 0.0, 0.0);
         gate.normal = normal;
 
         printf("gate %d c(% 7.4f % 7.4f % 7.4f) n(% 7.4f % 7.4f % 7.4f)\n", 
@@ -219,17 +253,53 @@ void init_gates(void)
         gates.push_back(gate);
     }
 
-    for (int wp_idx = 4; wp_idx < waypoints_pos.size() - 1; wp_idx += 3) {
+    for (int wp_idx = 1; wp_idx < waypoints_pos.size() - 1; wp_idx += 2) {
         waypoints_pos[wp_idx] = (waypoints_pos[wp_idx - 1] + waypoints_pos[wp_idx + 1]) / 2.0;
     }
-    Eigen::Vector3d normal = (waypoints_pos[waypoints_pos.size()-2] - waypoints_pos[waypoints_pos.size()-3]).normalized();
-    waypoints_pos[waypoints_pos.size()-1] = waypoints_pos[waypoints_pos.size()-2] + normal * 10.0;
+    Eigen::Vector3d normal = (waypoints_pos[waypoints_pos.size()-1] - waypoints_pos[waypoints_pos.size()-2]).normalized();
+    //waypoints_pos[waypoints_pos.size()-1] = waypoints_pos[waypoints_pos.size()-2] + normal * 10.0;
+    append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 10.0, waypoints_yaw[waypoints_pos.size()-1]);
+
+    for (int i = 0; i < 4; i++) {
+        //append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 1.0, waypoints_yaw[waypoints_pos.size()-1]);
+    }
+
+    static const double waypoints_adjustment[24][3] = {{  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       { -2.0,   2.0,   0.0},
+                                                       { -6.5,   0.0,  -1.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       { -3.0,  -3.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       { -1.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,  -1.5,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,  -1.5,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  1.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.5,  -1.5,   0.0},
+                                                       {  0.0,  -5.0,   0.0},
+                                                       {  0.0,   0.0,   0.0},
+                                                       {  0.0,   0.0,   0.0}};
+
+    for (int i = 0; i < waypoints_pos.size(); i++) {
+        waypoints_pos[i].x() += waypoints_adjustment[i][0];
+        waypoints_pos[i].y() += waypoints_adjustment[i][1];
+        waypoints_pos[i].z() += waypoints_adjustment[i][2];
+    }              
 
     //waypoints_pos[3].x() -= 1.0;
 
     waypoints_yaw[0] = 1.57;
-    for (int wp_idx = 1; wp_idx < waypoints_pos.size(); wp_idx++) {
-        Eigen::Vector3d diff = waypoints_pos[wp_idx] - waypoints_pos[wp_idx - 1];
+    for (int wp_idx = 1; wp_idx < waypoints_pos.size() - 1; wp_idx++) {
+        Eigen::Vector3d diff = waypoints_pos[wp_idx + 1] - waypoints_pos[wp_idx - 0];
         double next_yaw = atan2(diff.y(), diff.x());
         while (next_yaw + M_PI < waypoints_yaw[wp_idx - 1]) next_yaw += 2 * M_PI;
         while (next_yaw - M_PI > waypoints_yaw[wp_idx - 1]) next_yaw -= 2 * M_PI;
@@ -242,7 +312,7 @@ void init_gates(void)
                waypoints_pos[wp_idx].z(),
                waypoints_yaw[wp_idx]);
     }
-    waypoints_yaw[waypoints_pos.size()-1] = 4.71;
+    waypoints_yaw[waypoints_pos.size()-1] = 7.81;
 
     for (int wp_idx = 0; wp_idx < waypoints_vel.size() - 1; wp_idx++) {
         waypoints_vel[wp_idx] = (waypoints_pos[wp_idx + 1] - waypoints_pos[wp_idx]).normalized();
@@ -297,7 +367,8 @@ int main(int argc, char** argv)
     ros::NodeHandle nh;
     pub_gate_info = nh.advertise<puffin_pilot::GateInfo>("gate_info",  10, true);
     pub_waypoints = nh.advertise<puffin_pilot::Waypoints>("waypoints", 10, true);
-    vis_pub_gates = nh.advertise<visualization_msgs::Marker>("pace_notes/markers/gates", 0);
+    vis_pub_gates = nh.advertise<visualization_msgs::Marker>("/puff_pilot/gate_markers", 1, true);
+    vis_pub_wp    = nh.advertise<visualization_msgs::Marker>("/puff_pilot/waypoint_markers", 1, true);
 
     ros::Subscriber odometry_node = nh.subscribe("odometry", 1,  &odometry_callback, ros::TransportHints().tcpNoDelay());
 

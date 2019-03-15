@@ -50,4 +50,4 @@ enable_offset_free : false
 enable_integrator : false
 
 sampling_time: 0.00950    #IMPORTANT: set this equal to the rate of odometry msg
-prediction_sampling_time: 0.0002
+prediction_sampling_time: 0.00950

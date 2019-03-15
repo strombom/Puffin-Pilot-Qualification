@@ -53,5 +53,5 @@ antiwindup_ball: 0.1
 enable_offset_free : false
 enable_integrator : false
 
-sampling_time: 0.01136    #IMPORTANT: set this equal to the rate of odometry msg
-prediction_sampling_time: 0.23
+sampling_time: 0.01    #IMPORTANT: set this equal to the rate of odometry msg
+prediction_sampling_time: 0.1
