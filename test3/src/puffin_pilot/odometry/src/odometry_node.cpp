@@ -39,8 +39,8 @@ const static bool use_madgwick = true;
 std::vector<double> initial_pose;
 
 ros::Publisher puffin_odometry_node;
-ros::Publisher puffin_odometry_mpc_node;
-ros::Publisher puffin_odometry_mpc_vel_node;
+ros::Publisher puffin_odometry_gt_out_node;
+//ros::Publisher puffin_odometry_mpc_vel_node;
 
 
 
@@ -57,7 +57,6 @@ tf2::Quaternion look_at_quaternion(tf2::Vector3 direction)
 void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     ROS_INFO_ONCE("Odometry got first OdometryGT message.");
     
-    
     tf2::Vector3    position    = tf2::Vector3(odom_gt_msg->pose.pose.position.x, odom_gt_msg->pose.pose.position.y, odom_gt_msg->pose.pose.position.z);
     tf2::Vector3    linear      = tf2::Vector3(odom_gt_msg->twist.twist.linear.x, odom_gt_msg->twist.twist.linear.y, odom_gt_msg->twist.twist.linear.z);
     tf2::Vector3    angular     = tf2::Vector3(odom_gt_msg->twist.twist.angular.x, odom_gt_msg->twist.twist.angular.y, odom_gt_msg->twist.twist.angular.z);
@@ -67,11 +66,10 @@ void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     linear  = t_rot * linear;
     angular = t_rot * angular;
 
-
     nav_msgs::Odometry odom;
     odom.header.stamp = odom_gt_msg->header.stamp;
     odom.header.frame_id = "puffin_nest";
-    odom.child_frame_id = "odom";
+    odom.child_frame_id = "odom_gt";
 
     odom.pose.pose.position.x    = position.x();
     odom.pose.pose.position.y    = position.y();
@@ -96,20 +94,10 @@ void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
         odom.twist.covariance[i*6 + i] = 0;
     }
 
-    puffin_odometry_node.publish(odom);
-    odom.twist.twist.linear.x    = linear.x();
-    odom.twist.twist.linear.y    = linear.y();
-    odom.twist.twist.linear.z    = linear.z();
-    odom.twist.twist.angular.x   = angular.x();
-    odom.twist.twist.angular.y   = angular.y();
-    odom.twist.twist.angular.z   = angular.z();
-    odom.pose.pose.orientation.w = orientation.w();
-    odom.pose.pose.orientation.x = orientation.x();
-    odom.pose.pose.orientation.y = orientation.y();
-    odom.pose.pose.orientation.z = orientation.z();
-    puffin_odometry_mpc_node.publish(odom);
+    puffin_odometry_gt_out_node.publish(odom);
 
     // Broadcast new state.
+    /*
     geometry_msgs::TransformStamped tf_imu_mpc;
     tf_imu_mpc.header.stamp = odom_gt_msg->header.stamp;
     tf_imu_mpc.header.frame_id = "puffin_nest";
@@ -130,6 +118,7 @@ void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     odom.pose.pose.orientation.y = orientation.y();
     odom.pose.pose.orientation.z = orientation.z();
     puffin_odometry_mpc_vel_node.publish(odom);
+    */
 
 }
 
@@ -380,7 +369,7 @@ int main(int argc, char** argv)
     
     ros::NodeHandle publisher_node;
     puffin_odometry_node         = publisher_node.advertise<nav_msgs::Odometry>("odometry",        1);
-    puffin_odometry_mpc_node     = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
+    puffin_odometry_gt_out_node     = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
     //puffin_odometry_mpc_vel_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_mpc_vel", 1);
 
     // REMOVE!!!
@@ -396,7 +385,7 @@ int main(int argc, char** argv)
     tf_nest.transform.rotation.z = 0;
     tf_nest.transform.rotation.w = 1;
     static tf2_ros::StaticTransformBroadcaster tf_static_broadcaster;
-    tf_static_broadcaster.sendTransform(tf_nest);
+    //tf_static_broadcaster.sendTransform(tf_nest);
 
     ros::spin();
     return 0;

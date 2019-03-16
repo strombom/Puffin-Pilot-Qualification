@@ -29,7 +29,7 @@ mav_msgs::EigenTrajectoryPoint::Vector waypoints;
 int waypoint_idx = 0;
 
 
-static const double v_max = 22.0; //22.0;
+static const double v_max = 21.0; //22.0;
 static const double a_max = 35.0; //35.0;
 static const double j_max = 10.0;
 
@@ -88,9 +88,6 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     for (int i = waypoint_idx; i < waypoints.size(); i++) {
         // Check if we are past the next goal point
         double distance = plane_n.dot(plane_p - waypoints[i].position_W);
-
-        //printf(" wps %d %f\n", i, distance);
-
         if (distance >= 0.0) {
             waypoint_idx++;
         } else {
@@ -147,16 +144,16 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     //printf("segment times: ");
     for (int j = 0; j < segment_times.size(); j++) {
         //printf(" % 7.2f", segment_times[j]);
-        segment_times[j] = 1.0; // *= 4.0;
+        segment_times[j] = 1.0;
     }
     //printf("\n");
 
     NonlinearOptimizationParameters parameters;
-    //parameters.max_iterations = 100;
+    parameters.max_iterations = 100;
     //parameters.f_rel = -1;
     //parameters.time_penalty = 500.0;
     parameters.use_soft_constraints = true;
-    //parameters.initial_stepsize_rel = 0.1;
+    parameters.initial_stepsize_rel = 0.1;
     parameters.time_alloc_method = NonlinearOptimizationParameters::kMellingerOuterLoop;
     parameters.algorithm = nlopt::LD_LBFGS;
     //parameters.time_alloc_method = NonlinearOptimizationParameters::kSquaredTimeAndConstraints;
@@ -164,7 +161,7 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     parameters.print_debug_info = false;
     parameters.print_debug_info_time_allocation = false;
 
-    const int N = 10;
+    const int N = 8;
     PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
     opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
     opt.addMaximumMagnitudeConstraint(derivative_order::VELOCITY, v_max);
@@ -217,20 +214,14 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
         Eigen::Vector4d position;
         position.head<3>() = pn_waypoints_pos[i];
         position.w()       = pn_waypoints_yaw[i];
-
         if (i == 0) {
             // First vertex
-            printf("First vertex %d\n", i);
             v.makeStartOrEnd(position, derivative_to_optimize);
-
         } else if (i == pn_waypoints_pos.size() - 1) {
             // Last vertex
             v.makeStartOrEnd(position, derivative_to_optimize);
-            printf("Last vertex %d\n", i);
-
         } else {
             v.addConstraint(derivative_order::POSITION, position);
-            printf("Middle one %d\n", i);
         }
         vertices.push_back(v);
     }
@@ -246,7 +237,7 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
     printf("\n");
 
     NonlinearOptimizationParameters parameters;
-    //parameters.max_iterations = 100;
+    parameters.max_iterations = 50;
     //parameters.f_rel = -1;
     //parameters.time_penalty = 500.0;
     parameters.use_soft_constraints = false;
@@ -258,7 +249,7 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
     parameters.print_debug_info = false;
     parameters.print_debug_info_time_allocation = false;
 
-    const int N = 10;
+    const int N = 8;
     PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
     opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
     opt.addMaximumMagnitudeConstraint(derivative_order::VELOCITY, v_max);

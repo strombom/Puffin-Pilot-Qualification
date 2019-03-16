@@ -269,9 +269,9 @@ void init_gates(void)
     static const double waypoints_adjustment[26][3] = {{  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   1.5},
                                                        {  0.0,   0.0,   0.0}, // gate 1
-                                                       {  0.0,   0.0,   0.5},
+                                                       {  0.0,  10.0,   0.5},
                                                        { -2.0,   2.0,   0.2}, // gate 2
-                                                       { -6.5,   0.0,  -0.5},
+                                                       { -6.5,   0.0,   0.5},
                                                        {  0.0,   0.0,   0.7}, // gate 3
                                                        {  0.0,   0.0,   0.5},
                                                        {  0.0,   0.0,   0.2}, // gate 4
@@ -284,8 +284,8 @@ void init_gates(void)
                                                        {  0.0,  -1.5,   0.5},
                                                        {  0.0,   0.0,   1.0}, // gate 8
                                                        {  1.0,   0.0,   2.0},
-                                                       {  0.0,   0.0,   0.2}, // gate 9
-                                                       {  0.0,   0.0,   1.5},
+                                                       {  0.0,   1.0,   0.2}, // gate 9
+                                                       { -4.0,  -1.0,   2.2},
                                                        {  0.0,  -1.5,   0.0}, // gate 10
                                                        {  0.0,  -5.0,   1.0},
                                                        {  0.0,   0.0,   0.0}, // gate 11
@@ -298,8 +298,6 @@ void init_gates(void)
         waypoints_pos[i].y() += waypoints_adjustment[i][1];
         waypoints_pos[i].z() += waypoints_adjustment[i][2];
     }              
-
-    //waypoints_pos[3].x() -= 1.0;
 
     waypoints_yaw[0] = 1.57;
     for (int wp_idx = 1; wp_idx < waypoints_pos.size() - 1; wp_idx++) {
@@ -331,16 +329,20 @@ void init_gates(void)
 
 double get_distance_from_gate(Eigen::Vector3d pos)
 {
-    Eigen::Vector3d v1 = (gates[current_gate].corners[2] - gates[current_gate].corners[0]);
-    Eigen::Vector3d v2 = (gates[current_gate].corners[1] - gates[current_gate].corners[0]);
-    Eigen::Vector3d cp = v1.cross(v2);
-    double dot = cp.dot(gates[current_gate].corners[2]);
-    Eigen::Vector4d plane = Eigen::Vector4d(cp.x(), cp.y(), cp.z(), -dot);
+    Eigen::Vector3d center = Eigen::Vector3d(0, 0, 0);
+    Eigen::Vector3d normal = Eigen::Vector3d(0, 0, 0);
 
-    double d =  abs(plane.x() *   pos.x() + plane.y() *   pos.y() + plane.z() *   pos.z());
-    double e = sqrt(plane.x() * plane.x() + plane.y() * plane.y() + plane.z() * plane.z());
+    for (int corner = 0; corner < 4; corner++) {
+        center += gates[current_gate].corners[corner];
+    }
+    center /= 4;    
+    normal = gates[current_gate].corners[1] - gates[current_gate].corners[0];
+    normal = normal.cross(gates[current_gate].corners[2] - gates[current_gate].corners[0]);
+    normal = normal.normalized();
 
-    return d / e;
+    double distance = normal.dot(center - pos);
+
+    return distance;
 }
 
 void odometry_callback(const nav_msgs::Odometry& msg)
