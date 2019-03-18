@@ -8,6 +8,7 @@
 #include <std_msgs/Float64MultiArray.h>
 
 #include <puffin_pilot/GateInfo.h>
+#include <puffin_pilot/PaceNote.h>
 #include <puffin_pilot/Waypoints.h>
 
 using namespace std;
@@ -33,6 +34,7 @@ ros::Publisher vis_pub_gates;
 ros::Publisher vis_pub_wp;
 
 ros::Publisher pub_gate_info;
+ros::Publisher pub_pace_note;
 ros::Publisher pub_waypoints;
 
 void publish_gate_markers(void)
@@ -105,9 +107,53 @@ void publish_gate_markers(void)
     vis_pub_wp.publish(waypoints_marker);
 }
 
+void publish_pace_note(void)
+{
+    vector<double> timestamps;
+    vector<double> velocities;
+    vector<long> measure_ir;
+
+    if (current_gate == 0) {
+        timestamps.push_back(2.0);
+        velocities.push_back(-1.0);
+        measure_ir.push_back(1);
+        //timestamps.push_back(3.2);
+        //velocities.push_back(0.0);
+    } else {
+        timestamps.push_back(2.0);
+        velocities.push_back(-1.0);
+        measure_ir.push_back(1);
+    }
+    
+    puffin_pilot::PaceNote pn_msg;
+
+    pn_msg.timestamps.layout.dim.push_back(std_msgs::MultiArrayDimension());
+    pn_msg.timestamps.layout.dim[0].label  = "timestamps";
+    pn_msg.timestamps.layout.dim[0].size   = timestamps.size();
+    pn_msg.timestamps.layout.dim[0].stride = 1;
+    pn_msg.timestamps.layout.data_offset   = 0;
+    pn_msg.timestamps.data = timestamps;
+
+    pn_msg.velocities.layout.dim.push_back(std_msgs::MultiArrayDimension());
+    pn_msg.velocities.layout.dim[0].label  = "velocities";
+    pn_msg.velocities.layout.dim[0].size   = velocities.size();
+    pn_msg.velocities.layout.dim[0].stride = 1;
+    pn_msg.velocities.layout.data_offset   = 0;
+    pn_msg.velocities.data = velocities;
+
+    pn_msg.measure_ir.layout.dim.push_back(std_msgs::MultiArrayDimension());
+    pn_msg.measure_ir.layout.dim[0].label  = "measure_ir";
+    pn_msg.measure_ir.layout.dim[0].size   = measure_ir.size();
+    pn_msg.measure_ir.layout.dim[0].stride = 1;
+    pn_msg.measure_ir.layout.data_offset   = 0;
+    pn_msg.measure_ir.data = measure_ir;
+
+    pub_pace_note.publish(pn_msg);
+    ROS_INFO("Pace notes pace note #%d sent.", current_gate);
+}
+
 void publish_gate_info(void)
 {
-
     std_msgs::Float64MultiArray ir_markers;
     ir_markers.layout.dim.push_back(std_msgs::MultiArrayDimension());
     ir_markers.layout.dim.push_back(std_msgs::MultiArrayDimension());
@@ -133,6 +179,8 @@ void publish_gate_info(void)
     gate_info.header.frame_id = "1";
     pub_gate_info.publish(gate_info);
     ROS_INFO("Pace notes gate info sent %d.", current_gate);
+
+    publish_pace_note();
 }
 
 void publish_waypoints(void)
@@ -267,27 +315,27 @@ void init_gates(void)
     }
 
     static const double waypoints_adjustment[26][3] = {{  0.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   1.5},
+                                                       {  0.0,   0.0,   0.2},
                                                        {  0.0,   0.0,   0.0}, // gate 1
-                                                       {  0.0,  10.0,   0.5},
-                                                       { -2.0,   2.0,   0.2}, // gate 2
-                                                       { -6.5,   0.0,   0.5},
-                                                       {  0.0,   0.0,   0.7}, // gate 3
-                                                       {  0.0,   0.0,   0.5},
-                                                       {  0.0,   0.0,   0.2}, // gate 4
-                                                       { -3.0,  -3.0,   2.2},
-                                                       {  0.0,   0.0,   0.0}, // gate 5
-                                                       { -1.0,   0.0,   1.2},
-                                                       {  0.0,   0.0,   1.0}, // gate 6
-                                                       {  0.0,  -1.5,   0.5},
-                                                       {  0.0,   0.0,   0.0}, // gate 7
-                                                       {  0.0,  -1.5,   0.5},
-                                                       {  0.0,   0.0,   1.0}, // gate 8
-                                                       {  1.0,   0.0,   2.0},
-                                                       {  0.0,   1.0,   0.2}, // gate 9
-                                                       { -4.0,  -1.0,   2.2},
-                                                       {  0.0,  -1.5,   0.0}, // gate 10
-                                                       {  0.0,  -5.0,   1.0},
+                                                       {  0.0,  10.0,   0.2},
+                                                       { -1.5,   1.0,   0.2}, // gate 2
+                                                       { -6.5,   0.0,   0.2},
+                                                       {  0.0,   0.0,   0.2}, // gate 3
+                                                       {  0.0,   0.0,   0.2},
+                                                       {  0.5,   0.0,   0.2}, // gate 4
+                                                       { -3.0,  -3.0,   1.0},
+                                                       {  0.7,   0.0,   0.0}, // gate 5
+                                                       { -1.0,   0.0,   0.7},
+                                                       {  0.0,   0.0,   0.5}, // gate 6
+                                                       {  0.0,  -1.5,   0.2},
+                                                       {  0.0,  -1.2,   0.0}, // gate 7
+                                                       {  0.0,  -1.5,   0.2},
+                                                       {  0.0,  -1.0,   0.5}, // gate 8
+                                                       {  1.0,   0.0,   0.7},
+                                                       {  0.0,   2.0,   0.2}, // gate 9
+                                                       { -3.0,  -1.0,   0.7},
+                                                       { -0.7,  -1.5,   0.0}, // gate 10
+                                                       {  0.0,  -5.0,   0.5},
                                                        {  0.0,   0.0,   0.0}, // gate 11
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0},
@@ -353,10 +401,23 @@ void odometry_callback(const nav_msgs::Odometry& msg)
         return;
     }
 
+    static const double gate_pass_distances[11] = {1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.5,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0};
+
+
     mav_msgs::EigenOdometry odometry;
     eigenOdometryFromMsg(msg, &odometry);
 
-    if (get_distance_from_gate(odometry.position_W) < 1.0) {
+    if (get_distance_from_gate(odometry.position_W) < gate_pass_distances[current_gate]) {
         if (current_gate == gates.size()-1) {
             ROS_INFO_ONCE("Pace notes finished!");
         } else {
@@ -372,6 +433,7 @@ int main(int argc, char** argv)
 
     ros::NodeHandle nh;
     pub_gate_info = nh.advertise<puffin_pilot::GateInfo>("gate_info",  10, true);
+    pub_pace_note = nh.advertise<puffin_pilot::PaceNote>("pace_note", 10, true);
     pub_waypoints = nh.advertise<puffin_pilot::Waypoints>("waypoints", 10, true);
     vis_pub_gates = nh.advertise<visualization_msgs::Marker>("/puff_pilot/gate_markers", 1, true);
     vis_pub_wp    = nh.advertise<visualization_msgs::Marker>("/puff_pilot/waypoint_markers", 1, true);

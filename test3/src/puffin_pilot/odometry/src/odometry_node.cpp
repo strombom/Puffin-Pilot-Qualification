@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <Eigen/Geometry>
+#include <std_msgs/Bool.h>
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -38,11 +39,12 @@ const static bool use_madgwick = true;
 
 std::vector<double> initial_pose;
 
+ros::Publisher ir_ok_node;
 ros::Publisher puffin_odometry_node;
 ros::Publisher puffin_odometry_gt_out_node;
 //ros::Publisher puffin_odometry_mpc_vel_node;
 
-
+bool measure_ir = false;
 
 tf2::Quaternion look_at_quaternion(tf2::Vector3 direction)
 {
@@ -212,7 +214,7 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
 
     tf2::Quaternion orientation  = tf2::Quaternion(qx, qy, qz, qw);
 
-
+    /*
     static const float max_ir_odom_interval = 0.10;
     double ir_delta_time = (msg->header.stamp - ir_odometer_state.timestamp).toSec();
     if (ir_delta_time < max_ir_odom_interval && ir_odometer_state.valid) {
@@ -229,6 +231,7 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
 
         //printf("update IR not\n");
     }
+    */
 
     
     tf2::Vector3 acceleration = tf2::Transform(orientation) * tf2::Vector3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
@@ -283,10 +286,17 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     ROS_INFO_ONCE("Odometry sent first odometry message.");
 }
 
+int measure_ir_count = -1;
+
+void ir_trig_callback(const std_msgs::Bool trig)
+{
+    measure_ir_count = 0;
+    printf("Odom: Measure IR markers start!\n");
+}
+
 void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
 {
     ROS_INFO_ONCE("Odometry got first IR marker pose message.");
-
 
     tf2::Vector3 new_position(msg.pose.position.x,
                               msg.pose.position.y,
@@ -301,6 +311,14 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
         return;
     }
 
+    if (measure_ir_count < 0) {
+        return;
+    }
+    measure_ir_count++;
+    if (measure_ir_count < 5) {
+        return;
+    }
+
     double delta_time = (msg.header.stamp - ir_odometer_state.timestamp).toSec();
     if (delta_time <= 0) {
         // Pose callback out of order.
@@ -311,11 +329,18 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
     if (delta_time > max_ir_odom_interval) {
         // Too far between pose callbacks.
         ir_odometer_state.valid    = false;
-        printf("new IR bad  %f\n", delta_time);
     } else {
         ir_odometer_state.velocity = (new_position - ir_odometer_state.position) / delta_time;
         ir_odometer_state.valid    = true;
-        //printf("new IR good %f\n", delta_time);
+
+        //imu_state.velocity = (ir_odometer_state.velocity + 7 * imu_state.velocity) / 8;
+        //imu_state.position = (ir_odometer_state.position + 3 * imu_state.position) / 4;
+        imu_state.velocity = ir_odometer_state.velocity;
+        imu_state.position = ir_odometer_state.position;
+
+        ir_ok_node.publish(true);
+        measure_ir_count = -1;
+        printf("Odom: Measure IR markers done!\n");
     }
 
     ir_odometer_state.timestamp = msg.header.stamp;
@@ -366,12 +391,14 @@ int main(int argc, char** argv)
     ros::Subscriber imu_callback_node         = subscriber_node.subscribe("imu",             1, &uav_imu_callback,            ros::TransportHints().tcpNoDelay());
     ros::Subscriber irodom_callback_node      = subscriber_node.subscribe("ir_markers_pose", 1, &ir_marker_odometry_callback, ros::TransportHints().tcpNoDelay());
     ros::Subscriber odometry_gt_callback_node = subscriber_node.subscribe("odometry_gt_in",  1, &odometry_gt_callback,        ros::TransportHints().tcpNoDelay());
-    
+    ros::Subscriber ir_trig_callback_node     = subscriber_node.subscribe("ir_trig",         1, &ir_trig_callback,            ros::TransportHints().tcpNoDelay());
+   
     ros::NodeHandle publisher_node;
-    puffin_odometry_node         = publisher_node.advertise<nav_msgs::Odometry>("odometry",        1);
-    puffin_odometry_gt_out_node     = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
+    ir_ok_node                  = publisher_node.advertise<std_msgs::Bool>("ir_ok", 1, false);
+    puffin_odometry_node        = publisher_node.advertise<nav_msgs::Odometry>("odometry",        1);
+    puffin_odometry_gt_out_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
     //puffin_odometry_mpc_vel_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_mpc_vel", 1);
-
+    
     // REMOVE!!!
     geometry_msgs::TransformStamped tf_nest;
     tf_nest.header.stamp = ros::Time::now();
@@ -385,7 +412,8 @@ int main(int argc, char** argv)
     tf_nest.transform.rotation.z = 0;
     tf_nest.transform.rotation.w = 1;
     static tf2_ros::StaticTransformBroadcaster tf_static_broadcaster;
-    //tf_static_broadcaster.sendTransform(tf_nest);
+    tf_static_broadcaster.sendTransform(tf_nest);
+
 
     ros::spin();
     return 0;

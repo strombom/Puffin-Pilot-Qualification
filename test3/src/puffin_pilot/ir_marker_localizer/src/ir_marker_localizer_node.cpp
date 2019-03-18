@@ -461,7 +461,7 @@ int main(int argc, char** argv)
     ros::NodeHandle subscriber_node;
     ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &camera_info_callback, ros::TransportHints().tcpNoDelay());
     ros::Subscriber ir_beacons_subscriber  = subscriber_node.subscribe("ir_beacons",  10, &ir_beacons_callback,  ros::TransportHints().tcpNoDelay());
-    ros::Subscriber gate_info_subscriber   = subscriber_node.subscribe("gate_info",   10, &gate_info_callback,  ros::TransportHints().tcpNoDelay());
+    ros::Subscriber gate_info_subscriber   = subscriber_node.subscribe("gate_info",   10, &gate_info_callback,   ros::TransportHints().tcpNoDelay());
     ros::Subscriber odometry_node          = subscriber_node.subscribe("odometry",    1,  &odometry_callback,    ros::TransportHints().tcpNoDelay());
 
     ros::spin();

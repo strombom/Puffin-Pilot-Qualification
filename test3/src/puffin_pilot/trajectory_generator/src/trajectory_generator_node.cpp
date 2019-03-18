@@ -3,6 +3,7 @@
 #include <iostream>
 #include <mutex>
 
+#include <std_msgs/Bool.h>
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation/polynomial_optimization_nonlinear.h>
 #include <mav_trajectory_generation/trajectory.h>
@@ -13,6 +14,7 @@
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 
 #include <puffin_pilot/Waypoints.h>
+#include <puffin_pilot/PaceNote.h>
 
 using namespace std;
 using namespace mav_trajectory_generation;
@@ -22,15 +24,21 @@ int current_waypoint_idx = 0;
 
 ros::Publisher trajectory_marker_pub;
 ros::Publisher trajectory_pub;
-//ros::Publisher pose_pub;
 ros::Publisher odometry_mpc_pub;
+ros::Publisher ir_trig_pub;
+
+bool ir_done = true; // False during IR measurement, true otherwise
 
 mav_msgs::EigenTrajectoryPoint::Vector waypoints;
 int waypoint_idx = 0;
 
+vector<ros::Time> pace_note_timestamps;
+vector<double> pace_note_velocities;
+vector<long> pace_note_measure_ir;
+double pace_note_velocity = 0.0;
 
-static const double v_max = 21.0; //22.0;
-static const double a_max = 35.0; //35.0;
+static const double v_max = 30.0; //22.0;
+static const double a_max = 37.0; //35.0;
 static const double j_max = 10.0;
 
 void add_constraint(mav_trajectory_generation::Vertex *v, int derivative, Eigen::Vector3d vec3, double yaw)
@@ -40,7 +48,6 @@ void add_constraint(mav_trajectory_generation::Vertex *v, int derivative, Eigen:
     vec4.w() = yaw;
     v->addConstraint(derivative, vec4);
 }
-
 
 std::vector<double> estimate_segment_times(const Vertex::Vector& vertices, double v_max, double a_max)
 {
@@ -62,12 +69,59 @@ double get_yaw(double previous_yaw, double new_yaw)
     return new_yaw;
 }
 
+void pace_note_callback(const puffin_pilot::PaceNoteConstPtr& pace_note)
+{
+    ROS_INFO_ONCE("Trajectory generator received first pace note.");
+
+    pace_note_timestamps.clear();
+    pace_note_velocities.clear();
+    pace_note_measure_ir.clear();
+
+    //pace_note_timestamps.push_back(ros::Time::now() + ros::Duration(1.5));
+    //pace_note_velocities.push_back(-2.0);
+    //pace_note_measure_ir.push_back(1);
+    //pace_note_timestamps.push_back(ros::Time::now() + ros::Duration(2.4));
+    //pace_note_velocities.push_back(0.0);
+    //pace_note_measure_ir.push_back(0);
+
+    for (int idx = 0; idx < pace_note->timestamps.layout.dim[0].size; idx++) {
+        pace_note_timestamps.push_back(ros::Time::now() + ros::Duration(pace_note->timestamps.data[idx]));
+        pace_note_velocities.push_back(pace_note->velocities.data[idx]);
+        pace_note_measure_ir.push_back(pace_note->measure_ir.data[idx]);
+        printf("Trajectory generator append pace note (%f, %ld).", pace_note->timestamps.data[idx], pace_note->measure_ir.data[idx]);
+    }
+
+    ir_done = true;
+
+}
+
+void ir_ok_callback(const std_msgs::Bool ok)
+{
+    printf("Traj: Measure IR markers done!\n");
+    ir_done = true;
+}
+
 void odometry_callback(const nav_msgs::Odometry& odometry_msg)
 {
     ROS_INFO_ONCE("Trajectory generator received first odometry message.");
     if (!has_waypoints) {
         return;
     }
+
+    static bool started = false;
+    if (!started) {
+        static ros::Time first_time = ros::Time::now();
+        if ((ros::Time::now() - first_time).toSec() > 0.1) {
+            started = true;
+        }
+        return;
+    }
+
+    static ros::Time previous_time = ros::Time::now();
+    if ((ros::Time::now() - previous_time).toSec() < 0.0065) {
+        return;
+    }
+    previous_time = ros::Time::now();
 
     mav_msgs::EigenOdometry odometry;
     eigenOdometryFromMsg(odometry_msg, &odometry);
@@ -77,17 +131,20 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
         return;
     }
 
-    Eigen::Vector3d plane_p = odometry.position_W;
-    Eigen::Vector3d plane_n = odometry.getVelocityWorld();
-    if (plane_n.norm() > 0.1) {
-        plane_n = plane_n.normalized();
-    } else {
-        plane_n = (odometry.orientation_W_B * Eigen::Vector3d(1.0, 0.0, 0.0)).normalized();
-    }
-
+    Eigen::Vector3d plane_p;
+    Eigen::Vector3d plane_n;
     for (int i = waypoint_idx; i < waypoints.size(); i++) {
-        // Check if we are past the next goal point
-        double distance = plane_n.dot(plane_p - waypoints[i].position_W);
+        plane_p = waypoints[i].position_W;
+        plane_n = waypoints[i].velocity_W;
+
+        if (plane_n.norm() < 0.01) {
+            plane_n = Eigen::Vector3d(0.0, 1.0, 0.3).normalized();
+        } else {
+            plane_n = plane_n.normalized();
+        }
+
+        double distance = plane_n.dot(odometry.position_W - plane_p);
+
         if (distance >= 0.0) {
             waypoint_idx++;
         } else {
@@ -95,7 +152,38 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
         }
     }
 
-    static const int look_ahead[3] = {100, 200, 300};
+    if (pace_note_timestamps.size() > 0) {
+        if (ros::Time::now() > pace_note_timestamps.front()) {
+            if (pace_note_measure_ir.front() == 1) {
+                ir_done = false;
+                printf("Traj: Measure IR markers start!\n");
+                ir_trig_pub.publish(true);
+            } else {
+                pace_note_velocity = pace_note_velocities.front();
+                printf("New velocity %f!\n", pace_note_velocity);
+            }
+
+            pace_note_timestamps.erase(pace_note_timestamps.begin());
+            pace_note_velocities.erase(pace_note_velocities.begin());
+            pace_note_measure_ir.erase(pace_note_measure_ir.begin());
+        }
+    }
+
+    double velocity_offset = 0.0;
+    if (!ir_done) {
+        velocity_offset = -1.2;
+    } else {
+        velocity_offset = pace_note_velocity;
+    }
+
+    Eigen::Vector3d delta_position = odometry.position_W - waypoints[waypoint_idx].position_W;
+    Eigen::Vector3d start_position = odometry.position_W;
+
+    start_position -= delta_position * 0.35;
+    start_position += plane_n * (1.0 + velocity_offset);
+
+
+    static const int look_ahead[3] = {135, 235, 335};
 
     static double previous_yaw = 1.57;
     double yaws[4];
@@ -112,14 +200,14 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     Vertex::Vector vertices;
     mav_trajectory_generation::Vertex v1(dimension), v2(dimension), v3(dimension), v4(dimension);
     
-    add_constraint(&v1, derivative_order::POSITION, odometry.position_W, yaws[0]);
+    add_constraint(&v1, derivative_order::POSITION, start_position, yaws[0]);
     add_constraint(&v1, derivative_order::VELOCITY, odometry.getVelocityWorld(), odometry.getYawRate());
     vertices.push_back(v1);
 
-    add_constraint(&v2, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[0]].position_W, yaws[1]);
+    add_constraint(&v2, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[0]].position_W + delta_position * 0.3, yaws[1]);
     vertices.push_back(v2);
 
-    add_constraint(&v3, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[1]].position_W, yaws[2]);
+    add_constraint(&v3, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[1]].position_W + delta_position * 0.05, yaws[2]);
     vertices.push_back(v3);
 
     add_constraint(&v4, derivative_order::POSITION,     waypoints[waypoint_idx + look_ahead[2]].position_W, yaws[3]);
@@ -149,7 +237,7 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     //printf("\n");
 
     NonlinearOptimizationParameters parameters;
-    parameters.max_iterations = 100;
+    parameters.max_iterations = 20;
     //parameters.f_rel = -1;
     //parameters.time_penalty = 500.0;
     parameters.use_soft_constraints = true;
@@ -172,7 +260,7 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
 
     // Sample range:
     double t_start = 0.0;
-    double dt = 0.1;
+    double dt = 0.078;
     double duration = dt * 22;
     mav_msgs::EigenTrajectoryPoint::Vector trajectory_states;
     mav_trajectory_generation::sampleTrajectoryInRange(trajectory, t_start, duration, dt, &trajectory_states);
@@ -269,7 +357,7 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
     trajectory_marker_pub.publish(markers);
 
     // Waypoints
-    sampling_interval = 0.01;
+    sampling_interval = 0.0078;
     mav_trajectory_generation::sampleWholeTrajectory(trajectory, sampling_interval, &waypoints);
 
     has_waypoints = true;
@@ -284,9 +372,12 @@ int main(int argc, char** argv)
     trajectory_pub        = node_handle.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, true);
     trajectory_marker_pub = node_handle.advertise<visualization_msgs::MarkerArray>("puffin_trajectory_markers", 0);
     odometry_mpc_pub      = node_handle.advertise<nav_msgs::Odometry>("odometry_mpc", 0);
+    ir_trig_pub           = node_handle.advertise<std_msgs::Bool>("ir_trig", 0);
 
     ros::Subscriber waypoints_subscriber  = node_handle.subscribe("waypoints", 1, &waypoints_callback);
     ros::Subscriber odometry_node         = node_handle.subscribe("odometry",  1, &odometry_callback,  ros::TransportHints().tcpNoDelay());
+    ros::Subscriber pace_note_node        = node_handle.subscribe("pace_note", 1, &pace_note_callback, ros::TransportHints().tcpNoDelay());
+    ros::Subscriber ir_ok_node            = node_handle.subscribe("ir_ok",     1, &ir_ok_callback,     ros::TransportHints().tcpNoDelay());
 
     ros::spin();
     return 0;

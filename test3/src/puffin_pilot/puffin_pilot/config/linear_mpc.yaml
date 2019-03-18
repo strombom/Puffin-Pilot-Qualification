@@ -22,8 +22,8 @@ q_x: 150
 q_y: 150
 q_z: 80
 
-q_vx: 00
-q_vy: 00
+q_vx: 10
+q_vy: 10
 q_vz: 35
 
 q_roll: 60
@@ -37,8 +37,8 @@ r_droll: 0.26
 r_dpitch: 0.26
 r_dthrust: 0.01
 
-roll_max: deg(50.0)
-pitch_max: deg(50.0)
+roll_max: deg(60.0)
+pitch_max: deg(60.0)
 yaw_rate_max: deg(90)
 thrust_min: 5
 thrust_max: 37
@@ -53,5 +53,5 @@ antiwindup_ball: 0.1
 enable_offset_free : false
 enable_integrator : false
 
-sampling_time: 0.01    #IMPORTANT: set this equal to the rate of odometry msg
-prediction_sampling_time: 0.1
+sampling_time: 0.0078    #IMPORTANT: set this equal to the rate of odometry msg
+prediction_sampling_time: 0.078

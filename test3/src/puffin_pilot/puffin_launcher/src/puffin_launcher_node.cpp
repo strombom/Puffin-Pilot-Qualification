@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     rate_thrust_msg.thrust.y = 0;
     rate_thrust_msg.thrust.z = 0;
 
-    last_odometry_callback = ros::Time::now();
+    last_odometry_callback = ros::Time::now() + ros::Duration(6.0);
 
     ros::Rate loop_rate(10);
     while (ros::ok()) {
@@ -44,7 +44,8 @@ int main(int argc, char** argv)
         if (delta_time > 1.0) {
             ROS_INFO("RateThrustController launching.");
             last_odometry_callback = ros::Time::now();
-            rate_thrust_msg.thrust.z = 10;
+            rate_thrust_msg.angular_rates.y = 1;
+            rate_thrust_msg.thrust.z = 11;
             rate_thrust_msg.header.stamp = ros::Time::now();
             rate_thrust_node.publish(rate_thrust_msg);
         }

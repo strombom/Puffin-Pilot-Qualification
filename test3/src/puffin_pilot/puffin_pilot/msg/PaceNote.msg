@@ -1,0 +1,4 @@
+Header header
+std_msgs/Int64MultiArray measure_ir
+std_msgs/Float64MultiArray timestamps
+std_msgs/Float64MultiArray velocities
