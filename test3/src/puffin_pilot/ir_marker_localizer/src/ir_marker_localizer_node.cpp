@@ -456,7 +456,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "ir_marker_localizer");
 
     ros::NodeHandle publisher_node;
-    ir_marker_odometry_pose_node = publisher_node.advertise<geometry_msgs::PoseStamped>("pose", 1, false);
+    ir_marker_odometry_pose_node = publisher_node.advertise<geometry_msgs::PoseStamped>("ir_markers_pose", 1, false);
 
     ros::NodeHandle subscriber_node;
     ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &camera_info_callback, ros::TransportHints().tcpNoDelay());

@@ -77,27 +77,19 @@ void pace_note_callback(const puffin_pilot::PaceNoteConstPtr& pace_note)
     pace_note_velocities.clear();
     pace_note_measure_ir.clear();
 
-    //pace_note_timestamps.push_back(ros::Time::now() + ros::Duration(1.5));
-    //pace_note_velocities.push_back(-2.0);
-    //pace_note_measure_ir.push_back(1);
-    //pace_note_timestamps.push_back(ros::Time::now() + ros::Duration(2.4));
-    //pace_note_velocities.push_back(0.0);
-    //pace_note_measure_ir.push_back(0);
-
     for (int idx = 0; idx < pace_note->timestamps.layout.dim[0].size; idx++) {
         pace_note_timestamps.push_back(ros::Time::now() + ros::Duration(pace_note->timestamps.data[idx]));
         pace_note_velocities.push_back(pace_note->velocities.data[idx]);
         pace_note_measure_ir.push_back(pace_note->measure_ir.data[idx]);
-        printf("Trajectory generator append pace note (%f, %ld).", pace_note->timestamps.data[idx], pace_note->measure_ir.data[idx]);
+        printf("Trajectory generator append pace note (%f, %ld).\n", pace_note->timestamps.data[idx], pace_note->measure_ir.data[idx]);
     }
 
     ir_done = true;
-
 }
 
 void ir_ok_callback(const std_msgs::Bool ok)
 {
-    printf("Traj: Measure IR markers done!\n");
+    //printf("Traj: Measure IR markers done!\n");
     ir_done = true;
 }
 
@@ -154,36 +146,53 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
 
     if (pace_note_timestamps.size() > 0) {
         if (ros::Time::now() > pace_note_timestamps.front()) {
+            pace_note_velocity = pace_note_velocities.front();
             if (pace_note_measure_ir.front() == 1) {
                 ir_done = false;
                 printf("Traj: Measure IR markers start!\n");
                 ir_trig_pub.publish(true);
             } else {
-                pace_note_velocity = pace_note_velocities.front();
-                printf("New velocity %f!\n", pace_note_velocity);
             }
 
+            printf("New velocity %f!\n", pace_note_velocity);
             pace_note_timestamps.erase(pace_note_timestamps.begin());
             pace_note_velocities.erase(pace_note_velocities.begin());
             pace_note_measure_ir.erase(pace_note_measure_ir.begin());
         }
     }
 
-    double velocity_offset = 0.0;
+    double v_max_offset = 0.0;
+    //double velocity_offset = 0.0;
+    int look_ahead_offset = 0;
     if (!ir_done) {
-        velocity_offset = -1.2;
+        v_max_offset -= 20;
+        //velocity_offset = -1.0;
+        if (look_ahead_offset > 0) {
+            look_ahead_offset--;
+        }
     } else {
-        velocity_offset = pace_note_velocity;
+        v_max_offset = pace_note_velocity;
+        //velocity_offset = pace_note_velocity;
+        if (look_ahead_offset < 37) {
+            look_ahead_offset++;
+        }
     }
 
     Eigen::Vector3d delta_position = odometry.position_W - waypoints[waypoint_idx].position_W;
     Eigen::Vector3d start_position = odometry.position_W;
 
-    start_position -= delta_position * 0.35;
-    start_position += plane_n * (1.0 + velocity_offset);
+    double delta_norm = delta_position.norm();
+    if (delta_norm > 0.5) {
+        delta_position *= 0.5 / delta_norm;
+    }
+
+    start_position -= delta_position;
+    start_position += plane_n * (1.0 + v_max_offset / 20);
 
 
-    static const int look_ahead[3] = {135, 235, 335};
+    const int look_ahead[3] = {100 + look_ahead_offset, 
+                               200 + look_ahead_offset, 
+                               300 + look_ahead_offset};
 
     static double previous_yaw = 1.57;
     double yaws[4];
@@ -227,7 +236,7 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
 
 
     std::vector<double> segment_times;
-    segment_times = estimate_segment_times(vertices, v_max, a_max);
+    segment_times = estimate_segment_times(vertices, v_max + v_max_offset, a_max);
 
     //printf("segment times: ");
     for (int j = 0; j < segment_times.size(); j++) {
@@ -252,7 +261,7 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     const int N = 8;
     PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
     opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
-    opt.addMaximumMagnitudeConstraint(derivative_order::VELOCITY, v_max);
+    opt.addMaximumMagnitudeConstraint(derivative_order::VELOCITY, v_max + v_max_offset);
     opt.addMaximumMagnitudeConstraint(derivative_order::ACCELERATION, a_max);
     opt.optimize();
     mav_trajectory_generation::Trajectory trajectory;

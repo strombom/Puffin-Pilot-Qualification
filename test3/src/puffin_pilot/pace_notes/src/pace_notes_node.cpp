@@ -5,6 +5,8 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Odometry.h>
 #include <mav_msgs/conversions.h>
+#include <geometry_msgs/Point.h>
+#include <eigen_conversions/eigen_msg.h>
 #include <std_msgs/Float64MultiArray.h>
 
 #include <puffin_pilot/GateInfo.h>
@@ -23,6 +25,8 @@ struct Gate {
   Eigen::Vector3d ir_markers[4];
 };
 
+Eigen::Vector3d initial_position;
+Eigen::Quaterniond initial_orientation;
 vector<Eigen::Vector3d> waypoints_pos;
 vector<Eigen::Vector3d> waypoints_vel;
 vector<double> waypoints_yaw;
@@ -107,22 +111,123 @@ void publish_gate_markers(void)
     vis_pub_wp.publish(waypoints_marker);
 }
 
-void publish_pace_note(void)
+void publish_pace_note(int gate_idx)
 {
     vector<double> timestamps;
     vector<double> velocities;
     vector<long> measure_ir;
 
-    if (current_gate == 0) {
-        timestamps.push_back(2.0);
-        velocities.push_back(-1.0);
+    if (gate_idx == 0) {
+        /*
+        timestamps.push_back(0.0);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(0.5);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+        */
+        /*
+        timestamps.push_back(1.5);
+        velocities.push_back(-20.0);
+        measure_ir.push_back(0);*/
+        /*timestamps.push_back(2.2);
+        velocities.push_back(-8.0);
         measure_ir.push_back(1);
-        //timestamps.push_back(3.2);
-        //velocities.push_back(0.0);
-    } else {
-        timestamps.push_back(2.0);
-        velocities.push_back(-1.0);
+        timestamps.push_back(3.5);
+        velocities.push_back(-5.0);
+        measure_ir.push_back(0);*/
+        timestamps.push_back(3.0);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 1) {
+        timestamps.push_back(0.0);
+        velocities.push_back(0.0);
         measure_ir.push_back(1);
+
+        timestamps.push_back(2.0);
+        velocities.push_back(-0.0);
+        measure_ir.push_back(0);
+
+        timestamps.push_back(2.5);
+        velocities.push_back(0.0);
+        measure_ir.push_back(1);
+
+        timestamps.push_back(3.0);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 2) {
+        timestamps.push_back(0.5);
+        velocities.push_back(-0.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(1.0);
+        velocities.push_back(-0.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(2.0);
+        velocities.push_back(-0.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 3) {
+        timestamps.push_back(0.0);
+        velocities.push_back(-5.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 4) {
+        timestamps.push_back(0.0);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+        /*
+        timestamps.push_back(0.5);
+        velocities.push_back(-5.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(0.0);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(1.5);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+        */
+
+    } else if (gate_idx == 5) {
+        timestamps.push_back(0.0);
+        velocities.push_back(-0.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(0.2);
+        velocities.push_back(-0.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 6) {
+        timestamps.push_back(0.0);
+        velocities.push_back(-10.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(1.0);
+        velocities.push_back(-10.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(1.5);
+        velocities.push_back(-5.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 7) {
+        timestamps.push_back(0.0);
+        velocities.push_back(-0.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 8) {
+        timestamps.push_back(0.5);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 9) {
+        timestamps.push_back(1.0);
+        velocities.push_back(0.0);
+        measure_ir.push_back(0);
+
+    } else if (gate_idx == 10) {
+        timestamps.push_back(0.0);
+        velocities.push_back(0.0);
+        measure_ir.push_back(1);
+
     }
     
     puffin_pilot::PaceNote pn_msg;
@@ -149,10 +254,10 @@ void publish_pace_note(void)
     pn_msg.measure_ir.data = measure_ir;
 
     pub_pace_note.publish(pn_msg);
-    ROS_INFO("Pace notes pace note #%d sent.", current_gate);
+    ROS_INFO("Pace notes pace note #%d sent.", gate_idx);
 }
 
-void publish_gate_info(void)
+void publish_gate_info(int gate_idx)
 {
     std_msgs::Float64MultiArray ir_markers;
     ir_markers.layout.dim.push_back(std_msgs::MultiArrayDimension());
@@ -166,21 +271,19 @@ void publish_gate_info(void)
     ir_markers.layout.data_offset   = 0;
     std::vector<double> gate_corners_data(4 * 3, 0);
     for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
-        gate_corners_data[corner_idx * 3 + 0] = gates[current_gate].ir_markers[corner_idx].x();
-        gate_corners_data[corner_idx * 3 + 1] = gates[current_gate].ir_markers[corner_idx].y();
-        gate_corners_data[corner_idx * 3 + 2] = gates[current_gate].ir_markers[corner_idx].z();
+        gate_corners_data[corner_idx * 3 + 0] = gates[gate_idx].ir_markers[corner_idx].x();
+        gate_corners_data[corner_idx * 3 + 1] = gates[gate_idx].ir_markers[corner_idx].y();
+        gate_corners_data[corner_idx * 3 + 2] = gates[gate_idx].ir_markers[corner_idx].z();
     }
     ir_markers.data = gate_corners_data;
 
     puffin_pilot::GateInfo gate_info;
-    gate_info.gate_name.data = gates[current_gate].name.c_str();
+    gate_info.gate_name.data = gates[gate_idx].name.c_str();
     gate_info.ir_markers = ir_markers;
     gate_info.header.stamp = ros::Time::now();
     gate_info.header.frame_id = "1";
     pub_gate_info.publish(gate_info);
-    ROS_INFO("Pace notes gate info sent %d.", current_gate);
-
-    publish_pace_note();
+    ROS_INFO("Pace notes gate info sent %d.", gate_idx);
 }
 
 void publish_waypoints(void)
@@ -256,14 +359,24 @@ void init_gates(void)
                                           {1, 0, 2, 3},
                                           {1, 0, 2, 3}};
 
+
+    
+
+    std::vector<double> _initial_pose;
+    ros::param::get("/uav/flightgoggles_uav_dynamics/init_pose", _initial_pose);
+    initial_position.x() = _initial_pose.at(0);
+    initial_position.y() = _initial_pose.at(1);
+    initial_position.z() = _initial_pose.at(2);
+    initial_orientation.x() = _initial_pose.at(3);
+    initial_orientation.y() = _initial_pose.at(4);
+    initial_orientation.z() = _initial_pose.at(5);
+    initial_orientation.w() = _initial_pose.at(6);
+
     XmlRpc::XmlRpcValue gate_names;
     ros::param::get("/uav/gate_names", gate_names);
     gate_count = gate_names.size();
 
-    //append_waypoint(Eigen::Vector3d(18.0, -23.0, 5.3), 0.0);
-    //append_waypoint(Eigen::Vector3d(18.0, -16.0, 5.8), 0.0);
     append_waypoint(Eigen::Vector3d(18.0, -23.0, 5.3), 0.0);
-    //append_waypoint(Eigen::Vector3d(18.0, -16.0, 6.3), 0.0);
 
     for (int gate_idx = 0; gate_idx < gate_count; gate_idx++) {
         const char *gate_name = static_cast<std::string>(gate_names[gate_idx]).c_str();
@@ -277,7 +390,7 @@ void init_gates(void)
         Eigen::Vector3d normal;
         
         Gate gate;
-        gate.name = static_cast<std::string>(gate_names[gate_idx]);
+        gate.name = static_cast<std::string>(gate_names[gate_idx]).c_str();
         for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
             gate.corners[corner_idx].x()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][0];
             gate.corners[corner_idx].y()    = (double)nominal_location[corner_map[gate_idx][corner_idx]][1];
@@ -316,27 +429,27 @@ void init_gates(void)
 
     static const double waypoints_adjustment[26][3] = {{  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.2},
-                                                       {  0.0,   0.0,   0.0}, // gate 1
-                                                       {  0.0,  10.0,   0.2},
-                                                       { -1.5,   1.0,   0.2}, // gate 2
-                                                       { -6.5,   0.0,   0.2},
-                                                       {  0.0,   0.0,   0.2}, // gate 3
-                                                       {  0.0,   0.0,   0.2},
-                                                       {  0.5,   0.0,   0.2}, // gate 4
-                                                       { -3.0,  -3.0,   1.0},
-                                                       {  0.7,   0.0,   0.0}, // gate 5
-                                                       { -1.0,   0.0,   0.7},
-                                                       {  0.0,   0.0,   0.5}, // gate 6
-                                                       {  0.0,  -1.5,   0.2},
-                                                       {  0.0,  -1.2,   0.0}, // gate 7
-                                                       {  0.0,  -1.5,   0.2},
-                                                       {  0.0,  -1.0,   0.5}, // gate 8
-                                                       {  1.0,   0.0,   0.7},
-                                                       {  0.0,   2.0,   0.2}, // gate 9
-                                                       { -3.0,  -1.0,   0.7},
-                                                       { -0.7,  -1.5,   0.0}, // gate 10
+                                                       {  0.0,   0.0,   0.0}, // gate 0
+                                                       {  0.6,  10.0,   0.5},
+                                                       { -1.0,   1.5,   0.2}, // gate 1
+                                                       { -6.5,   0.0,   0.0},
+                                                       {  0.0,   0.0,   1.0}, // gate 2
+                                                       {  0.0,   3.0,   1.0},
+                                                       {  0.1,   0.0,   0.2}, // gate 3
+                                                       { -3.0,  -2.0,   2.5},
+                                                       {  0.0,   0.0,   0.0}, // gate 4
+                                                       { -1.0,  -0.5,   1.7},
+                                                       {  0.0,   0.0,   1.0}, // gate 5
+                                                       {  0.0,  -2.0,   1.2},
+                                                       {  0.0,   0.0,   0.0}, // gate 6
+                                                       {  0.0,  -2.0,   1.2},
+                                                       {  0.0,  -1.0,   1.0}, // gate 7
+                                                       {  2.2,  -2.0,   1.9},
+                                                       { -1.2,   2.0,   1.0}, // gate 8
+                                                       { -2.0,  -2.0,   2.5},
+                                                       {  0.0,  -1.5,   0.0}, // gate 9
                                                        {  0.0,  -5.0,   0.5},
-                                                       {  0.0,   0.0,   0.0}, // gate 11
+                                                       { -0.3,   0.0,   0.0}, // gate 10
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0}};
@@ -345,7 +458,7 @@ void init_gates(void)
         waypoints_pos[i].x() += waypoints_adjustment[i][0];
         waypoints_pos[i].y() += waypoints_adjustment[i][1];
         waypoints_pos[i].z() += waypoints_adjustment[i][2];
-    }              
+    }
 
     waypoints_yaw[0] = 1.57;
     for (int wp_idx = 1; wp_idx < waypoints_pos.size() - 1; wp_idx++) {
@@ -368,11 +481,49 @@ void init_gates(void)
         waypoints_vel[wp_idx] = (waypoints_pos[wp_idx + 1] - waypoints_pos[wp_idx]).normalized();
     }
 
-    publish_gate_markers();
-    publish_waypoints();
+    publish_gate_info(0);
+}
 
-    current_gate = 0;
-    publish_gate_info();
+void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
+{
+    static int first = true;
+    if (first) {
+        Eigen::Vector3d new_position;
+        Eigen::Quaterniond new_orientation;
+        tf::pointMsgToEigen(msg.pose.position, new_position);
+        tf::quaternionMsgToEigen(msg.pose.orientation, new_orientation);
+
+        double x_diff = gates[0].corners[0].x();
+
+        // Locate first gate before takeoff
+        for (int idx = 0; idx < 4; idx++) {
+            Eigen::Vector3d p;
+
+            p = gates[0].corners[idx];
+            p = p - new_position;
+            p = new_orientation.inverse() * p;
+            p = initial_orientation * p;
+            p = p + initial_position;
+            gates[0].corners[idx] = p;
+
+            p = gates[0].ir_markers[idx];
+            p = p - new_position;
+            p = new_orientation.inverse() * p;
+            p = initial_orientation * p;
+            p = p + initial_position;
+            gates[0].ir_markers[idx] = p;
+        }
+
+        waypoints_pos[2].x() += gates[0].corners[0].x() - x_diff;
+
+        current_gate = 0;
+        publish_gate_info(0);
+        publish_gate_markers();
+        publish_waypoints();
+        publish_pace_note(0);
+
+        first = false;
+    }
 }
 
 double get_distance_from_gate(Eigen::Vector3d pos)
@@ -389,7 +540,6 @@ double get_distance_from_gate(Eigen::Vector3d pos)
     normal = normal.normalized();
 
     double distance = normal.dot(center - pos);
-
     return distance;
 }
 
@@ -403,16 +553,15 @@ void odometry_callback(const nav_msgs::Odometry& msg)
 
     static const double gate_pass_distances[11] = {1.0,
                                                    1.0,
+                                                   3.0,
                                                    1.0,
                                                    1.0,
-                                                   1.0,
-                                                   1.5,
+                                                   2.0,
                                                    1.0,
                                                    1.0,
                                                    1.0,
                                                    1.0,
                                                    1.0};
-
 
     mav_msgs::EigenOdometry odometry;
     eigenOdometryFromMsg(msg, &odometry);
@@ -422,13 +571,15 @@ void odometry_callback(const nav_msgs::Odometry& msg)
             ROS_INFO_ONCE("Pace notes finished!");
         } else {
             current_gate += 1;
-            publish_gate_info();
+            publish_gate_info(current_gate);
+            publish_pace_note(current_gate);
         }
     }
 }
 
 int main(int argc, char** argv)
 {  
+    printf("c\n");
     ros::init(argc, argv, "pace_notes");
 
     ros::NodeHandle nh;
@@ -438,8 +589,11 @@ int main(int argc, char** argv)
     vis_pub_gates = nh.advertise<visualization_msgs::Marker>("/puff_pilot/gate_markers", 1, true);
     vis_pub_wp    = nh.advertise<visualization_msgs::Marker>("/puff_pilot/waypoint_markers", 1, true);
 
-    ros::Subscriber odometry_node = nh.subscribe("odometry", 1,  &odometry_callback, ros::TransportHints().tcpNoDelay());
+    printf("d\n");
+    ros::Subscriber odometry_node        = nh.subscribe("odometry",        1, &odometry_callback,           ros::TransportHints().tcpNoDelay());
+    ros::Subscriber irodom_callback_node = nh.subscribe("ir_markers_pose", 1, &ir_marker_odometry_callback, ros::TransportHints().tcpNoDelay());
 
+    printf("e\n");
     init_gates();
 
     ros::spin();

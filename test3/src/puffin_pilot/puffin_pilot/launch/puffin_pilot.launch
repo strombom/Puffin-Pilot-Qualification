@@ -4,7 +4,8 @@
   <!-- Keeps track on which gate to pass next, used by puffin_pilot -->
   <node name="pace_notes_node" pkg="pace_notes" type="pace_notes_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
-    <remap from="odometry" to="/puffin_pilot/odometry" />
+    <remap from="odometry"        to="/puffin_pilot/odometry" />
+    <remap from="ir_markers_pose" to="/puffin_pilot/ir_markers_pose" />
 
     <!-- Output -->
     <remap from="waypoints" to="/puffin_pilot/waypoints" />
@@ -21,7 +22,7 @@
     <remap from="odometry"    to="/puffin_pilot/odometry" />
 
     <!-- Output -->
-    <remap from="pose"        to="/puffin_pilot/ir_markers_pose" />
+    <remap from="ir_markers_pose" to="/puffin_pilot/ir_markers_pose" />
   </node>
 
   <!-- Odometry -->

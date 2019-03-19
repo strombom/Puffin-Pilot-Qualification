@@ -290,6 +290,7 @@ int measure_ir_count = -1;
 
 void ir_trig_callback(const std_msgs::Bool trig)
 {
+    ROS_INFO("Odom: Measure IR markers start.");
     measure_ir_count = 0;
     printf("Odom: Measure IR markers start!\n");
 }
@@ -298,9 +299,17 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
 {
     ROS_INFO_ONCE("Odometry got first IR marker pose message.");
 
+    if (!imu_filter_initialized) {
+        return;
+    }
+
     tf2::Vector3 new_position(msg.pose.position.x,
                               msg.pose.position.y,
                               msg.pose.position.z);
+
+    static tf2::Vector3 previous_position;
+
+    //printf("ir % 7.2f % 7.2f % 7.2f\n", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
 
     if (!ir_odometer_initialized) {
         ir_odometer_state.timestamp = msg.header.stamp;
@@ -308,16 +317,22 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
         ir_odometer_state.velocity  = tf2::Vector3(0, 0, 0);
         ir_odometer_state.valid     = false;
         ir_odometer_initialized     = true;
+        previous_position = new_position;
         return;
     }
 
-    if (measure_ir_count < 0) {
+    if (measure_ir_count == -2) {
         return;
     }
-    measure_ir_count++;
-    if (measure_ir_count < 5) {
-        return;
+    //if (measure_ir_count < 0) {
+    //    return;
+    //}
+    if (measure_ir_count >= 0) {
+        measure_ir_count++;
     }
+    //if (measure_ir_count < 3) {
+    //    return;
+    //}
 
     double delta_time = (msg.header.stamp - ir_odometer_state.timestamp).toSec();
     if (delta_time <= 0) {
@@ -325,7 +340,7 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
         return;
     }
 
-    static const float max_ir_odom_interval = 0.06;
+    static const float max_ir_odom_interval = 0.04;
     if (delta_time > max_ir_odom_interval) {
         // Too far between pose callbacks.
         ir_odometer_state.valid    = false;
@@ -333,14 +348,17 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
         ir_odometer_state.velocity = (new_position - ir_odometer_state.position) / delta_time;
         ir_odometer_state.valid    = true;
 
-        //imu_state.velocity = (ir_odometer_state.velocity + 7 * imu_state.velocity) / 8;
-        //imu_state.position = (ir_odometer_state.position + 3 * imu_state.position) / 4;
-        imu_state.velocity = ir_odometer_state.velocity;
-        imu_state.position = ir_odometer_state.position;
+        imu_state.velocity = (ir_odometer_state.velocity + 15 * imu_state.velocity) / 16;
+        imu_state.position = (ir_odometer_state.position + 7 * imu_state.position) / 8;
+        //imu_state.velocity = ir_odometer_state.velocity;
+        //imu_state.position = ir_odometer_state.position;
 
-        ir_ok_node.publish(true);
-        measure_ir_count = -1;
-        printf("Odom: Measure IR markers done!\n");
+
+        if (measure_ir_count > 5) {
+            ir_ok_node.publish(true);
+            measure_ir_count = -1;
+            printf("Odom: Measure IR markers done!\n");
+        }
     }
 
     ir_odometer_state.timestamp = msg.header.stamp;
