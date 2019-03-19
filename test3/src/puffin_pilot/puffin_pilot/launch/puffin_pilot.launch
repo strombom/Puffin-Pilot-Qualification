@@ -76,7 +76,6 @@
     <!-- Input -->
 
     <remap from="odometry" to="/puffin_pilot/odometry" />
-    <!--remap from="odometry" to="/puffin_pilot/odometry" /-->
     <remap from="roll_pitch_yawrate_thrust" to="/puffin_pilot/roll_pitch_yawrate_thrust" />
 
     <!-- Output -->

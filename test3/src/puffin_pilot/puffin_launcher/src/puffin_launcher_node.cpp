@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     ros::Rate loop_rate(1);
     loop_rate.sleep();
     loop_rate.sleep();
-    
+    /*
     loop_rate.sleep();
     loop_rate.sleep();
     loop_rate.sleep();
@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     loop_rate.sleep();
     loop_rate.sleep();
     loop_rate.sleep();
-    
+    */
 
     ROS_INFO("RateThrustController launching.");
     rate_thrust_msg.angular_rates.y = 1;

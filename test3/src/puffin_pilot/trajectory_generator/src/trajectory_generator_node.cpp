@@ -37,7 +37,7 @@ vector<double> pace_note_velocities;
 vector<long> pace_note_measure_ir;
 double pace_note_velocity = 0.0;
 
-static const double v_max = 30.0; //22.0;
+static const double v_max = 20.0; //22.0;
 static const double a_max = 37.0; //35.0;
 static const double j_max = 10.0;
 
@@ -173,7 +173,7 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     } else {
         v_max_offset = pace_note_velocity;
         //velocity_offset = pace_note_velocity;
-        if (look_ahead_offset < 37) {
+        if (look_ahead_offset < 47) {
             look_ahead_offset++;
         }
     }
@@ -325,28 +325,30 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
 
     std::vector<double> segment_times;
     segment_times = estimate_segment_times(vertices, v_max, a_max);
+    segment_times[0] *= 0.6;
+    segment_times[segment_times.size()-1] *= 0.6;
 
     printf("segment times: ");
     for (int j = 0; j < segment_times.size(); j++) {
         printf(" % 7.2f", segment_times[j]);
-        segment_times[j] *= 4.0;
+        segment_times[j] *= 2.4;
     }
     printf("\n");
 
     NonlinearOptimizationParameters parameters;
-    parameters.max_iterations = 50;
+    parameters.max_iterations = 100;
     //parameters.f_rel = -1;
     //parameters.time_penalty = 500.0;
-    parameters.use_soft_constraints = false;
+    parameters.use_soft_constraints = true;
     //parameters.initial_stepsize_rel = 0.1;
     parameters.time_alloc_method = NonlinearOptimizationParameters::kMellingerOuterLoop;
     parameters.algorithm = nlopt::LD_LBFGS;
     //parameters.time_alloc_method = NonlinearOptimizationParameters::kSquaredTimeAndConstraints;
     //parameters.algorithm = nlopt::LN_BOBYQA;
-    parameters.print_debug_info = false;
-    parameters.print_debug_info_time_allocation = false;
+    parameters.print_debug_info = true;
+    parameters.print_debug_info_time_allocation = true;
 
-    const int N = 8;
+    const int N = 6;
     PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
     opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
     opt.addMaximumMagnitudeConstraint(derivative_order::VELOCITY, v_max);
@@ -368,6 +370,17 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
     // Waypoints
     sampling_interval = 0.0078;
     mav_trajectory_generation::sampleWholeTrajectory(trajectory, sampling_interval, &waypoints);
+
+    /*
+    double m = 0;
+    for (int i = 0; i < waypoints.size(); i++) {
+        if (waypoints[i].velocity_W.y() > m) {
+            m = waypoints[i].velocity_W.y();
+        }
+        //printf(" wp %d  % 7.2f % 7.2f % 7.2f\n", i, waypoints[i].velocity_W.x(), waypoints[i].velocity_W.y(), waypoints[i].velocity_W.z());
+    }
+    printf("maaaaaaaaaaaaaaaaaaaaaaaaaaaaaaax %f\n", m);
+    */
 
     has_waypoints = true;
 }

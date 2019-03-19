@@ -50,9 +50,17 @@ void dyn_config_callback(rate_thrust_controller::RateThrustControllerConfig &con
     d_gain_pitch = config.d_gain_pitch;
 }
 
+//void rollPitchYawrateThrustCallback(const mav_msgs::RateThrust& msg)
 void rollPitchYawrateThrustCallback(const mav_msgs::RollPitchYawrateThrust& msg)
 {
     ROS_INFO_ONCE("RateThrustController got first roll-pitch-yawrate-thrust message.");
+
+    /*
+    roll_pitch_yawthrust.roll = msg.angular_rates.x;
+    roll_pitch_yawthrust.pitch = msg.angular_rates.y;
+    roll_pitch_yawthrust.yaw_rate = msg.angular_rates.z;
+    roll_pitch_yawthrust.thrust = msg.thrust;
+    */
 
     roll_pitch_yawthrust = msg;
 
