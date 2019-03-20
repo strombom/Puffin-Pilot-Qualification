@@ -507,8 +507,8 @@ void init_gates(void)
     waypoints_yaw[13] += 0.4; // Between gate 5 and 6
 
     waypoints_yaw[17] += 0.4; // Between gate 7 and 8
-    waypoints_yaw[17] += 0.4; // Between gate 7 and 8
-    waypoints_yaw[18] += 0.3; // Between gate 7 and 8
+    waypoints_yaw[17] += 0.3; // Between gate 7 and 8
+    waypoints_yaw[18] += 0.0; // Between gate 7 and 8
 
     waypoints_yaw[21] -= 0.4; // Between gate 9 and 10
     waypoints_yaw[22] -= 0.1; // Between gate 9 and 10

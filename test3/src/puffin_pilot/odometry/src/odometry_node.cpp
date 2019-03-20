@@ -416,6 +416,7 @@ int main(int argc, char** argv)
     //puffin_odometry_mpc_vel_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_mpc_vel", 1);
     
     // REMOVE!!!
+    /*
     geometry_msgs::TransformStamped tf_nest;
     tf_nest.header.stamp = ros::Time::now();
     tf_nest.header.frame_id = "puffin_nest";
@@ -429,6 +430,7 @@ int main(int argc, char** argv)
     tf_nest.transform.rotation.w = 1;
     static tf2_ros::StaticTransformBroadcaster tf_static_broadcaster;
     tf_static_broadcaster.sendTransform(tf_nest);
+    */
 
 
     ros::spin();

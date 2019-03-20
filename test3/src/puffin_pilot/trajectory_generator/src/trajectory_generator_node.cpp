@@ -171,7 +171,8 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
             }
         }
     }
-
+    
+    /*
     Eigen::Vector3d delta_p = odometry.position_W - waypoints[waypoint_idx].position_W;
     
     if (delta_p.norm() > 1.0) {
@@ -187,7 +188,7 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
         for (int i = waypoint_idx; i > max(0, waypoint_idx - 500); i--) {
             waypoints[i].position_W += delta_p;   
         }
-    }
+    }*/
     
 
     Eigen::Vector3d delta_position = odometry.position_W - waypoints[waypoint_idx].position_W;
