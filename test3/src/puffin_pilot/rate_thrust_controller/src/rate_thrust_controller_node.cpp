@@ -64,6 +64,10 @@ void rollPitchYawrateThrustCallback(const mav_msgs::RollPitchYawrateThrust& msg)
 
     roll_pitch_yawthrust = msg;
 
+    if (roll_pitch_yawthrust.pitch > 0.7) {
+        roll_pitch_yawthrust.pitch = 0.7 + (roll_pitch_yawthrust.pitch - 0.7) * 1.85;
+    }
+
     got_first_rpyt_command = true;
 }
 

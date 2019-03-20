@@ -239,7 +239,7 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     // Update state.
     StateEstimate state_new;
     state_new.timestamp = msg->header.stamp;
-    state_new.velocity  = imu_state.velocity + delta_time * (acceleration - gravity);
+    state_new.velocity  = imu_state.velocity + delta_time * (acceleration - gravity) * 1.009;
     state_new.position  = imu_state.position + delta_time * (state_new.velocity);
 
     // Save new state.
@@ -290,9 +290,8 @@ int measure_ir_count = -1;
 
 void ir_trig_callback(const std_msgs::Bool trig)
 {
-    ROS_INFO("Odom: Measure IR markers start.");
+    //ROS_INFO("Odom: Measure IR markers start.");
     measure_ir_count = 0;
-    printf("Odom: Measure IR markers start!\n");
 }
 
 void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
@@ -348,16 +347,15 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
         ir_odometer_state.velocity = (new_position - ir_odometer_state.position) / delta_time;
         ir_odometer_state.valid    = true;
 
-        imu_state.velocity = (ir_odometer_state.velocity + 15 * imu_state.velocity) / 16;
-        imu_state.position = (ir_odometer_state.position + 7 * imu_state.position) / 8;
+        imu_state.velocity = (ir_odometer_state.velocity + 31 * imu_state.velocity) / 32;
+        imu_state.position = (ir_odometer_state.position + 15 * imu_state.position) / 16;
         //imu_state.velocity = ir_odometer_state.velocity;
         //imu_state.position = ir_odometer_state.position;
 
-
-        if (measure_ir_count > 5) {
+        if (measure_ir_count > 15) {
             ir_ok_node.publish(true);
             measure_ir_count = -1;
-            printf("Odom: Measure IR markers done!\n");
+            //printf("Odom: Measure IR markers done!\n");
         }
     }
 

@@ -118,116 +118,139 @@ void publish_pace_note(int gate_idx)
     vector<long> measure_ir;
 
     if (gate_idx == 0) {
-        /*
-        timestamps.push_back(0.0);
-        velocities.push_back(0.0);
+        timestamps.push_back(1.0);
+        velocities.push_back(23.0);
         measure_ir.push_back(0);
-        timestamps.push_back(0.5);
-        velocities.push_back(0.0);
+        /*
+        timestamps.push_back(3.0);
+        velocities.push_back(20.0);
         measure_ir.push_back(0);
         */
-        /*
-        timestamps.push_back(1.5);
-        velocities.push_back(-20.0);
-        measure_ir.push_back(0);*/
-        /*timestamps.push_back(2.2);
-        velocities.push_back(-8.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(3.5);
-        velocities.push_back(-5.0);
-        measure_ir.push_back(0);*/
-        timestamps.push_back(3.0);
-        velocities.push_back(0.0);
-        measure_ir.push_back(0);
 
     } else if (gate_idx == 1) {
-        timestamps.push_back(0.0);
-        velocities.push_back(0.0);
-        measure_ir.push_back(1);
-
+        timestamps.push_back(1.0);
+        velocities.push_back(23.0);
+        measure_ir.push_back(0);
         timestamps.push_back(2.0);
-        velocities.push_back(-0.0);
+        velocities.push_back(26.0);
         measure_ir.push_back(0);
 
-        timestamps.push_back(2.5);
-        velocities.push_back(0.0);
+        /*
+        timestamps.push_back(2.2);
+        velocities.push_back(20.0);
         measure_ir.push_back(1);
-
-        timestamps.push_back(3.0);
-        velocities.push_back(0.0);
-        measure_ir.push_back(0);
+        */
+        //timestamps.push_back(2.0);
+        //velocities.push_back(20.0);
+        //measure_ir.push_back(1);
 
     } else if (gate_idx == 2) {
-        timestamps.push_back(0.5);
-        velocities.push_back(-0.0);
+        timestamps.push_back(0.0);
+        velocities.push_back(24.0);
         measure_ir.push_back(0);
         timestamps.push_back(1.0);
-        velocities.push_back(-0.0);
-        measure_ir.push_back(0);
-        timestamps.push_back(2.0);
-        velocities.push_back(-0.0);
-        measure_ir.push_back(0);
+        velocities.push_back(15.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(1.5);
+        velocities.push_back(15.0);
+        measure_ir.push_back(1);
+
+        //timestamps.push_back(3.0);
+        //velocities.push_back(20.0);
+        //measure_ir.push_back(0);
 
     } else if (gate_idx == 3) {
         timestamps.push_back(0.0);
-        velocities.push_back(-5.0);
-        measure_ir.push_back(0);
+        velocities.push_back(15.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(1.0);
+        velocities.push_back(15.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(1.5);
+        velocities.push_back(15.0);
+        measure_ir.push_back(1);
 
     } else if (gate_idx == 4) {
         timestamps.push_back(0.0);
-        velocities.push_back(0.0);
+        velocities.push_back(20.0);
         measure_ir.push_back(0);
-        /*
-        timestamps.push_back(0.5);
-        velocities.push_back(-5.0);
-        measure_ir.push_back(0);
-        timestamps.push_back(0.0);
-        velocities.push_back(0.0);
-        measure_ir.push_back(0);
-        timestamps.push_back(1.5);
-        velocities.push_back(0.0);
-        measure_ir.push_back(0);
-        */
+        timestamps.push_back(1.2);
+        velocities.push_back(18.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(1.8);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
 
     } else if (gate_idx == 5) {
         timestamps.push_back(0.0);
-        velocities.push_back(-0.0);
-        measure_ir.push_back(0);
-        timestamps.push_back(0.2);
-        velocities.push_back(-0.0);
-        measure_ir.push_back(0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(0.5);
+        velocities.push_back(19.0);
+        measure_ir.push_back(1);
+
 
     } else if (gate_idx == 6) {
         timestamps.push_back(0.0);
-        velocities.push_back(-10.0);
+        velocities.push_back(17.0);
         measure_ir.push_back(0);
         timestamps.push_back(1.0);
-        velocities.push_back(-10.0);
+        velocities.push_back(18.0);
         measure_ir.push_back(0);
-        timestamps.push_back(1.5);
-        velocities.push_back(-5.0);
-        measure_ir.push_back(0);
+
 
     } else if (gate_idx == 7) {
         timestamps.push_back(0.0);
-        velocities.push_back(-0.0);
+        velocities.push_back(20.0);
         measure_ir.push_back(0);
+
 
     } else if (gate_idx == 8) {
-        timestamps.push_back(0.5);
-        velocities.push_back(0.0);
+        timestamps.push_back(0.0);
+        velocities.push_back(19.0);
         measure_ir.push_back(0);
+        timestamps.push_back(0.3);
+        velocities.push_back(18.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(0.8);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(1.0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(0);
+        timestamps.push_back(1.2);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
 
     } else if (gate_idx == 9) {
+        timestamps.push_back(0.0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+
         timestamps.push_back(1.0);
-        velocities.push_back(0.0);
-        measure_ir.push_back(0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+
+        timestamps.push_back(1.5);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+
+        timestamps.push_back(2.0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
 
     } else if (gate_idx == 10) {
         timestamps.push_back(0.0);
-        velocities.push_back(0.0);
+        velocities.push_back(20.0);
         measure_ir.push_back(1);
 
+        timestamps.push_back(0.5);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+
+        timestamps.push_back(1.0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
     }
     
     puffin_pilot::PaceNote pn_msg;
@@ -278,12 +301,15 @@ void publish_gate_info(int gate_idx)
     ir_markers.data = gate_corners_data;
 
     puffin_pilot::GateInfo gate_info;
-    gate_info.gate_name.data = gates[gate_idx].name.c_str();
+    //if (gate_idx == 7) {
+    //    gate_info.gate_name.data = "nono";
+    //} else {
+        gate_info.gate_name.data = gates[gate_idx].name.c_str();
+    //}
     gate_info.ir_markers = ir_markers;
     gate_info.header.stamp = ros::Time::now();
     gate_info.header.frame_id = "1";
     pub_gate_info.publish(gate_info);
-    ROS_INFO("Pace notes gate info sent %d.", gate_idx);
 }
 
 void publish_waypoints(void)
@@ -428,15 +454,15 @@ void init_gates(void)
     }
 
     static const double waypoints_adjustment[26][3] = {{  0.0,   0.0,   0.0},
-                                                       {  0.0,   0.0,   0.2},
+                                                       {  0.0,  -1.0,   0.2},
                                                        {  0.0,   0.0,   0.0}, // gate 0
-                                                       {  0.6,  0.0,   0.5},
-                                                       { -1.0,   1.5,   0.2}, // gate 1
-                                                       { -6.5,   0.0,   0.0},
+                                                       {  0.6,   0.0,   0.0},
+                                                       { -1.4,   1.0,   0.2}, // gate 1
+                                                       { -6.5,   1.0,   0.0},
                                                        {  0.0,   0.0,   1.0}, // gate 2
-                                                       {  0.0,   3.0,   1.0},
-                                                       {  0.1,   0.0,   0.2}, // gate 3
-                                                       { -3.0,  -2.0,   2.5},
+                                                       {  0.0,   1.5,   0.5},
+                                                       { -0.2,  -1.0,   0.2}, // gate 3
+                                                       { -2.5,  -1.0,   2.5},
                                                        {  0.0,   0.0,   0.0}, // gate 4
                                                        { -1.0,  -0.5,   1.7},
                                                        {  0.0,   0.0,   1.0}, // gate 5
@@ -444,12 +470,12 @@ void init_gates(void)
                                                        {  0.0,   0.0,   0.0}, // gate 6
                                                        {  0.0,  -2.0,   1.2},
                                                        {  0.0,  -1.0,   1.0}, // gate 7
-                                                       {  2.2,  -2.0,   1.9},
-                                                       { -1.2,   2.0,   1.0}, // gate 8
-                                                       { -2.0,  -2.0,   2.5},
+                                                       {  0.0,  -2.0,   1.9},
+                                                       { -0.8,   2.0,   1.0}, // gate 8
+                                                       { -3.0,  -1.0,   2.5},
                                                        {  0.0,  -1.5,   0.0}, // gate 9
-                                                       {  0.0,  -5.0,   0.5},
-                                                       { -0.3,   0.0,   0.0}, // gate 10
+                                                       {  0.0,  -0.0,   1.0},
+                                                       {  0.0,   0.0,   0.0}, // gate 10
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0}};
@@ -476,6 +502,17 @@ void init_gates(void)
                waypoints_yaw[wp_idx]);
     }
     waypoints_yaw[waypoints_pos.size()-1] = 7.81;
+
+    waypoints_yaw[12] += 0.4; // Between gate 5 and 6
+    waypoints_yaw[13] += 0.4; // Between gate 5 and 6
+
+    waypoints_yaw[17] += 0.4; // Between gate 7 and 8
+    waypoints_yaw[17] += 0.4; // Between gate 7 and 8
+    waypoints_yaw[18] += 0.3; // Between gate 7 and 8
+
+    waypoints_yaw[21] -= 0.4; // Between gate 9 and 10
+    waypoints_yaw[22] -= 0.1; // Between gate 9 and 10
+
 
     for (int wp_idx = 0; wp_idx < waypoints_vel.size() - 1; wp_idx++) {
         waypoints_vel[wp_idx] = (waypoints_pos[wp_idx + 1] - waypoints_pos[wp_idx]).normalized();
