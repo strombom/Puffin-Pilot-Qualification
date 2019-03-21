@@ -41,8 +41,7 @@ std::vector<double> initial_pose;
 
 ros::Publisher ir_ok_node;
 ros::Publisher puffin_odometry_node;
-ros::Publisher puffin_odometry_gt_out_node;
-//ros::Publisher puffin_odometry_mpc_vel_node;
+//ros::Publisher puffin_odometry_gt_out_node;
 
 bool measure_ir = false;
 
@@ -55,7 +54,7 @@ tf2::Quaternion look_at_quaternion(tf2::Vector3 direction)
     return tf2::Quaternion(rot_axis.x(), rot_axis.y(), rot_axis.z(), dot+1);
 }
 
-
+/*
 void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     ROS_INFO_ONCE("Odometry got first OdometryGT message.");
     
@@ -97,75 +96,11 @@ void odometry_gt_callback(const nav_msgs::OdometryConstPtr& odom_gt_msg) {
     }
 
     puffin_odometry_gt_out_node.publish(odom);
-
-    // Broadcast new state.
-    /*
-    geometry_msgs::TransformStamped tf_imu_mpc;
-    tf_imu_mpc.header.stamp = odom_gt_msg->header.stamp;
-    tf_imu_mpc.header.frame_id = "puffin_nest";
-    tf_imu_mpc.child_frame_id  = "puffin_imu_mpc";
-    tf_imu_mpc.transform.translation.x = position.x();
-    tf_imu_mpc.transform.translation.y = position.y();
-    tf_imu_mpc.transform.translation.z = position.z();
-    tf_imu_mpc.transform.rotation.w    = orientation.w();
-    tf_imu_mpc.transform.rotation.x    = orientation.x();
-    tf_imu_mpc.transform.rotation.y    = orientation.y();
-    tf_imu_mpc.transform.rotation.z    = orientation.z();
-    static tf2_ros::TransformBroadcaster tf_broadcaster;
-    tf_broadcaster.sendTransform(tf_imu_mpc);
-
-    orientation = look_at_quaternion(linear);
-    odom.pose.pose.orientation.w = orientation.w();
-    odom.pose.pose.orientation.x = orientation.x();
-    odom.pose.pose.orientation.y = orientation.y();
-    odom.pose.pose.orientation.z = orientation.z();
-    puffin_odometry_mpc_vel_node.publish(odom);
-    */
-
 }
+*/
 
 void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     ROS_INFO_ONCE("Odometry got first IMU message.");
-
-
-    //static tf2::Quaternion orientation  = tf2::Quaternion(qx, qy, qz, qw);
-    
-
-
-
-/*
-    static tf2::Vector3 position_old;
-    static tf2::Quaternion orientation_old;
-
-    tf2::Vector3 position_new = tf2::Vector3(transformStamped.transform.translation.x,
-                                    transformStamped.transform.translation.y,
-                                    transformStamped.transform.translation.z);
-    tf2::Quaternion orientation_new = tf2::Quaternion(transformStamped.transform.rotation.x,
-                                          transformStamped.transform.rotation.y,
-                                          transformStamped.transform.rotation.z,
-                                          transformStamped.transform.rotation.w);
-
-
-    if (!imu_filter_initialized) {
-        position_old = position_new;
-        orientation_old = orientation_new;
-        imu_filter_initialized = true;
-        return;
-    }
-
-    tf2::Vector3 velocity = position_new - position_old;
-    position_old = position_new;
-
-    tf2::Quaternion angular_velocity = orientation_new - orientation_old.inverse();
-    orientation_old = orientation_new;
-
-    static tf2::Vector3 angular_velocity = tf2::Vector3(0, 0, 0);
-
-    tf2::Matrix3x3 m(q);
-    double roll_vel, pitch_vel, yaw_vel;
-    m.getRPY(roll_vel, pitch_vel, yaw_vel);
-*/
-
 
     if (!imu_filter_initialized) {
         // First timestamp.
@@ -213,26 +148,6 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     }
 
     tf2::Quaternion orientation  = tf2::Quaternion(qx, qy, qz, qw);
-
-    /*
-    static const float max_ir_odom_interval = 0.10;
-    double ir_delta_time = (msg->header.stamp - ir_odometer_state.timestamp).toSec();
-    if (ir_delta_time < max_ir_odom_interval && ir_odometer_state.valid) {
-        // Has IR marker odometry.
-
-        static const int kv = 800;
-        static const int kp = 500;
-
-
-        imu_state.velocity = (ir_odometer_state.velocity + (kv - 1) * imu_state.velocity) / kv;
-        imu_state.position = (ir_odometer_state.position + (kp - 1) * imu_state.position) / kp;
-        //printf("update IR %f\n", ir_delta_time);
-    } else {
-
-        //printf("update IR not\n");
-    }
-    */
-
     
     tf2::Vector3 acceleration = tf2::Transform(orientation) * tf2::Vector3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
 
@@ -308,8 +223,6 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
 
     static tf2::Vector3 previous_position;
 
-    //printf("ir % 7.2f % 7.2f % 7.2f\n", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
-
     if (!ir_odometer_initialized) {
         ir_odometer_state.timestamp = msg.header.stamp;
         ir_odometer_state.position  = new_position;
@@ -323,15 +236,9 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
     if (measure_ir_count == -2) {
         return;
     }
-    //if (measure_ir_count < 0) {
-    //    return;
-    //}
     if (measure_ir_count >= 0) {
         measure_ir_count++;
     }
-    //if (measure_ir_count < 3) {
-    //    return;
-    //}
 
     double delta_time = (msg.header.stamp - ir_odometer_state.timestamp).toSec();
     if (delta_time <= 0) {
@@ -349,42 +256,15 @@ void ir_marker_odometry_callback(const geometry_msgs::PoseStamped& msg)
 
         imu_state.velocity = (ir_odometer_state.velocity + 31 * imu_state.velocity) / 32;
         imu_state.position = (ir_odometer_state.position + 15 * imu_state.position) / 16;
-        //imu_state.velocity = ir_odometer_state.velocity;
-        //imu_state.position = ir_odometer_state.position;
 
         if (measure_ir_count > 15) {
             ir_ok_node.publish(true);
             measure_ir_count = -1;
-            //printf("Odom: Measure IR markers done!\n");
         }
     }
 
     ir_odometer_state.timestamp = msg.header.stamp;
     ir_odometer_state.position  = new_position;
-
-
-    /*
-
-    printf("newpos\n");
-
-    tf2::Vector3 new_velocity = (new_position - ir_odometer_state.position) / delta_time;
-    
-    // Update state.
-    imu_state.velocity = (new_velocity + 39 * imu_state.velocity) / 40;
-    imu_state.position = (new_position + 19 * imu_state.position) / 20;
-
-    if (use_madgwick) {
-        imu_orientation_filter_madgwick.setOrientation(msg.pose.orientation.w, 
-                                                       msg.pose.orientation.x, 
-                                                       msg.pose.orientation.y, 
-                                                       msg.pose.orientation.z);
-    } else {
-        imu_orientation_filter_valenti.setOrientation( msg.pose.orientation.w, 
-                                                       msg.pose.orientation.x, 
-                                                       msg.pose.orientation.y, 
-                                                       msg.pose.orientation.z);
-    }
-    */
 }
 
 int main(int argc, char** argv)
@@ -406,17 +286,15 @@ int main(int argc, char** argv)
     ros::NodeHandle subscriber_node;
     ros::Subscriber imu_callback_node         = subscriber_node.subscribe("imu",             1, &uav_imu_callback,            ros::TransportHints().tcpNoDelay());
     ros::Subscriber irodom_callback_node      = subscriber_node.subscribe("ir_markers_pose", 1, &ir_marker_odometry_callback, ros::TransportHints().tcpNoDelay());
-    ros::Subscriber odometry_gt_callback_node = subscriber_node.subscribe("odometry_gt_in",  1, &odometry_gt_callback,        ros::TransportHints().tcpNoDelay());
     ros::Subscriber ir_trig_callback_node     = subscriber_node.subscribe("ir_trig",         1, &ir_trig_callback,            ros::TransportHints().tcpNoDelay());
+    //ros::Subscriber odometry_gt_callback_node = subscriber_node.subscribe("odometry_gt_in",  1, &odometry_gt_callback,        ros::TransportHints().tcpNoDelay());
    
     ros::NodeHandle publisher_node;
     ir_ok_node                  = publisher_node.advertise<std_msgs::Bool>("ir_ok", 1, false);
     puffin_odometry_node        = publisher_node.advertise<nav_msgs::Odometry>("odometry",        1);
-    puffin_odometry_gt_out_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
-    //puffin_odometry_mpc_vel_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_mpc_vel", 1);
-    
-    // REMOVE!!!
-    /*
+    //puffin_odometry_gt_out_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
+
+    // REMOVE!!!    
     geometry_msgs::TransformStamped tf_nest;
     tf_nest.header.stamp = ros::Time::now();
     tf_nest.header.frame_id = "puffin_nest";
@@ -430,9 +308,7 @@ int main(int argc, char** argv)
     tf_nest.transform.rotation.w = 1;
     static tf2_ros::StaticTransformBroadcaster tf_static_broadcaster;
     tf_static_broadcaster.sendTransform(tf_nest);
-    */
-
-
+    
     ros::spin();
     return 0;
 }

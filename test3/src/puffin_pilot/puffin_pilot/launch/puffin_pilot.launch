@@ -30,28 +30,26 @@
   <node name="odometry_node" pkg="odometry" type="odometry_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
     <remap from="imu"             to="/uav/sensors/imu" />
-    <remap from="ir_markers_pose" to="/puffin_pilot/ir_markers_pose" />
-    <remap from="odometry_gt_in"  to="/uav/sensors/odom" />
     <remap from="ir_trig"         to="/puffin_pilot/ir_trig" />
+    <remap from="ir_markers_pose" to="/puffin_pilot/ir_markers_pose" />
 
     <!-- Output  -->
     <remap from="ir_ok"           to="/puffin_pilot/ir_ok" />
     <remap from="odometry"        to="/puffin_pilot/odometry" />
-    <remap from="odometry_gt_out" to="/puffin_pilot/odometry_gt" />
   </node>
 
   <!-- Trajectory generation -->
   <node name="trajectory_generator_node" pkg="trajectory_generator" type="trajectory_generator_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
+    <remap from="ir_ok"        to="/puffin_pilot/ir_ok" />
     <remap from="odometry"     to="/puffin_pilot/odometry" />
     <remap from="pace_note"    to="/puffin_pilot/pace_note" />
     <remap from="waypoints"    to="/puffin_pilot/waypoints" />
-    <remap from="ir_ok"        to="/puffin_pilot/ir_ok" />
 
     <!-- Output -->
+    <remap from="ir_trig"      to="/puffin_pilot/ir_trig" />
     <remap from="odometry_mpc" to="/puffin_pilot/odometry_mpc" />
     <remap from="trajectory"   to="/puffin_pilot/trajectory_mpc" />
-    <remap from="ir_trig"      to="/puffin_pilot/ir_trig" />
   </node>
 
   <!-- Control Angle+Thrust -->
@@ -93,5 +91,4 @@
     <!-- Output -->
     <remap from="rate_thrust" to="/uav/input/rateThrust" />
   </node>
-
 </launch>

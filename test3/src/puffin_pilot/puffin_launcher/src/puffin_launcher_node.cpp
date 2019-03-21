@@ -10,7 +10,6 @@ bool received_ir_beacons = false;
 
 void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_array)
 {
-    ROS_INFO_ONCE("Puffin launcher received first IR marker array message.");
     received_ir_beacons = true;
 }
 
@@ -41,7 +40,7 @@ int main(int argc, char** argv)
     rate_thrust_msg.thrust.y = 0;
     rate_thrust_msg.thrust.z = 0;
 
-    ROS_INFO("RateThrustController launching.");
+    ROS_INFO("Puffin pilot launcher launching.");
     rate_thrust_msg.angular_rates.y = 1;
     rate_thrust_msg.thrust.z = 11;
     rate_thrust_msg.header.stamp = ros::Time::now();

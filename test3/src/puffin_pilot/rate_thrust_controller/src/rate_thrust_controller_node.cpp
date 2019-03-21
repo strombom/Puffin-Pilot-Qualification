@@ -50,27 +50,29 @@ void dyn_config_callback(rate_thrust_controller::RateThrustControllerConfig &con
     d_gain_pitch = config.d_gain_pitch;
 }
 
-//void rollPitchYawrateThrustCallback(const mav_msgs::RateThrust& msg)
 void rollPitchYawrateThrustCallback(const mav_msgs::RollPitchYawrateThrust& msg)
 {
     ROS_INFO_ONCE("RateThrustController got first roll-pitch-yawrate-thrust message.");
 
-    /*
-    roll_pitch_yawthrust.roll = msg.angular_rates.x;
-    roll_pitch_yawthrust.pitch = msg.angular_rates.y;
-    roll_pitch_yawthrust.yaw_rate = msg.angular_rates.z;
-    roll_pitch_yawthrust.thrust = msg.thrust;
-    */
+    double k;
+
+    static ros::Time first_time = ros::Time::now();
+    if ((ros::Time::now() - first_time).toSec() < 0.3) {
+        k = 1.7;
+    } else if ((ros::Time::now() - first_time).toSec() < 7.0) {
+        k = 2.1;
+    } else {
+        k = 1.85;
+    }
 
     roll_pitch_yawthrust = msg;
 
     if (roll_pitch_yawthrust.pitch > 0.7) {
-        roll_pitch_yawthrust.pitch = 0.7 + (roll_pitch_yawthrust.pitch - 0.7) * 1.85;
+        roll_pitch_yawthrust.pitch = 0.7 + (roll_pitch_yawthrust.pitch - 0.7) * k;
     }
 
     got_first_rpyt_command = true;
 }
-
 
 void OdometryCallback(const nav_msgs::Odometry& msg)
 {
@@ -207,20 +209,4 @@ int main(int argc, char** argv)
     last_odometry_callback = ros::Time::now();
 
     ros::spin();
-
-    ros::Rate loop_rate(1000);
-    while (ros::ok()) {
-
-        double delta_time = (ros::Time::now() - last_odometry_callback).toSec();
-        if (delta_time > 1.0) {
-            ROS_INFO("RateThrustController launching.");
-            last_odometry_callback = ros::Time::now();
-            rate_thrust_msg.thrust.z = 10;
-            rate_thrust_msg.header.stamp = ros::Time::now();
-            rate_thrust_node.publish(rate_thrust_msg);
-        }
-
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
 }

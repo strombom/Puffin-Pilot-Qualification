@@ -41,76 +41,6 @@ ros::Publisher pub_gate_info;
 ros::Publisher pub_pace_note;
 ros::Publisher pub_waypoints;
 
-void publish_gate_markers(void)
-{
-    visualization_msgs::Marker gates_marker;
-    gates_marker.header.frame_id = "world";
-    gates_marker.header.stamp = ros::Time();
-    gates_marker.ns = "pace_notes";
-    gates_marker.id = 0;
-    gates_marker.type = visualization_msgs::Marker::LINE_LIST;
-    gates_marker.action = visualization_msgs::Marker::ADD;
-    gates_marker.pose.position.x = 0;
-    gates_marker.pose.position.y = 0;
-    gates_marker.pose.position.z = 0;
-    gates_marker.pose.orientation.x = 0.0;
-    gates_marker.pose.orientation.y = 0.0;
-    gates_marker.pose.orientation.z = 0.0;
-    gates_marker.pose.orientation.w = 1.0;
-    gates_marker.scale.x = 0.1;
-    gates_marker.color.a = 1.0;
-    gates_marker.color.r = 0.0;
-    gates_marker.color.g = 1.0;
-    gates_marker.color.b = 0.0;
-    for (int gate_idx = 0; gate_idx < gates.size(); gate_idx++) {
-        for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
-            geometry_msgs::Point p1;
-            p1.x = gates[gate_idx].corners[corner_idx].x();
-            p1.y = gates[gate_idx].corners[corner_idx].y();
-            p1.z = gates[gate_idx].corners[corner_idx].z();
-            gates_marker.points.push_back(p1);
-
-            geometry_msgs::Point p2;
-            p2.x = gates[gate_idx].corners[(corner_idx+1)%4].x();
-            p2.y = gates[gate_idx].corners[(corner_idx+1)%4].y();
-            p2.z = gates[gate_idx].corners[(corner_idx+1)%4].z();
-            gates_marker.points.push_back(p2);
-        }
-    }
-    vis_pub_gates.publish(gates_marker);
-
-
-    visualization_msgs::Marker waypoints_marker;
-    waypoints_marker.header.frame_id = "world";
-    waypoints_marker.header.stamp = ros::Time();
-    waypoints_marker.ns = "pace_notes";
-    waypoints_marker.id = 0;
-    waypoints_marker.type = visualization_msgs::Marker::SPHERE_LIST;
-    waypoints_marker.action = visualization_msgs::Marker::ADD;
-    waypoints_marker.pose.position.x = 0;
-    waypoints_marker.pose.position.y = 0;
-    waypoints_marker.pose.position.z = 0;
-    waypoints_marker.pose.orientation.x = 0.0;
-    waypoints_marker.pose.orientation.y = 0.0;
-    waypoints_marker.pose.orientation.z = 0.0;
-    waypoints_marker.pose.orientation.w = 1.0;
-    waypoints_marker.scale.x = 0.2;
-    waypoints_marker.scale.y = 0.2;
-    waypoints_marker.scale.z = 0.2;
-    waypoints_marker.color.a = 1.0;
-    waypoints_marker.color.r = 1.0;
-    waypoints_marker.color.g = 0.0;
-    waypoints_marker.color.b = 0.0;
-    for (int wp_idx = 0; wp_idx < waypoints_pos.size(); wp_idx++) {
-        geometry_msgs::Point p;
-        p.x = waypoints_pos[wp_idx].x();
-        p.y = waypoints_pos[wp_idx].y();
-        p.z = waypoints_pos[wp_idx].z();
-        waypoints_marker.points.push_back(p);
-    }
-    vis_pub_wp.publish(waypoints_marker);
-}
-
 void publish_pace_note(int gate_idx)
 {
     vector<double> timestamps;
@@ -121,28 +51,14 @@ void publish_pace_note(int gate_idx)
         timestamps.push_back(1.0);
         velocities.push_back(23.0);
         measure_ir.push_back(0);
-        /*
-        timestamps.push_back(3.0);
-        velocities.push_back(20.0);
-        measure_ir.push_back(0);
-        */
 
     } else if (gate_idx == 1) {
         timestamps.push_back(1.0);
-        velocities.push_back(23.0);
+        velocities.push_back(26.0);
         measure_ir.push_back(0);
         timestamps.push_back(2.0);
         velocities.push_back(26.0);
         measure_ir.push_back(0);
-
-        /*
-        timestamps.push_back(2.2);
-        velocities.push_back(20.0);
-        measure_ir.push_back(1);
-        */
-        //timestamps.push_back(2.0);
-        //velocities.push_back(20.0);
-        //measure_ir.push_back(1);
 
     } else if (gate_idx == 2) {
         timestamps.push_back(0.0);
@@ -155,10 +71,6 @@ void publish_pace_note(int gate_idx)
         velocities.push_back(15.0);
         measure_ir.push_back(1);
 
-        //timestamps.push_back(3.0);
-        //velocities.push_back(20.0);
-        //measure_ir.push_back(0);
-
     } else if (gate_idx == 3) {
         timestamps.push_back(0.0);
         velocities.push_back(15.0);
@@ -168,6 +80,9 @@ void publish_pace_note(int gate_idx)
         measure_ir.push_back(1);
         timestamps.push_back(1.5);
         velocities.push_back(15.0);
+        measure_ir.push_back(1);
+        timestamps.push_back(1.8);
+        velocities.push_back(20.0);
         measure_ir.push_back(1);
 
     } else if (gate_idx == 4) {
@@ -189,7 +104,6 @@ void publish_pace_note(int gate_idx)
         velocities.push_back(19.0);
         measure_ir.push_back(1);
 
-
     } else if (gate_idx == 6) {
         timestamps.push_back(0.0);
         velocities.push_back(17.0);
@@ -198,44 +112,36 @@ void publish_pace_note(int gate_idx)
         velocities.push_back(18.0);
         measure_ir.push_back(0);
 
-
     } else if (gate_idx == 7) {
         timestamps.push_back(0.0);
         velocities.push_back(20.0);
         measure_ir.push_back(0);
 
-
     } else if (gate_idx == 8) {
         timestamps.push_back(0.0);
-        velocities.push_back(19.0);
-        measure_ir.push_back(0);
-        timestamps.push_back(0.3);
-        velocities.push_back(18.0);
+        velocities.push_back(20.0);
         measure_ir.push_back(1);
         timestamps.push_back(0.8);
         velocities.push_back(20.0);
         measure_ir.push_back(1);
-        timestamps.push_back(1.0);
-        velocities.push_back(20.0);
-        measure_ir.push_back(0);
         timestamps.push_back(1.2);
         velocities.push_back(20.0);
         measure_ir.push_back(1);
 
     } else if (gate_idx == 9) {
-        timestamps.push_back(0.0);
+        timestamps.push_back(1.2);
         velocities.push_back(20.0);
         measure_ir.push_back(1);
 
-        timestamps.push_back(1.0);
-        velocities.push_back(20.0);
-        measure_ir.push_back(1);
-
-        timestamps.push_back(1.5);
+        timestamps.push_back(1.6);
         velocities.push_back(20.0);
         measure_ir.push_back(1);
 
         timestamps.push_back(2.0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+
+        timestamps.push_back(2.4);
         velocities.push_back(20.0);
         measure_ir.push_back(1);
 
@@ -249,6 +155,10 @@ void publish_pace_note(int gate_idx)
         measure_ir.push_back(1);
 
         timestamps.push_back(1.0);
+        velocities.push_back(20.0);
+        measure_ir.push_back(1);
+
+        timestamps.push_back(1.5);
         velocities.push_back(20.0);
         measure_ir.push_back(1);
     }
@@ -301,11 +211,7 @@ void publish_gate_info(int gate_idx)
     ir_markers.data = gate_corners_data;
 
     puffin_pilot::GateInfo gate_info;
-    //if (gate_idx == 7) {
-    //    gate_info.gate_name.data = "nono";
-    //} else {
-        gate_info.gate_name.data = gates[gate_idx].name.c_str();
-    //}
+    gate_info.gate_name.data = gates[gate_idx].name.c_str();
     gate_info.ir_markers = ir_markers;
     gate_info.header.stamp = ros::Time::now();
     gate_info.header.frame_id = "1";
@@ -364,6 +270,75 @@ void publish_waypoints(void)
     ROS_INFO("Pace notes waypoints sent.");
 }
 
+void publish_gate_markers(void)
+{
+    visualization_msgs::Marker gates_marker;
+    gates_marker.header.frame_id = "world";
+    gates_marker.header.stamp = ros::Time();
+    gates_marker.ns = "pace_notes";
+    gates_marker.id = 0;
+    gates_marker.type = visualization_msgs::Marker::LINE_LIST;
+    gates_marker.action = visualization_msgs::Marker::ADD;
+    gates_marker.pose.position.x = 0;
+    gates_marker.pose.position.y = 0;
+    gates_marker.pose.position.z = 0;
+    gates_marker.pose.orientation.x = 0.0;
+    gates_marker.pose.orientation.y = 0.0;
+    gates_marker.pose.orientation.z = 0.0;
+    gates_marker.pose.orientation.w = 1.0;
+    gates_marker.scale.x = 0.1;
+    gates_marker.color.a = 1.0;
+    gates_marker.color.r = 0.0;
+    gates_marker.color.g = 1.0;
+    gates_marker.color.b = 0.0;
+    for (int gate_idx = 0; gate_idx < gates.size(); gate_idx++) {
+        for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
+            geometry_msgs::Point p1;
+            p1.x = gates[gate_idx].corners[corner_idx].x();
+            p1.y = gates[gate_idx].corners[corner_idx].y();
+            p1.z = gates[gate_idx].corners[corner_idx].z();
+            gates_marker.points.push_back(p1);
+
+            geometry_msgs::Point p2;
+            p2.x = gates[gate_idx].corners[(corner_idx+1)%4].x();
+            p2.y = gates[gate_idx].corners[(corner_idx+1)%4].y();
+            p2.z = gates[gate_idx].corners[(corner_idx+1)%4].z();
+            gates_marker.points.push_back(p2);
+        }
+    }
+    vis_pub_gates.publish(gates_marker);
+
+    visualization_msgs::Marker waypoints_marker;
+    waypoints_marker.header.frame_id = "world";
+    waypoints_marker.header.stamp = ros::Time();
+    waypoints_marker.ns = "pace_notes";
+    waypoints_marker.id = 0;
+    waypoints_marker.type = visualization_msgs::Marker::SPHERE_LIST;
+    waypoints_marker.action = visualization_msgs::Marker::ADD;
+    waypoints_marker.pose.position.x = 0;
+    waypoints_marker.pose.position.y = 0;
+    waypoints_marker.pose.position.z = 0;
+    waypoints_marker.pose.orientation.x = 0.0;
+    waypoints_marker.pose.orientation.y = 0.0;
+    waypoints_marker.pose.orientation.z = 0.0;
+    waypoints_marker.pose.orientation.w = 1.0;
+    waypoints_marker.scale.x = 0.2;
+    waypoints_marker.scale.y = 0.2;
+    waypoints_marker.scale.z = 0.2;
+    waypoints_marker.color.a = 1.0;
+    waypoints_marker.color.r = 1.0;
+    waypoints_marker.color.g = 0.0;
+    waypoints_marker.color.b = 0.0;
+    for (int wp_idx = 0; wp_idx < waypoints_pos.size(); wp_idx++) {
+        geometry_msgs::Point p;
+        p.x = waypoints_pos[wp_idx].x();
+        p.y = waypoints_pos[wp_idx].y();
+        p.z = waypoints_pos[wp_idx].z();
+        waypoints_marker.points.push_back(p);
+    }
+    vis_pub_wp.publish(waypoints_marker);
+}
+
 void append_waypoint(Eigen::Vector3d position, double yaw)
 {
     waypoints_pos.push_back(position);
@@ -384,9 +359,6 @@ void init_gates(void)
                                           {0, 1, 2, 3},
                                           {1, 0, 2, 3},
                                           {1, 0, 2, 3}};
-
-
-    
 
     std::vector<double> _initial_pose;
     ros::param::get("/uav/flightgoggles_uav_dynamics/init_pose", _initial_pose);
@@ -444,14 +416,9 @@ void init_gates(void)
         waypoints_pos[wp_idx] = (waypoints_pos[wp_idx - 1] + waypoints_pos[wp_idx + 1]) / 2.0;
     }
     Eigen::Vector3d normal = (waypoints_pos[waypoints_pos.size()-1] - waypoints_pos[waypoints_pos.size()-2]).normalized();
-    //waypoints_pos[waypoints_pos.size()-1] = waypoints_pos[waypoints_pos.size()-2] + normal * 10.0;
     append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 10.0, waypoints_yaw[waypoints_pos.size()-1]);
     append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 10.0, waypoints_yaw[waypoints_pos.size()-1]);
     append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 10.0, waypoints_yaw[waypoints_pos.size()-1]);
-
-    for (int i = 0; i < 4; i++) {
-        //append_waypoint(waypoints_pos[waypoints_pos.size()-1] + normal * 1.0, waypoints_yaw[waypoints_pos.size()-1]);
-    }
 
     static const double waypoints_adjustment[26][3] = {{  0.0,   0.0,   0.0},
                                                        {  0.0,  -1.0,   0.2},
@@ -461,20 +428,20 @@ void init_gates(void)
                                                        { -6.5,   1.0,   0.0},
                                                        {  0.0,   0.0,   1.0}, // gate 2
                                                        {  0.0,   1.5,   0.5},
-                                                       { -0.2,  -1.0,   0.2}, // gate 3
+                                                       { -0.3,  -1.0,   0.4}, // gate 3
                                                        { -2.5,  -1.0,   2.5},
                                                        {  0.0,   0.0,   0.0}, // gate 4
-                                                       { -1.0,  -0.5,   1.7},
-                                                       {  0.0,   0.0,   1.0}, // gate 5
-                                                       {  0.0,  -2.0,   1.2},
+                                                       { -1.0,  -0.5,   0.5},
+                                                       {  0.0,   0.0,   0.7}, // gate 5
+                                                       {  0.0,  -2.0,   0.3},
                                                        {  0.0,   0.0,   0.0}, // gate 6
-                                                       {  0.0,  -2.0,   1.2},
-                                                       {  0.0,  -1.0,   1.0}, // gate 7
-                                                       {  0.0,  -2.0,   1.9},
+                                                       {  0.0,  -2.0,   0.5},
+                                                       {  0.0,   0.5,   1.0}, // gate 7
+                                                       {  0.0,  -1.0,   0.8},
                                                        { -0.8,   2.0,   1.0}, // gate 8
-                                                       { -3.0,  -1.0,   2.5},
-                                                       {  0.0,  -1.5,   0.0}, // gate 9
-                                                       {  0.0,  -0.0,   1.0},
+                                                       { -3.5,  -1.0,   2.0},
+                                                       {  0.0,  -0.5,   0.0}, // gate 9
+                                                       {  0.0,  -0.0,   0.0},
                                                        {  0.0,   0.0,   0.0}, // gate 10
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0},
@@ -503,15 +470,15 @@ void init_gates(void)
     }
     waypoints_yaw[waypoints_pos.size()-1] = 7.81;
 
-    waypoints_yaw[12] += 0.4; // Between gate 5 and 6
+    waypoints_yaw[12] += 0.4; // Gate 5
     waypoints_yaw[13] += 0.4; // Between gate 5 and 6
 
-    waypoints_yaw[17] += 0.4; // Between gate 7 and 8
+    waypoints_yaw[16] += 0.4; // Gate 7
     waypoints_yaw[17] += 0.3; // Between gate 7 and 8
-    waypoints_yaw[18] += 0.0; // Between gate 7 and 8
+    waypoints_yaw[18] += 0.0; // Gate 8
 
     waypoints_yaw[21] -= 0.4; // Between gate 9 and 10
-    waypoints_yaw[22] -= 0.1; // Between gate 9 and 10
+    waypoints_yaw[22] -= 0.1; // Gate 10
 
 
     for (int wp_idx = 0; wp_idx < waypoints_vel.size() - 1; wp_idx++) {
@@ -588,17 +555,17 @@ void odometry_callback(const nav_msgs::Odometry& msg)
         return;
     }
 
-    static const double gate_pass_distances[11] = {1.0,
-                                                   1.0,
-                                                   3.0,
-                                                   1.0,
-                                                   1.0,
-                                                   2.0,
-                                                   1.0,
-                                                   1.0,
-                                                   1.0,
-                                                   1.0,
-                                                   1.0};
+    static const double gate_pass_distances[11] = {1.0,  // Gate 0
+                                                   1.0,  // Gate 1
+                                                   3.0,  // Gate 2
+                                                   1.0,  // Gate 3
+                                                   1.0,  // Gate 4
+                                                   2.0,  // Gate 5
+                                                   1.0,  // Gate 6
+                                                   1.0,  // Gate 7
+                                                   1.0,  // Gate 8
+                                                   1.0,  // Gate 9
+                                                   1.0}; // Gate 10
 
     mav_msgs::EigenOdometry odometry;
     eigenOdometryFromMsg(msg, &odometry);
@@ -616,7 +583,6 @@ void odometry_callback(const nav_msgs::Odometry& msg)
 
 int main(int argc, char** argv)
 {  
-    printf("c\n");
     ros::init(argc, argv, "pace_notes");
 
     ros::NodeHandle nh;
@@ -626,11 +592,9 @@ int main(int argc, char** argv)
     vis_pub_gates = nh.advertise<visualization_msgs::Marker>("/puff_pilot/gate_markers", 1, true);
     vis_pub_wp    = nh.advertise<visualization_msgs::Marker>("/puff_pilot/waypoint_markers", 1, true);
 
-    printf("d\n");
     ros::Subscriber odometry_node        = nh.subscribe("odometry",        1, &odometry_callback,           ros::TransportHints().tcpNoDelay());
     ros::Subscriber irodom_callback_node = nh.subscribe("ir_markers_pose", 1, &ir_marker_odometry_callback, ros::TransportHints().tcpNoDelay());
 
-    printf("e\n");
     init_gates();
 
     ros::spin();

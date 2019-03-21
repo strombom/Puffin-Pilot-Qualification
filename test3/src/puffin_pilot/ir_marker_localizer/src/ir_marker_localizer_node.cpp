@@ -28,7 +28,6 @@ cv::Mat camera_matrix(3, 3, cv::DataType<double>::type);
 cv::Mat dist_coeffs  (4, 1, cv::DataType<double>::type);
 bool    camera_matrix_valid;
 
-// This is information about the gate we are whizzing towards.
 puffin_pilot::GateInfoConstPtr gate_info;
 ros::Publisher ir_marker_odometry_pose_node;
 
@@ -44,7 +43,7 @@ void odometry_callback(const nav_msgs::Odometry& msg)
     last_odometry_valid = true;
 }
 
-void rotationMatrixToEulerAngles(cv::Mat &R, double *roll, double *pitch, double *yaw)
+void rotation_matrix_to_euler_angles(cv::Mat &R, double *roll, double *pitch, double *yaw)
 {
     float sy = sqrt(R.at<double>(0,0) * R.at<double>(0,0) +  R.at<double>(1,0) * R.at<double>(1,0));
     bool singular = sy < 1e-6; // If
@@ -62,7 +61,7 @@ void rotationMatrixToEulerAngles(cv::Mat &R, double *roll, double *pitch, double
     }
 }
 
-Eigen::Quaterniond euler2Quaternion( const double roll, const double pitch, const double yaw )
+Eigen::Quaterniond euler_to_quaternion( const double roll, const double pitch, const double yaw )
 {
     Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
     Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
@@ -77,9 +76,9 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
 
     // Limit incoming message frequency to 60 Hz.
     // However, it seems to already be limited to 20 Hz.
-    if (!ir_beacons_rate_limiter->try_aquire(1)) {
-        //return;
-    }
+    //if (!ir_beacons_rate_limiter->try_aquire(1)) {
+    //    return;
+    //}
 
     // Check that there is an active gate_info.
     if (!gate_info) {
@@ -129,21 +128,16 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
 
     if (last_odometry_valid) {
         // Calculate extrinsic guess.
-
         mav_msgs::EigenOdometry odometry;
         eigenOdometryFromMsg(last_odometry, &odometry);
 
         Eigen::Quaterniond q_imu = odometry.orientation_W_B;
-        Eigen::Quaterniond q_rot = euler2Quaternion(0,  -1.5708, 1.5708);
+        Eigen::Quaterniond q_rot = euler_to_quaternion(0,  -1.5708, 1.5708);
         Eigen::Quaterniond q_cam = q_imu * q_rot.inverse();
         Eigen::Vector3d tvec = -(q_cam.inverse() * odometry.position_W);
         translation_vector.at<double>(0) = tvec.x();
         translation_vector.at<double>(1) = tvec.y();
         translation_vector.at<double>(2) = tvec.z();
-
-        //printf("odom imu xyzw % 0.7f % 0.7f % 0.7f % 0.7f\n", q_imu.x(), q_imu.y(), q_imu.z(), q_imu.w());
-        //printf("odom cam xyzw % 0.7f % 0.7f % 0.7f % 0.7f\n", q_cam.x(), q_cam.y(), q_cam.z(), q_cam.w());
-        //printf("odom cam tvec % 0.7f % 0.7f % 0.7f\n", tvec.x(), tvec.y(), tvec.z());
 
         Eigen::Matrix3d rotation_matrix = q_cam.toRotationMatrix().transpose();
 
@@ -156,101 +150,13 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
         }
 
         Rodrigues(rotation_matrix_cv, rotation_vector);
-        //printf("odom cam rvec % 0.7f % 0.7f % 0.7f\n", rotation_vector.at<double>(0), rotation_vector.at<double>(1), rotation_vector.at<double>(2));
-
-        //rm2 = cv::Mat<double, 3, 3>(static_cast<const double*>(rotation_matrix.data())).t();
-
-
-/*
-        Eigen::Vector3d euler = rotation_matrix.eulerAngles(2, 1, 0);        
-        double camera_roll, camera_pitch, camera_yaw;
-        camera_yaw = euler[0]; 
-        camera_pitch = euler[1]; 
-        camera_roll = euler[2];
-
-
-        //printf("odom cam rpy  % 0.7f % 0.7f % 0.7f\n", camera_roll, camera_pitch, camera_yaw);
-        //printf("odom cam pos  % 0.7f % 0.7f % 0.7f\n", odometry.position_W.x(), odometry.position_W.y(), odometry.position_W.z());
-        //printf("-----------------------\n");
-
-
-        //ir_beacons_count = 3;
-        has_extrinsic_guess = true;
-
-
-        printf(" guess r  % 7.3f % 7.3f % 7.3f\n", rotation_vector.at<double>(0), rotation_vector.at<double>(1), rotation_vector.at<double>(2));
-        printf(" guess t  % 7.3f % 7.3f % 7.3f\n", translation_vector.at<double>(0), translation_vector.at<double>(1), translation_vector.at<double>(2));
-
-
-        for (int mask_idx = 0; mask_idx < 5; mask_idx++) {
-
-            std::vector<cv::Point2d> camera_points;
-            std::vector<cv::Point3d> gate_info_points;
-            for (int beacon_id = 0; beacon_id < 4; beacon_id++) {
-                if (mask_idx == beacon_id) {
-                    continue;
-                }
-
-                double camera_x = ir_beacons_px[beacon_id][0];
-                double camera_y = ir_beacons_px[beacon_id][1];
-                camera_points.push_back(cv::Point2d(camera_x, camera_y));
-
-                double gate_x = gate_info->gate_corners.data[beacon_id * 3 + 0];
-                double gate_y = gate_info->gate_corners.data[beacon_id * 3 + 1];
-                double gate_z = gate_info->gate_corners.data[beacon_id * 3 + 2];
-                gate_info_points.push_back(cv::Point3d(gate_x, gate_y, gate_z));
-            }
-
-            cv::Mat rvec = rotation_vector.clone();
-            cv::Mat tvec = translation_vector.clone();
-
-
-            bool solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rvec, tvec, has_extrinsic_guess);
-            if (!solved) {
-                // Something went wrong, could not estimate pose!
-                continue;
-            }
-
-
-            printf(" guess r  % 7.3f % 7.3f % 7.3f\n", rotation_vector.at<double>(0), rotation_vector.at<double>(1), rotation_vector.at<double>(2));
-            printf(" guess t  % 7.3f % 7.3f % 7.3f\n", translation_vector.at<double>(0), translation_vector.at<double>(1), translation_vector.at<double>(2));
-
-            printf(" solve r%d % 7.3f % 7.3f % 7.3f\n", mask_idx, rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2));
-            printf(" solve t%d % 7.3f % 7.3f % 7.3f\n", mask_idx, tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2));
-            
-            double error = 0;
-            for (int j = 0; j < 3; j++) {
-                error += pow(tvec.at<double>(j) - translation_vector.at<double>(j), 2);
-                // E = ||Q1*Q2−1 - 1||2 
-            }
-            printf(" e %f\n", error);
-            if (error > 5) {
-                printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-            }
-
-
-        }
-        */
 
         has_extrinsic_guess = true;
-        //ir_beacons_visible[3] = false;
     }
-
-
 
     ros::Time t_start = ros::Time::now();
 
-
-
-
-
-
-
     // Store all camera and gate points.
-    //printf("======== camera points =========\n");
     std::vector<cv::Point2d> camera_points;
     std::vector<cv::Point3d> gate_info_points;
     for (int beacon_id = 0; beacon_id < 4; beacon_id++) {
@@ -266,97 +172,22 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
         double gate_y = gate_info->ir_markers.data[beacon_id * 3 + 1];
         double gate_z = gate_info->ir_markers.data[beacon_id * 3 + 2];
         gate_info_points.push_back(cv::Point3d(gate_x, gate_y, gate_z));
-
-
-        //printf(" % 7.2f % 7.2f - % 7.2f % 7.2f % 7.2f\n", camera_x, camera_y, gate_x, gate_y, gate_z);
     }
-
 
     // Estimate the camera pose.
     bool solved = false;
     if (has_extrinsic_guess) {
-
-
-
-        //std::vector<cv::Mat> rvecvec;
-        //std::vector<cv::Mat> tvecvec;
-
-        //printf(" guess r % 0.7f % 0.7f % 0.7f\n", rotation_vector.at<double>(0), rotation_vector.at<double>(1), rotation_vector.at<double>(2));
-        //printf(" guess t % 0.7f % 0.7f % 0.7f\n", translation_vector.at<double>(0), translation_vector.at<double>(1), translation_vector.at<double>(2));
-
-
         cv::Mat rvec = rotation_vector.clone();
         cv::Mat tvec = translation_vector.clone();
         solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rvec, tvec, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
-
-
-
-        //printf(" solve r % 0.7f % 0.7f % 0.7f\n", rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2));
-        //printf(" solve t % 0.7f % 0.7f % 0.7f\n", tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2));
-
         double error = 0;
         for (int j = 0; j < 3; j++) {
             error += pow(tvec.at<double>(j) - translation_vector.at<double>(j), 2);
             // E = ||Q1*Q2−1 - 1||2 
         }
-        /*
-        if (error > 10) {
-            printf(" e %f\n", error);
-            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-            //return;
-        }
-        */
-
         rotation_vector = rvec.clone();
         translation_vector = tvec.clone();
-
-        //solved = cv::solveP3P(gate_info_points, camera_points, camera_matrix, dist_coeffs, rvecvec, tvecvec, cv::SOLVEPNP_AP3P);        
-        
-        /*
-        if (!solved) {
-            return;
-        }
-
-        int    best_idx   = 0;
-        double best_error = 1e9;
-
-        for(std::vector<int>::size_type i = 0; i != rvecvec.size(); i++) {
-            double error = 0;
-            for (int j = 0; j < 3; j++) {
-                error += pow(tvecvec[i].at<double>(j) - translation_vector.at<double>(j), 2);
-                // E = ||Q1*Q2−1 - 1||2 
-            }
-            if (error < best_error) {
-                best_error = error;
-                best_idx = i;
-            }
-
-            printf(" r % 0.7f % 0.7f % 0.7f\n", rvecvec[i].at<double>(0), rvecvec[i].at<double>(1), rvecvec[i].at<double>(2));
-            printf(" t % 0.7f % 0.7f % 0.7f\n", tvecvec[i].at<double>(0), tvecvec[i].at<double>(1), tvecvec[i].at<double>(2));
-            printf(" e % 0.7f %d\n", error, (int)i);
-        }
-
-        translation_vector = tvecvec[best_idx];
-        rotation_vector    = rvecvec[best_idx];
-        //printf(" r % 0.7f % 0.7f % 0.7f\n", rotation_vector.at<double>(0), rotation_vector.at<double>(1), rotation_vector.at<double>(2));
-        //printf(" t % 0.7f % 0.7f % 0.7f\n", translation_vector.at<double>(0), translation_vector.at<double>(1), translation_vector.at<double>(2));
-        printf(" e % 0.7f %d\n", best_error, (int)best_idx);
-
-        if (best_error > 100) {
-            last_odometry_valid = false;
-            return;
-        }
-        */
-
-
-        //solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
-        //return;
-
     } else {
-        //printf("SolvePnP\n");
         solved = cv::solvePnP(gate_info_points, camera_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, has_extrinsic_guess, cv::SOLVEPNP_ITERATIVE);
     }
     if (!solved) {
@@ -371,25 +202,15 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
     rotation_matrix =  rotation_matrix.t();
     camera_position = -rotation_matrix * translation_vector;
     double camera_roll, camera_pitch, camera_yaw;
-    rotationMatrixToEulerAngles(rotation_matrix, &camera_roll, &camera_pitch, &camera_yaw);
-
-    //printf("pnp cam rvec  % 0.7f % 0.7f % 0.7f\n", rotation_vector.at<double>(0), rotation_vector.at<double>(1), rotation_vector.at<double>(2));
-    //printf("pnp cam tvec  % 0.7f % 0.7f % 0.7f\n", translation_vector.at<double>(0), translation_vector.at<double>(1), translation_vector.at<double>(2));
-    //printf("pnp cam rmat  % 0.7f % 0.7f % 0.7f\n", rotation_matrix.at<double>(0, 0), rotation_matrix.at<double>(0, 1), rotation_matrix.at<double>(0, 2));
-    //printf("              % 0.7f % 0.7f % 0.7f\n", rotation_matrix.at<double>(1, 0), rotation_matrix.at<double>(1, 1), rotation_matrix.at<double>(1, 2));
-    //printf("              % 0.7f % 0.7f % 0.7f\n", rotation_matrix.at<double>(2, 0), rotation_matrix.at<double>(2, 1), rotation_matrix.at<double>(2, 2));
+    rotation_matrix_to_euler_angles(rotation_matrix, &camera_roll, &camera_pitch, &camera_yaw);
 
     // Broadcast the estimated camera/odometry location.
     static tf2_ros::TransformBroadcaster tf_broadcaster;
     tf2::Quaternion q_imu, q_rot;
     q_imu.setRPY(camera_roll, camera_pitch, camera_yaw);
-    //printf("pnp cam rpy  % 0.7f % 0.7f % 0.7f\n", camera_roll, camera_pitch, camera_yaw);
-    //printf("pnp cam xyzw % 0.7f % 0.7f % 0.7f % 0.7f\n", q_imu.x(), q_imu.y(), q_imu.z(), q_imu.w());
-    
+
     q_rot.setRPY(0,  -1.5708,  1.5708);
     q_imu = q_imu * q_rot;
-    //printf("pnp imu xyzw % 0.7f % 0.7f % 0.7f % 0.7f\n", q_imu.x(), q_imu.y(), q_imu.z(), q_imu.w());
-    //printf("=====================\n");
 
     // Broadcast transform.
     geometry_msgs::TransformStamped tf_odom;
@@ -416,12 +237,6 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
     ps_ir_marker_odometry.pose.orientation.z = q_imu.z();
     ps_ir_marker_odometry.pose.orientation.w = q_imu.w();
     ir_marker_odometry_pose_node.publish(ps_ir_marker_odometry);
-
-
-
-    //ros::Time t_end = ros::Time::now();
-    //double tt = (t_end - t_start).toSec();
-    //printf("ir marker %f\n", tt);
 }
 
 void gate_info_callback(const puffin_pilot::GateInfoConstPtr& _gate_info)
@@ -450,7 +265,7 @@ void camera_info_callback(const sensor_msgs::CameraInfoConstPtr& camera_info)
 int main(int argc, char** argv)
 {
     camera_matrix_valid = false;
-    ir_beacons_rate_limiter  = new RateLimiter(10.0);
+    ir_beacons_rate_limiter  = new RateLimiter(60.0);
     camera_info_rate_limiter = new RateLimiter(0.1);
 
     ros::init(argc, argv, "ir_marker_localizer");
