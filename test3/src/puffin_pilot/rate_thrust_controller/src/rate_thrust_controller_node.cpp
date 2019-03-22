@@ -90,9 +90,19 @@ void OdometryCallback(const nav_msgs::Odometry& msg)
     static Eigen::Vector3d current_rpy;
     odometry.getEulerAngles(&current_rpy);
 
-    // Proportional
-    double error_roll  = roll_pitch_yawthrust.roll - current_rpy(0);
-    double error_pitch = roll_pitch_yawthrust.pitch - current_rpy(1);
+    double roll_cmd = roll_pitch_yawthrust.roll;
+    double pitch_cmd = roll_pitch_yawthrust.pitch;
+
+    if (abs(roll_cmd) > 1.23) {
+        roll_cmd = 1.23 * roll_cmd / abs(roll_cmd);
+    }
+    if (abs(pitch_cmd) > 1.23) {
+        pitch_cmd = 1.23 * pitch_cmd / abs(pitch_cmd);
+    }
+
+    double error_roll  = roll_cmd - current_rpy(0);
+    double error_pitch = pitch_cmd - current_rpy(1);
+
 
     // Integral
     static double i_error_roll = 0;

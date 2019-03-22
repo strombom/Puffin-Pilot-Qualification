@@ -1,9 +1,11 @@
 #include <ros/ros.h>
-#include <std_msgs/Float64MultiArray.h>
 #include <iostream>
 #include <mutex>
 
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float64.h>
+#include <std_msgs/Float64MultiArray.h>
+#include <geometry_msgs/Vector3.h>
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation/polynomial_optimization_nonlinear.h>
 #include <mav_trajectory_generation/trajectory.h>
@@ -20,12 +22,13 @@ using namespace std;
 using namespace mav_trajectory_generation;
 
 // Drone characteristics
-static const double v_max = 20.0;
+static const double v_max = 19.0;
 static const double a_max = 37.0;
 static const double j_max = 10.0;
 
 // IR status, false during IR measurement, true otherwise
 bool ir_done = true; 
+double ir_visibility = -1;
 
 // Trajectory waypoints
 mav_msgs::EigenTrajectoryPoint::Vector waypoints;
@@ -77,9 +80,20 @@ void pace_note_callback(const puffin_pilot::PaceNoteConstPtr& pace_note)
     ir_done = true;
 }
 
-void ir_ok_callback(const std_msgs::Bool ok)
+void ir_ok_callback(const std_msgs::Bool ok_msg)
 {
     ir_done = true;
+}
+
+void ir_visibility_callback(const std_msgs::Float64 visibility_msg)
+{
+    // IR visibility is centered around 0.5.
+    // Min 0, Max 1
+    // If no IR visible: -1
+    ir_visibility = visibility_msg.data;
+    if (ir_visibility > 1) {
+        ir_visibility = 1;
+    }
 }
 
 std::vector<double> estimate_segment_times(const Vertex::Vector& vertices, double v_max, double a_max)
@@ -93,6 +107,120 @@ std::vector<double> estimate_segment_times(const Vertex::Vector& vertices, doubl
         segment_times.push_back(distance / v_max * 0.7);
     }
     return segment_times;
+}
+
+/*
+#define FILTER_TAP_NUM 9
+
+static double filter_taps[FILTER_TAP_NUM] = {
+  -0.05137309583491086,
+  -0.01963305870705502,
+  0.10790181239553044,
+  0.28270681608644244,
+  0.3658199490492092,
+  0.28270681608644244,
+  0.10790181239553044,
+  -0.01963305870705502,
+  -0.05137309583491086
+};
+*/
+/*
+
+FIR filter designed with
+http://t-filter.appspot.com
+
+sampling frequency: 960 Hz
+
+* 0 Hz - 100 Hz
+  gain = 1
+  desired ripple = 2 dB
+  actual ripple = 1.1371609825038353 dB
+
+* 240 Hz - 480 Hz
+  gain = 0
+  desired attenuation = -50 dB
+  actual attenuation = -52.62174139873899 dB
+
+*/
+
+#define FILTER_TAP_NUM 13
+
+static double filter_taps[FILTER_TAP_NUM] = {
+  -0.011228693762129966,
+  -0.030759089104831324,
+  -0.03313654816711353,
+  0.02060388775363574,
+  0.1380750767988882,
+  0.26618633580639356,
+  0.3223042307894251,
+  0.26618633580639356,
+  0.1380750767988882,
+  0.02060388775363574,
+  -0.03313654816711353,
+  -0.030759089104831324,
+  -0.011228693762129966
+};
+
+static double xb[FILTER_TAP_NUM];
+static double yb[FILTER_TAP_NUM];
+static double zb[FILTER_TAP_NUM];
+
+Eigen::Vector3d puffin_acc;
+
+void acc_callback(const geometry_msgs::Vector3& acc_msg)
+{   
+    /*
+    FIR filter designed with
+    http://t-filter.appspot.com
+
+    sampling frequency: 960 Hz
+
+    * 0 Hz - 100 Hz
+      gain = 1
+      desired ripple = 1 dB
+      actual ripple = 0.4473503332033286 dB
+
+    * 240 Hz - 480 Hz
+      gain = 0
+      desired attenuation = -22 dB
+      actual attenuation = -26.50826359079475 dB
+    */
+
+    
+    static bool first = true;
+    if (first) {
+        for (int i = 0; i < FILTER_TAP_NUM; i++) {
+            xb[i] = 0;
+            yb[i] = 0;
+            zb[i] = 0;
+        }
+        first = false;
+    }
+
+    for (int i = 0; i < FILTER_TAP_NUM - 1; i++) {
+        xb[i] = xb[i+1];
+        yb[i] = yb[i+1];
+        zb[i] = zb[i+1];
+    }
+
+    xb[FILTER_TAP_NUM - 1] = acc_msg.x;
+    yb[FILTER_TAP_NUM - 1] = acc_msg.y;
+    zb[FILTER_TAP_NUM - 1] = acc_msg.z;
+
+/*
+    double x = 0;
+    double y = 0;
+    double z = 0;
+    for (int i = 0; i < FILTER_TAP_NUM; i++) {
+        x += xb[i] * filter_taps[i];
+        y += yb[i] * filter_taps[i];
+        z += zb[i] * filter_taps[i];
+    }
+
+    puffin_acc.x() = x;
+    puffin_acc.y() = y;
+    puffin_acc.z() = z;
+    */
 }
 
 void odometry_callback(const nav_msgs::Odometry& odometry_msg)
@@ -112,7 +240,8 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     }
 
     static ros::Time previous_time = ros::Time::now();
-    if ((ros::Time::now() - previous_time).toSec() < 0.0065) {
+    double diff_time = (ros::Time::now() - previous_time).toSec();
+    if (diff_time < 0.0065) {
         return;
     }
     previous_time = ros::Time::now();
@@ -192,8 +321,52 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
                 v_desired -= 0.1;
             } else if (v_desired > 8) {
                 v_desired -= 0.03;
+            } else if (v_desired > 5) {
+                v_desired -= 0.015;
             }
         }
+
+/*
+        double v_delta_max = 0.15;
+        if (ir_visibility < 0) {
+            if (abs(v_desired - 3) < 0.1) {
+                v_desired = 3;
+            } else {
+                v_desired -= v_delta_max;
+            }
+        } else {
+            double p_error = ir_visibility - 0.5;
+
+            const double kp = 0.05;
+            const double kd = 0.00;
+
+            // Derivative
+            static double add = 0.95;
+            static double p_error_avg_previous = p_error;
+            static double p_error_avg  = p_error;
+            p_error_avg =  p_error * add + (1 - add) * p_error_avg;
+
+            double d_error  = p_error_avg - p_error_avg_previous;
+            p_error_avg_previous = p_error_avg;
+
+            // Derivative ceiling
+            double max_d_error = kp / 2;
+            if (abs(d_error) > max_d_error) {
+                d_error = max_d_error * d_error / abs(d_error);
+            }
+
+            double v_delta;
+            v_delta = kp * p_error + kd * d_error;
+
+            double v_delta_k = 0.05 * v_desired;
+            v_delta *= v_delta_k;
+
+
+            v_desired += v_delta;
+
+            printf("v % 7.3f d % 7.3f\n", v_desired, v_delta);
+        }
+        */
     } else {
         double diff = v_desired - pace_note_velocity;
         if (diff != 0 && abs(diff) < 0.1) {
@@ -210,20 +383,48 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
             }
         }
     }
+    if (v_desired > v_max) {
+        v_desired = v_max;
+    } else if (v_desired < 3) {
+        v_desired = 3;
+    }
+
+    //v_desired = 8;
+
+    //printf("vd % 2.6f\n", v_desired);
+
+
+    // Filter acceleration
+    /*
+    double x = 0;
+    double y = 0;
+    double z = 0;
+    for (int i = 0; i < FILTER_TAP_NUM; i++) {
+        x += xb[i] * filter_taps[i];
+        y += yb[i] * filter_taps[i];
+        z += zb[i] * filter_taps[i];
+    }
+    puffin_acc.x() = x;
+    puffin_acc.y() = y;
+    puffin_acc.z() = z;
+    */
 
     // Calculate trajectory waypoints depending on velocity
     int look_ahead[6];
-    int look_ahead_points = (int) (v_desired / v_max * 125);
     for (int i = 0; i < 6; i++) {
-        if (i == 0) {
-            look_ahead[i] = look_ahead_points;
-        } else {
-            look_ahead[i] = look_ahead[i-1] + look_ahead_points;
-        }
+        look_ahead[i] = (i + 1) * (v_desired / v_max * 125);
     }
 
+/*
+    static Eigen::Vector3d vel_prev = Eigen::Vector3d(0, 0, 0);
+    Eigen::Vector3d vel = odometry.getVelocityWorld();
+    Eigen::Vector3d acc = (vel - vel_prev) / diff_time;
+    vel_prev = vel;
+    */
+    
+
     static double previous_yaw = 1.57;
-    double yaws[6];
+    double yaws[7];
     yaws[0] = get_yaw(previous_yaw, waypoints[waypoint_idx].getYaw());
     yaws[1] = get_yaw(yaws[0], waypoints[waypoint_idx + look_ahead[0]].getYaw());
     yaws[2] = get_yaw(yaws[1], waypoints[waypoint_idx + look_ahead[1]].getYaw());
@@ -236,6 +437,14 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     Eigen::Vector3d delta_position = odometry.position_W - waypoints[waypoint_idx].position_W;
     Eigen::Vector3d start_position = odometry.position_W;
 
+    if (delta_position.norm() > 0.9) {
+        //printf("delta! %f\n", delta_position.norm());
+    } else {
+        delta_position *= 0;
+    }
+
+    //start_position = odometry.position_W - delta_position * 0.2;
+
     static const int dimension = 4;
     static const int derivative_to_optimize = derivative_order::JERK;
 
@@ -244,33 +453,35 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     
     add_constraint(&v1, derivative_order::POSITION, start_position, yaws[0]);
     add_constraint(&v1, derivative_order::VELOCITY, odometry.getVelocityWorld(), odometry.getYawRate());
+    //add_constraint(&v1, derivative_order::ACCELERATION, puffin_acc, waypoints[waypoint_idx + look_ahead[0]].getYawAcc());
     vertices.push_back(v1);
 
-    add_constraint(&v2, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[0]].position_W + delta_position * 0.0, yaws[1]);
+    add_constraint(&v2, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[0]].position_W + delta_position * 0.5, yaws[1]);
     vertices.push_back(v2);
 
-    add_constraint(&v3, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[1]].position_W + delta_position * 0.0, yaws[2]);
+    add_constraint(&v3, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[1]].position_W + delta_position * 0.3, yaws[2]);
+    //add_constraint(&v3, derivative_order::VELOCITY, waypoints[waypoint_idx + look_ahead[1]].velocity_W * v_desired / v_max, waypoints[waypoint_idx + look_ahead[1]].getYawRate());
     vertices.push_back(v3);
 
-    add_constraint(&v4, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[2]].position_W + delta_position * 0.0, yaws[3]);
+    add_constraint(&v4, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[2]].position_W + delta_position * 0.2, yaws[3]);
     vertices.push_back(v4);
 
-    add_constraint(&v5, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[3]].position_W + delta_position * 0.0, yaws[4]);
+    add_constraint(&v5, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[3]].position_W + delta_position * 0.1, yaws[4]);
     vertices.push_back(v5);
 
-    add_constraint(&v6, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[4]].position_W + delta_position * 0.0, yaws[5]);
+    add_constraint(&v6, derivative_order::POSITION, waypoints[waypoint_idx + look_ahead[4]].position_W + delta_position * 0.05, yaws[5]);
     vertices.push_back(v6);
 
     add_constraint(&v7, derivative_order::POSITION,     waypoints[waypoint_idx + look_ahead[5]].position_W, yaws[6]);
-    add_constraint(&v7, derivative_order::VELOCITY,     waypoints[waypoint_idx + look_ahead[5]].velocity_W.normalized() * v_desired, waypoints[waypoint_idx + look_ahead[5]].getYawRate());
-    add_constraint(&v7, derivative_order::ACCELERATION, waypoints[waypoint_idx + look_ahead[5]].acceleration_W, waypoints[waypoint_idx + look_ahead[2]].getYawAcc());
+    add_constraint(&v7, derivative_order::VELOCITY,     waypoints[waypoint_idx + look_ahead[5]].velocity_W * v_desired / v_max, waypoints[waypoint_idx + look_ahead[5]].getYawRate());
+    add_constraint(&v7, derivative_order::ACCELERATION, waypoints[waypoint_idx + look_ahead[5]].acceleration_W, waypoints[waypoint_idx + look_ahead[5]].getYawAcc());
     vertices.push_back(v7);
 
     std::vector<double> segment_times;
     segment_times = estimate_segment_times(vertices, v_desired, a_max);
 
     for (int j = 0; j < segment_times.size(); j++) {
-        segment_times[j] = 0.22;
+        segment_times[j] = 0.250;
     }
 
     // Initialize trajectory opitmizer
@@ -302,15 +513,29 @@ void odometry_callback(const nav_msgs::Odometry& odometry_msg)
     mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_states, &trajectory_msg);
     trajectory_msg.header.stamp = ros::Time::now();
 
+/*
+    Eigen::Vector3d a = trajectory_states[0].acceleration_W;
+    Eigen::Vector3d b = trajectory_states[0].velocity_W;
+    Eigen::Vector3d c = puffin_acc;
+    Eigen::Vector3d d = acc;
+    Eigen::Vector3d e = odometry.getVelocityWorld();
+
+    printf("a (% 5.2f % 5.2f % 5.2f) v (% 5.2f % 5.2f % 5.2f) pa (% 5.2f % 5.2f % 5.2f) oa (% 5.2f % 5.2f % 5.2f) ov (% 5.2f % 5.2f % 5.2f)\n", 
+        a.x(), a.y(), a.z(), 
+        b.x(), b.y(), b.z(), 
+        c.x(), c.y(), c.z(), 
+        d.x(), d.y(), d.z(), 
+        e.x(), e.y(), e.z());
+
+*/
+
     // Publish trajectory and odometry to MPC
     trajectory_pub.publish(trajectory_msg);
     odometry_mpc_pub.publish(odometry_msg);
 }
 
-std::vector<double> estimate_segment_times_from_waypoints(const Vertex::Vector& vertices, double v_max, double a_max, double dt)
+std::vector<double> optimize_segment_times(std::vector<double> segment_times, const Vertex::Vector& vertices, double v_max, double a_max, double dt)
 {
-    std::vector<double> segment_times;
-
     int wp_idx = 0;
     for (int i = 0; i < vertices.size() - 1; ++i) {
         Eigen::VectorXd p_start, p_end;
@@ -320,6 +545,7 @@ std::vector<double> estimate_segment_times_from_waypoints(const Vertex::Vector& 
         double path_length = 0;
         int wp_start = wp_idx;
         int wp_stop = wp_idx;
+        // Find end of segment
         for (int j = wp_start; j < waypoints.size() - 1; j++) {
             Eigen::Vector3d pos = waypoints[j].position_W;
             Eigen::Vector3d diff = waypoints[j+1].position_W - waypoints[j].position_W;
@@ -334,33 +560,75 @@ std::vector<double> estimate_segment_times_from_waypoints(const Vertex::Vector& 
         }
 
         double vel_max = 0;
+        double acc_max = 0;
         for (int j = wp_start; j < wp_stop - 1; j++) {
             Eigen::Vector3d vel = waypoints[j].velocity_W;
             Eigen::Vector3d acc = waypoints[j].acceleration_W;
             if (vel.norm() > vel_max) {
                 vel_max = vel.norm();
             }
+            if (acc.norm() > acc_max) {
+                acc_max = acc.norm();
+            }
         }
-        double k_vel = v_max / vel_max;
 
-        double new_time = 0;
-        Eigen::Vector3d pos = waypoints[wp_start].position_W;
-        double new_path_length = 0;
-        for (int j = wp_start + 1; j < wp_stop; j++) {
-            Eigen::Vector3d vel_a = waypoints[j-1].velocity_W * k_vel;
-            Eigen::Vector3d vel_b = waypoints[j].velocity_W * k_vel;
-            Eigen::Vector3d vel = (vel_a + vel_b) / 2;
-            Eigen::Vector3d new_pos = pos + dt * vel;
-            double length = (new_pos - pos).norm();
-            new_time += length / vel.norm();
-            new_path_length += length;
-            pos = new_pos;
+        double k_vel = (vel_max / v_max - 1) * 0.91 + 1;
+        double k_acc = (pow(acc_max / a_max, 0.5) - 1) * 0.09 + 1;
+        double segment_time = (wp_stop - wp_start) * dt;
+
+        if (k_vel > 1 || k_acc > 1) {
+            // Too high velocity or acceleration
+            segment_time *= min(k_vel, k_acc);
+        } else {
+            segment_time *= max(k_vel, k_acc);
         }
+
+        segment_times[i] = segment_time * 0.99;
         wp_idx = wp_stop;
-        segment_times.push_back(new_time);
     }
     
     return segment_times;
+}
+
+void print_waypoints(const Vertex::Vector& vertices)
+{
+    std::vector<double> segment_times;
+
+    int wp_idx = 0;
+    for (int i = 0; i < vertices.size() - 1; ++i) {
+        Eigen::VectorXd p_end;
+        vertices[i+1].getConstraint(derivative_order::POSITION, &p_end);
+
+        int wp_start = wp_idx;
+        int wp_stop = wp_idx;
+        for (int j = wp_start; j < waypoints.size() - 1; j++) {
+            Eigen::Vector3d pos = waypoints[j].position_W;
+            Eigen::Vector3d diff = waypoints[j+1].position_W - waypoints[j].position_W;
+            Eigen::Vector3d normal = diff.normalized();
+            double distance = normal.dot(p_end - pos);
+            if (distance >= 0.0) {
+                wp_stop++;
+            } else {
+                break;
+            }
+        }
+
+        double vel_max = 0;
+        double acc_max = 0;
+        for (int j = wp_start; j < wp_stop - 1; j++) {
+            Eigen::Vector3d vel = waypoints[j].velocity_W;
+            Eigen::Vector3d acc = waypoints[j].acceleration_W;
+            if (vel.norm() > vel_max) {
+                vel_max = vel.norm();
+            }
+            if (acc.norm() > acc_max) {
+                acc_max = acc.norm();
+            }
+        }
+
+        //printf("vmax % 2.7f amax % 2.7f\n", vel_max, acc_max);
+        wp_idx = wp_stop;
+    }
 }
 
 void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
@@ -407,18 +675,6 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
     segment_times[0] *= 1.6;
     segment_times[segment_times.size()-1] *= 1.6;
 
-    segment_times[12] *= 1.25;
-    segment_times[13] *= 1.25;
-    segment_times[14] *= 1.25;
-    segment_times[15] *= 1.25;
-
-    printf("segment times: ");
-    for (int j = 0; j < segment_times.size(); j++) {
-        printf(" % 7.2f", segment_times[j]);
-        segment_times[j] *= 1.8;
-    }
-    printf("\n");
-
     NonlinearOptimizationParameters parameters;
     parameters.max_iterations = 100;
     parameters.use_soft_constraints = true;
@@ -435,28 +691,26 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
     opt_first.optimize();
     opt_first.getTrajectory(&trajectory);
 
-    // First estimated waypoints
-    double sampling_interval = 0.025;
-    mav_trajectory_generation::sampleWholeTrajectory(trajectory, sampling_interval, &waypoints);
+    double sampling_interval = 0.01;
+    for (int i = 0; i < 20; i++) {
+        // First estimated waypoints
+        mav_trajectory_generation::sampleWholeTrajectory(trajectory, sampling_interval, &waypoints);
 
-    // Optimize segment times
-    segment_times = estimate_segment_times_from_waypoints(vertices, v_max, a_max, sampling_interval);
+        // Optimize segment times
+        segment_times = optimize_segment_times(segment_times, vertices, v_max, a_max, sampling_interval);
 
-    printf("segment times: ");
-    for (int j = 0; j < segment_times.size(); j++) {
-        printf(" % 7.2f", segment_times[j]);
+        // Optimize trajectory with updated segment times
+        if (i == 19) {
+            parameters.print_debug_info = true;
+            parameters.print_debug_info_time_allocation = true;
+        }
+        PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
+        opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
+        opt.addMaximumMagnitudeConstraint(derivative_order::VELOCITY, v_max);
+        opt.addMaximumMagnitudeConstraint(derivative_order::ACCELERATION, a_max);
+        opt.optimize();
+        opt.getTrajectory(&trajectory);
     }
-    printf("\n");
-
-    // Optimize trajectory with updated segment times
-    parameters.print_debug_info = true;
-    parameters.print_debug_info_time_allocation = true;
-    PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
-    opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
-    opt.addMaximumMagnitudeConstraint(derivative_order::VELOCITY, v_max);
-    opt.addMaximumMagnitudeConstraint(derivative_order::ACCELERATION, a_max);
-    opt.optimize();
-    opt.getTrajectory(&trajectory);
 
     // Visualize trajectory
     sampling_interval = 0.2;
@@ -471,6 +725,8 @@ void waypoints_callback(const puffin_pilot::WaypointsConstPtr &_waypoints)
     // Final waypoints
     sampling_interval = 0.002;
     mav_trajectory_generation::sampleWholeTrajectory(trajectory, sampling_interval, &waypoints);
+
+    print_waypoints(vertices);
 
     has_waypoints = true;
     waypoint_idx = 0;
@@ -487,10 +743,12 @@ int main(int argc, char** argv)
     odometry_mpc_pub      = node_handle.advertise<nav_msgs::Odometry>("odometry_mpc", 0);
     ir_trig_pub           = node_handle.advertise<std_msgs::Bool>("ir_trig", 0);
 
-    ros::Subscriber waypoints_subscriber  = node_handle.subscribe("waypoints", 1, &waypoints_callback);
-    ros::Subscriber odometry_node         = node_handle.subscribe("odometry",  1, &odometry_callback,  ros::TransportHints().tcpNoDelay());
-    ros::Subscriber pace_note_node        = node_handle.subscribe("pace_note", 1, &pace_note_callback, ros::TransportHints().tcpNoDelay());
-    ros::Subscriber ir_ok_node            = node_handle.subscribe("ir_ok",     1, &ir_ok_callback,     ros::TransportHints().tcpNoDelay());
+    ros::Subscriber waypoints_subscriber  = node_handle.subscribe("waypoints",     1, &waypoints_callback);
+    ros::Subscriber odometry_node         = node_handle.subscribe("odometry",      1, &odometry_callback,      ros::TransportHints().tcpNoDelay());
+    //ros::Subscriber acc_node              = node_handle.subscribe("acc",           1, &acc_callback,           ros::TransportHints().tcpNoDelay());
+    ros::Subscriber pace_note_node        = node_handle.subscribe("pace_note",     1, &pace_note_callback,     ros::TransportHints().tcpNoDelay());
+    ros::Subscriber ir_ok_node            = node_handle.subscribe("ir_ok",         1, &ir_ok_callback,         ros::TransportHints().tcpNoDelay());
+    ros::Subscriber ir_visibility_node    = node_handle.subscribe("ir_visibility", 1, &ir_visibility_callback, ros::TransportHints().tcpNoDelay());
 
     ros::spin();
     return 0;

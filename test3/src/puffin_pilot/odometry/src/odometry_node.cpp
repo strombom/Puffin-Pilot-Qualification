@@ -1,8 +1,10 @@
 #include <ros/ros.h>
 #include <Eigen/Geometry>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float32.h>
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -40,7 +42,9 @@ const static bool use_madgwick = true;
 std::vector<double> initial_pose;
 
 ros::Publisher ir_ok_node;
+ros::Publisher pitch_node;
 ros::Publisher puffin_odometry_node;
+ros::Publisher puffin_acc_node;
 //ros::Publisher puffin_odometry_gt_out_node;
 
 bool measure_ir = false;
@@ -154,7 +158,7 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     // Update state.
     StateEstimate state_new;
     state_new.timestamp = msg->header.stamp;
-    state_new.velocity  = imu_state.velocity + delta_time * (acceleration - gravity) * 1.009;
+    state_new.velocity  = imu_state.velocity + delta_time * (acceleration - gravity);
     state_new.position  = imu_state.position + delta_time * (state_new.velocity);
 
     // Save new state.
@@ -183,6 +187,12 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
     tf2::Transform t_rot(orientation.inverse());
     tf2::Vector3 velocity = t_rot * imu_state.velocity;
 
+    geometry_msgs::Vector3 acc_msg;
+    acc_msg.x = (acceleration - 1*gravity).x();
+    acc_msg.y = (acceleration - 1*gravity).y();
+    acc_msg.z = (acceleration - 1*gravity).z();
+    puffin_acc_node.publish(acc_msg);
+
     odom.pose.pose.position.x    = imu_state.position.x();
     odom.pose.pose.position.y    = imu_state.position.y();
     odom.pose.pose.position.z    = imu_state.position.z();
@@ -199,6 +209,10 @@ void uav_imu_callback(const sensor_msgs::ImuConstPtr &msg) {
 
     puffin_odometry_node.publish(odom);
     ROS_INFO_ONCE("Odometry sent first odometry message.");
+
+    std_msgs::Float32 pitch_msg;
+    pitch_msg.data = asin(-2.0*(orientation.x() * orientation.z() - orientation.w() * orientation.y()));
+    pitch_node.publish(pitch_msg);
 }
 
 int measure_ir_count = -1;
@@ -291,7 +305,9 @@ int main(int argc, char** argv)
    
     ros::NodeHandle publisher_node;
     ir_ok_node                  = publisher_node.advertise<std_msgs::Bool>("ir_ok", 1, false);
-    puffin_odometry_node        = publisher_node.advertise<nav_msgs::Odometry>("odometry",        1);
+    puffin_odometry_node        = publisher_node.advertise<nav_msgs::Odometry>("odometry", 1);
+    puffin_acc_node             = publisher_node.advertise<geometry_msgs::Vector3>("acc", 1);
+    pitch_node                  = publisher_node.advertise<std_msgs::Float32>("pitch", 1, false);
     //puffin_odometry_gt_out_node = publisher_node.advertise<nav_msgs::Odometry>("odometry_gt_out", 1);
 
     // REMOVE!!!    

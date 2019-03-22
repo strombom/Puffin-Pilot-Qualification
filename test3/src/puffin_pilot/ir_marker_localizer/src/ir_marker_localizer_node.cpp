@@ -5,6 +5,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <Eigen/Geometry>
+#include <std_msgs/Float64.h>
 #include <nav_msgs/Odometry.h>
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/eigen_mav_msgs.h>
@@ -30,6 +31,7 @@ bool    camera_matrix_valid;
 
 puffin_pilot::GateInfoConstPtr gate_info;
 ros::Publisher ir_marker_odometry_pose_node;
+ros::Publisher ir_marker_visibility_node;
 
 bool last_odometry_valid = false;
 nav_msgs::Odometry last_odometry;
@@ -70,6 +72,22 @@ Eigen::Quaterniond euler_to_quaternion( const double roll, const double pitch, c
     return q;
 }
 
+void send_ir_visibility(double pos) {
+    double visibility;
+
+    if (pos < 0 || pos >= 768) {
+        visibility = -1;
+    } else if (pos > 200) {
+        visibility = 1;
+    } else {
+        visibility = pos / 200;
+    }
+
+    std_msgs::Float64 visibility_msg;
+    visibility_msg.data = visibility;
+    ir_marker_visibility_node.publish(visibility_msg);
+}
+
 void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_array)
 {
     ROS_INFO_ONCE("IR marker localizer received first IR marker array message.");
@@ -91,6 +109,7 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
     }
 
     // Get IR Beacon position on camera plane
+    double min_y = 9e10;
     double ir_beacons_px[4][2] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
     bool   ir_beacons_visible[4] = {false, false, false, false};
     int    ir_beacons_count = 0;
@@ -107,6 +126,10 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
             ir_beacons_px[ir_beacon_id][0] = ir_marker.x;
             ir_beacons_px[ir_beacon_id][1] = ir_marker.y;
             ir_beacons_visible[ir_beacon_id] = true;
+
+            if (ir_marker.y < min_y) {
+                min_y = ir_marker.y;
+            }
         } catch (...) {
             // IR marker ID could not be parsed, something is very wrong.
         }
@@ -114,13 +137,17 @@ void ir_beacons_callback(const flightgoggles::IRMarkerArrayConstPtr& ir_beacons_
     }
     if (ir_beacons_count < 3) {
         // We need at least 3 corners to estimate the gate position.
+        send_ir_visibility(-1);
         return;
     }
 
     if (!last_odometry_valid and ir_beacons_count < 4) {
         // If we don't have an extrinsic guess we need all four corners.
+        send_ir_visibility(-1);
         return;
     }
+
+    send_ir_visibility(min_y);
 
     bool has_extrinsic_guess = false;
     cv::Mat rotation_vector    = cv::Mat::zeros(3, 1, cv::DataType<double>::type);
@@ -272,6 +299,7 @@ int main(int argc, char** argv)
 
     ros::NodeHandle publisher_node;
     ir_marker_odometry_pose_node = publisher_node.advertise<geometry_msgs::PoseStamped>("ir_markers_pose", 1, false);
+    ir_marker_visibility_node    = publisher_node.advertise<std_msgs::Float64>("ir_visibility",   1, false);
 
     ros::NodeHandle subscriber_node;
     ros::Subscriber camera_info_subscriber = subscriber_node.subscribe("camera_info", 10, &camera_info_callback, ros::TransportHints().tcpNoDelay());

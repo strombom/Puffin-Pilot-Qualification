@@ -30,6 +30,9 @@ int main(int argc, char** argv)
     loop_rate.sleep();
     loop_rate.sleep();
     loop_rate.sleep();
+    loop_rate.sleep();
+    loop_rate.sleep();
+    loop_rate.sleep();
     
     // Rate thrust command
     mav_msgs::RateThrust rate_thrust_msg;
