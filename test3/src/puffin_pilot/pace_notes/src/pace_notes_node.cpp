@@ -45,31 +45,15 @@ void publish_pace_note(int gate_idx)
 {
     vector<double> timestamps;
     vector<double> velocities;
-    vector<long> measure_ir;
+    vector<double> measure_ir;
 
     if (gate_idx == 0) {
-        timestamps.push_back(0.5);
+        timestamps.push_back(0.0);
         velocities.push_back(20.0);
         measure_ir.push_back(0);
-/*
-        timestamps.push_back(1.0);
-        velocities.push_back(23.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.5);
-        velocities.push_back(23.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(2.0);
-        velocities.push_back(23.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(2.5);
-        velocities.push_back(23.0);
-        measure_ir.push_back(1);
-*/
+
     } else if (gate_idx == 1) {
-        timestamps.push_back(1.0);
-        velocities.push_back(20.0);
-        measure_ir.push_back(0);
-        timestamps.push_back(2.0);
+        timestamps.push_back(0.0);
         velocities.push_back(20.0);
         measure_ir.push_back(0);
 
@@ -77,125 +61,126 @@ void publish_pace_note(int gate_idx)
         timestamps.push_back(0.0);
         velocities.push_back(20.0);
         measure_ir.push_back(0);
-        timestamps.push_back(1.0);
-        velocities.push_back(15.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.5);
-        velocities.push_back(15.0);
-        measure_ir.push_back(1);
+
+        timestamps.push_back(0.7);
+        velocities.push_back(18.0);
+        measure_ir.push_back(0.55);
+
+        timestamps.push_back(1.4);
+        velocities.push_back(20.0);
+        measure_ir.push_back(0.55);
 
     } else if (gate_idx == 3) {
         timestamps.push_back(0.0);
-        velocities.push_back(15.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.0);
+        velocities.push_back(12.0);
+        measure_ir.push_back(0.35);
+
+        timestamps.push_back(0.8);
+        velocities.push_back(14.0);
+        measure_ir.push_back(0.32);
+
+        timestamps.push_back(1.6);
         velocities.push_back(16.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.5);
-        velocities.push_back(16.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(2.0);
-        velocities.push_back(19.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
+        
 
     } else if (gate_idx == 4) {
         timestamps.push_back(0.0);
         velocities.push_back(20.0);
         measure_ir.push_back(0);
-        timestamps.push_back(0.7);
+
+        timestamps.push_back(0.3);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.2);
+        measure_ir.push_back(0.35);
+
+        timestamps.push_back(1.0);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.5);
+        measure_ir.push_back(0.35);
+
+        timestamps.push_back(1.6);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.8);
-        velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.35);
 
     } else if (gate_idx == 5) {
         timestamps.push_back(0.0);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(0.8);
+        measure_ir.push_back(0.28);
+
+        timestamps.push_back(0.5);
         velocities.push_back(19.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.4);
-        velocities.push_back(14.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.28);
+
+        timestamps.push_back(1.0);
+        velocities.push_back(19.0);
+        measure_ir.push_back(0.28);
 
     } else if (gate_idx == 6) {
         timestamps.push_back(0.0);
-        velocities.push_back(14.0);
-        measure_ir.push_back(1);
+        velocities.push_back(13.0);
+        measure_ir.push_back(0.2);
+
         timestamps.push_back(0.4);
-        velocities.push_back(15.0);
-        measure_ir.push_back(1);
+        velocities.push_back(14.0);
+        measure_ir.push_back(0.2);
+
         timestamps.push_back(0.8);
-        velocities.push_back(16.0);
-        measure_ir.push_back(1);
+        velocities.push_back(14.0);
+        measure_ir.push_back(0.2);
+
         timestamps.push_back(1.2);
-        velocities.push_back(18.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.6);
-        velocities.push_back(18.0);
-        measure_ir.push_back(1);
+        velocities.push_back(15.0);
+        measure_ir.push_back(0.2);
+
 
     } else if (gate_idx == 7) {
         timestamps.push_back(0.0);
-        velocities.push_back(19.0);
+        velocities.push_back(20.0);
         measure_ir.push_back(0);
 
     } else if (gate_idx == 8) {
         timestamps.push_back(0.0);
-        velocities.push_back(18.0);
-        measure_ir.push_back(1);
+        velocities.push_back(13.0);
+        measure_ir.push_back(0.2);
+
         timestamps.push_back(0.8);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
-        timestamps.push_back(1.2);
-        velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.2);
+
 
     } else if (gate_idx == 9) {
         timestamps.push_back(1.2);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
 
-        timestamps.push_back(1.6);
+        timestamps.push_back(1.8);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
 
-        timestamps.push_back(2.0);
+        timestamps.push_back(2.2);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
 
-        timestamps.push_back(2.4);
+        timestamps.push_back(2.6);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
 
-        timestamps.push_back(2.8);
-        velocities.push_back(20.0);
-        measure_ir.push_back(1);
 
     } else if (gate_idx == 10) {
         timestamps.push_back(0.0);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
 
-        timestamps.push_back(0.5);
+        timestamps.push_back(0.6);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
 
-        timestamps.push_back(1.0);
+        timestamps.push_back(1.2);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
 
-        timestamps.push_back(1.5);
+        timestamps.push_back(2.0);
         velocities.push_back(20.0);
-        measure_ir.push_back(1);
+        measure_ir.push_back(0.3);
     }
     
     puffin_pilot::PaceNote pn_msg;
@@ -459,24 +444,24 @@ void init_gates(void)
                                                        {  0.0,  -1.0,   0.2},
                                                        {  0.0,   0.0,   0.0}, // gate 0
                                                        {  0.6,   0.0,   0.0},
-                                                       { -2.5,   1.5,   0.5}, // gate 1
-                                                       { -6.5,   1.0,   0.0},
-                                                       {  0.0,   0.0,   1.0}, // gate 2
+                                                       { -2.5,   2.0,   0.5}, // gate 1
+                                                       { -5.5,   0.0,  -0.5},
+                                                       {  0.0,   0.0,   0.0}, // gate 2
                                                        {  0.0,   1.5,   0.4},
                                                        { -0.1,  -1.0,   0.1}, // gate 3
-                                                       { -2.5,  -1.0,   2.5},
+                                                       { -2.5,  -1.0,   2.0},
                                                        {  0.0,   0.0,   0.0}, // gate 4
-                                                       { -1.0,  -0.5,   0.5},
-                                                       {  0.0,   0.0,   0.7}, // gate 5
-                                                       {  0.0,  -2.0,   0.3},
+                                                       { -1.0,  -0.5,   0.0},
+                                                       {  0.0,   0.0,   0.0}, // gate 5
+                                                       {  1.0,  -2.0,  -0.5},
                                                        {  0.0,   0.0,   0.0}, // gate 6
-                                                       {  0.0,  -2.0,   0.6},
-                                                       {  0.0,   0.5,   1.2}, // gate 7
-                                                       {  0.0,  -1.0,   1.5},
-                                                       { -1.2,   3.0,   1.2}, // gate 8
-                                                       { -4.0,  -1.5,   2.0},
+                                                       {  0.0,  -2.0,   0.5},
+                                                       {  0.0,   0.5,   0.8}, // gate 7
+                                                       {  0.0,  -1.0,   1.0},
+                                                       { -1.2,   3.0,   0.8}, // gate 8
+                                                       { -3.0,  -2.5,   2.0},
                                                        {  0.0,  -0.5,   0.0}, // gate 9
-                                                       {  0.0,  -3.0,   1.5},
+                                                       {  0.0,  -5.0,   2.2},
                                                        {  0.0,   0.0,   0.0}, // gate 10
                                                        {  0.0,   0.0,   0.0},
                                                        {  0.0,   0.0,   0.0},
@@ -592,12 +577,12 @@ void odometry_callback(const nav_msgs::Odometry& msg)
 
     static const double gate_pass_distances[11] = {1.0,  // Gate 0
                                                    1.0,  // Gate 1
-                                                   4.0,  // Gate 2
-                                                   1.0,  // Gate 3
+                                                   3.0,  // Gate 2
+                                                   0.0,  // Gate 3
                                                    2.0,  // Gate 4
                                                    2.0,  // Gate 5
                                                    1.0,  // Gate 6
-                                                   2.0,  // Gate 7
+                                                   1.0,  // Gate 7
                                                    1.0,  // Gate 8
                                                    1.0,  // Gate 9
                                                    1.0}; // Gate 10

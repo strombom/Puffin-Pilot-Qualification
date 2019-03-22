@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 
     ROS_INFO("Puffin pilot launcher launching.");
     rate_thrust_msg.angular_rates.y = 1;
-    rate_thrust_msg.thrust.z = 11;
+    rate_thrust_msg.thrust.z = 13;
     rate_thrust_msg.header.stamp = ros::Time::now();
     rate_thrust_node.publish(rate_thrust_msg);
     ros::spinOnce();

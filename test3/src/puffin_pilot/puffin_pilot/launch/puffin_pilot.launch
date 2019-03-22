@@ -37,7 +37,6 @@
     <!-- Output  -->
     <remap from="ir_ok"           to="/puffin_pilot/ir_ok" />
     <remap from="odometry"        to="/puffin_pilot/odometry" />
-    <remap from="acc"             to="/puffin_pilot/acc" />
     <remap from="pitch"           to="/puffin_pilot/pitch" />
   </node>
 
@@ -45,9 +44,9 @@
   <node name="trajectory_generator_node" pkg="trajectory_generator" type="trajectory_generator_node" respawn="false" clear_params="true" output="screen">
     <!-- Input -->
     <remap from="odometry"      to="/puffin_pilot/odometry" />
-    <remap from="acc"           to="/puffin_pilot/acc" />
     <remap from="pace_note"     to="/puffin_pilot/pace_note" />
     <remap from="waypoints"     to="/puffin_pilot/waypoints" />
+    <remap from="pitch"         to="/puffin_pilot/pitch" />
     <remap from="ir_visibility" to="/puffin_pilot/ir_visibility" />
     <remap from="ir_ok"         to="/puffin_pilot/ir_ok" />
 
