@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(trajectory_generator)
 
-find_package(catkin_simple REQUIRED)
-catkin_simple(ALL_DEPS_REQUIRED)
+find_package(catkin REQUIRED)
+
 
 add_definitions(-std=c++11)
 set(CMAKE_BUILD_TYPE Release)
+
+catkin_package(
+   INCLUDE_DIRS 
+   LIBRARIES ${PROJECT_NAME}
+   CATKIN_DEPENDS roscpp)
+
+
 
 #############
 # LIBRARIES #
@@ -14,12 +21,11 @@ set(CMAKE_BUILD_TYPE Release)
 ############
 # BINARIES #
 ############
-cs_add_executable(trajectory_generator_node
-  src/trajectory_generator_node.cpp
-)
+set_target_properties(trajectory_generator_node
+                      PROPERTIES 
+                      PREFIX "")
 
 ##########
 # EXPORT #
 ##########
-cs_install()
-cs_export()
+
